@@ -522,6 +522,15 @@ function evalNamespaceCall(method: string, args: readonly ts.Expression[], ctx: 
   }
 }
 
+// `Base.pipe(Schema.Array)` wraps the piped schema in an array; the operator is
+// passed as a bare reference rather than a call, so evalNamespaceCall never sees it.
+function pipeArrayOperator(argument: ts.Expression): "Array" | "ArrayEnsure" | "NonEmptyArray" | null {
+  const target = ts.isCallExpression(argument) ? argument.expression : argument;
+  const fn = namespaceFn(target);
+  if (!fn || fn.ns !== "Schema") return null;
+  return fn.fn === "Array" || fn.fn === "ArrayEnsure" || fn.fn === "NonEmptyArray" ? fn.fn : null;
+}
+
 function evalCall(expr: ts.CallExpression, ctx: Ctx): EvalResult {
   const callee = expr.expression;
   if (ts.isCallExpression(callee) && ts.isPropertyAccessExpression(callee.expression)) {
@@ -547,8 +556,17 @@ function evalCall(expr: ts.CallExpression, ctx: Ctx): EvalResult {
       const base = evalExpr(recv, ctx);
       if (method !== "pipe") return base;
       let optional = base.optional;
-      for (const argument of expr.arguments) if (isOptionalMarker(argument)) optional = true;
-      return { schema: base.schema, optional };
+      let schema = base.schema;
+      for (const argument of expr.arguments) {
+        if (isOptionalMarker(argument)) {
+          optional = true;
+          continue;
+        }
+        const arrayOperator = pipeArrayOperator(argument);
+        if (arrayOperator === "NonEmptyArray") schema = { type: "array", items: schema, minItems: 1 };
+        else if (arrayOperator) schema = { type: "array", items: schema };
+      }
+      return { schema, optional };
     }
     return opaque(textOf(expr));
   }
