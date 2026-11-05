@@ -85,6 +85,7 @@ export class SenpiTransport {
   private unsubscribeClient: (() => void) | undefined;
   private connectedResult: SenpiConnectResult | undefined;
   private sessionIdValue: string | undefined;
+  private streamingValue = false;
   private disposed = false;
 
   constructor(options: SenpiTransportOptions = {}) {
@@ -105,6 +106,16 @@ export class SenpiTransport {
 
   get sessionId(): string | undefined {
     return this.sessionIdValue;
+  }
+
+  /**
+   * Whether the attached session is mid-run. Tracked from the host's run boundaries so a reader can
+   * decide without a host call; a re-open seeds it from the state the host answers with. A read of
+   * another session may only attach while this is false: moving the attachment mid-run silences the
+   * turn, because the pinned client drops every frame whose sessionId is not the one it now holds.
+   */
+  get streaming(): boolean {
+    return this.streamingValue;
   }
 
   get clientCapabilities(): readonly string[] {
@@ -132,6 +143,7 @@ export class SenpiTransport {
       onDisconnect: (error) => {
         this.connectedResult = undefined;
         this.sessionIdValue = undefined;
+        this.streamingValue = false;
         this.client = undefined;
         this.emitDisconnect(mapSenpiError(error));
       },
@@ -152,6 +164,8 @@ export class SenpiTransport {
       throw new SenpiTransportError("transport_gone", "the senpi transport was disposed while connecting");
     }
     this.unsubscribeClient = client.onEvent((event) => {
+      if (event.type === "agent_start") this.streamingValue = true;
+      else if (event.type === "agent_end") this.streamingValue = false;
       for (const listener of this.eventListeners) listener(event);
     });
     try {
@@ -182,6 +196,7 @@ export class SenpiTransport {
     try {
       const opened = await client.openSession(wireOptions);
       this.sessionIdValue = opened.sessionId;
+      this.streamingValue = "state" in opened && opened.state.isStreaming === true;
       return opened;
     } catch (error) {
       throw mapSenpiError(error);
@@ -192,18 +207,30 @@ export class SenpiTransport {
     return this.call((client) => client.listSessions());
   }
 
-  prompt(message: string, options?: SenpiPromptOptions): Promise<SenpiPromptResult> {
-    return this.callSession((client) =>
+  async prompt(message: string, options?: SenpiPromptOptions): Promise<SenpiPromptResult> {
+    const result = await this.callSession((client) =>
       options === undefined ? client.prompt(message) : client.prompt(message, options),
     );
+    // An accepted input starts a run; claiming it before agent_start arrives keeps a sibling read in
+    // that window from attaching and silencing it. agent_end remains the authority that clears it.
+    this.streamingValue = true;
+    return result;
   }
 
-  steer(message: string, images?: SenpiImages, recovery?: SenpiSteerRecovery): Promise<SenpiQueuedDisposition> {
-    return this.callSession((client) => client.steer(message, images, recovery));
+  async steer(message: string, images?: SenpiImages, recovery?: SenpiSteerRecovery): Promise<SenpiQueuedDisposition> {
+    const result = await this.callSession((client) => client.steer(message, images, recovery));
+    this.streamingValue = true;
+    return result;
   }
 
-  followUp(message: string, images?: SenpiImages, recovery?: SenpiSteerRecovery): Promise<SenpiQueuedDisposition> {
-    return this.callSession((client) => client.followUp(message, images, recovery));
+  async followUp(
+    message: string,
+    images?: SenpiImages,
+    recovery?: SenpiSteerRecovery,
+  ): Promise<SenpiQueuedDisposition> {
+    const result = await this.callSession((client) => client.followUp(message, images, recovery));
+    this.streamingValue = true;
+    return result;
   }
 
   abort(options?: SenpiAbortOptions): Promise<SenpiAbortAnswer> {
@@ -291,6 +318,7 @@ export class SenpiTransport {
     this.client = undefined;
     this.connectedResult = undefined;
     this.sessionIdValue = undefined;
+    this.streamingValue = false;
     if (client) await client.stop();
   }
 

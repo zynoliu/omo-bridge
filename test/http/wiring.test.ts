@@ -20,6 +20,7 @@ const SESSION_ID = "durable-wiring-1";
 // at the only seam the http layer exposes (setSessionReadTransport).
 class FakeSenpiTransport implements SessionReadTransport {
   readonly sessionId = "rpc-wiring-1";
+  readonly streaming = false;
   readonly rows: SenpiSessionSummary[];
   readonly state: SenpiSessionState;
   readonly entries: SenpiEntriesResult["entries"] = [];

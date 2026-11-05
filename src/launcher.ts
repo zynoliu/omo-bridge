@@ -754,6 +754,9 @@ function createTransportProxy(
     get sessionId(): string | undefined {
       return transport.sessionId;
     },
+    get streaming(): boolean {
+      return transport.streaming;
+    },
     listSessions: () => call((target) => target.listSessions()),
     getState: () => call((target) => target.getState()),
     getEntries: (since, page) => call((target) => target.getEntries(since, page)),

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
 import { basename } from "node:path";
-import { emptySessionUsage, sessionKeyOf, type SessionUsage } from "../../model/session-map";
+import { emptySessionUsage, readTranscriptEntries, sessionKeyOf, type SessionUsage } from "../../model/session-map";
 import type { SenpiEntriesResult, SenpiMessages, SenpiTransport } from "../../senpi/transport";
 import { mediaUriFor, wantsMediaRefs } from "./media";
 import { getSessionManagementStore } from "./session-write";
@@ -27,6 +27,8 @@ export type SessionReadTransport = Pick<
   "listSessions" | "getState" | "getEntries" | "getMessages" | "openSession"
 > & {
   readonly sessionId?: string | undefined;
+  /** True while the attached session has a run in flight; a sibling read may not attach then. */
+  readonly streaming: boolean;
   waitForIdle?: (timeout?: number) => Promise<void>;
 };
 
@@ -334,15 +336,45 @@ async function requireMappedSession(
   throw sessionNotFound(sessionID);
 }
 
-// Entries, messages and state are read from the transport's attached session, not from an id in the
-// request, so a read for a session the transport is not attached to (a restart, or a sibling session)
-// would project whichever transcript is attached. Attach the mapped session first, as the write paths do.
-// An already-attached session is left alone: the TUI polls this endpoint mid-turn, and re-attaching a
-// running session is not something this read path may risk.
-async function attachSession(caller: SessionReadTransport, row: SenpiEntriesRow): Promise<void> {
-  if (row.sessionPath === undefined) return;
-  if (caller.sessionId !== undefined && caller.sessionId === row.sessionId) return;
+// Entries and messages are read from the connection's attached session, not from an id in the
+// request, so a read must never move that attachment while a run is in flight: the pinned client
+// holds one routing id and drops every frame tagged with another, which silences the running turn.
+// A sibling read during a run is therefore projected from the session's own transcript, and only an
+// idle transport re-attaches the requested session before reading it.
+function conflictFor(row: SenpiEntriesRow, message: string): HandlerProblem {
+  return new HandlerProblem(409, "ConflictError", `session ${sessionIdOf(row)}: ${message}`, {
+    sessionID: sessionIdOf(row),
+  });
+}
+
+function entryOf(record: Record<string, unknown>): SessionEntry | undefined {
+  return record.type === "message" || record.type === "model_change" ? (record as unknown as SessionEntry) : undefined;
+}
+
+function projectedMessages(row: SenpiEntriesRow, mediaRefs: boolean): PublicSessionMessage[] {
+  if (row.sessionPath === undefined) throw conflictFor(row, "the host lists no transcript path to read");
+  const records = readTranscriptEntries(row.sessionPath);
+  if (records === undefined) throw conflictFor(row, "its transcript is not readable while another session runs");
+  try {
+    const entries = records.map(entryOf).filter((entry): entry is SessionEntry => entry !== undefined);
+    return mapEntries(entries, mediaRefs);
+  } catch (error) {
+    throw conflictFor(row, `its transcript could not be projected (${messageOf(error)})`);
+  }
+}
+
+async function readMessagesFor(
+  caller: SessionReadTransport,
+  row: SenpiEntriesRow,
+  mediaRefs: boolean,
+): Promise<PublicSessionMessage[]> {
+  if (caller.sessionId !== undefined && caller.sessionId === row.sessionId) return readMessages(caller, mediaRefs);
+  if (caller.streaming) return projectedMessages(row, mediaRefs);
+  if (row.sessionPath === undefined) throw conflictFor(row, "it is not attached and the host lists no path to open");
   await caller.openSession({ sessionPath: row.sessionPath, retainOnDisconnect: true });
+  const messages = await readMessages(caller, mediaRefs);
+  if (caller.sessionId !== row.sessionId) throw conflictFor(row, "the attachment moved while it was being read");
+  return messages;
 }
 
 function timestampMillis(value: unknown): number {
@@ -579,10 +611,9 @@ export async function handleSessionMessages(request: Request, url: URL): Promise
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const { row } = await requireMappedSession(caller, sessionID);
-    await attachSession(caller, row);
     const limit = readLimit(url, DEFAULT_PAGE_LIMIT, MAX_MESSAGE_LIMIT);
     const offset = readCursor(url);
-    const messages = await readMessages(caller, wantsMediaRefs(request));
+    const messages = await readMessagesFor(caller, row, wantsMediaRefs(request));
     const { page, cursor } = paginate(messages, offset, limit);
     return jsonResponse(200, { data: page, cursor });
   });
@@ -594,8 +625,7 @@ export async function handleSessionMessageGet(request: Request, url: URL): Promi
     const sessionID = sessionIdFromPath(url);
     const messageID = messageIdFromPath(url);
     const { row } = await requireMappedSession(caller, sessionID);
-    await attachSession(caller, row);
-    const messages = await readMessages(caller, wantsMediaRefs(request));
+    const messages = await readMessagesFor(caller, row, wantsMediaRefs(request));
     const message = messages.find((candidate) => candidate.id === messageID);
     if (message === undefined) throw messageNotFound(sessionID, messageID);
     return jsonResponse(200, { data: message });
@@ -607,7 +637,9 @@ export async function handleSessionDiff(_request: Request, url: URL): Promise<Re
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     await requireMappedSession(caller, sessionID);
-    return jsonResponse(200, { data: [] }); // todos 17/6: snapshot diffs
+    // A turn diff needs the snapshot the host took before the turn; senpi keeps none, and the
+    // working-tree diff would answer a different question. DEGRADATIONS.md declares this empty read.
+    return jsonResponse(200, { data: [] });
   });
 }
 
