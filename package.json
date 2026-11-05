@@ -12,6 +12,8 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "contracts:check": "bun run scripts/contracts-check.ts",
+    "surface:extract": "bun run scripts/surface-extract.ts",
+    "surface:check": "bun run scripts/surface-extract.ts --check",
     "selfcheck": "bun run scripts/selfcheck.ts"
   },
   "dependencies": {

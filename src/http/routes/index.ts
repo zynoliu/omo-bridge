@@ -5,8 +5,10 @@ import {
   handleIntegrationList,
   handleMcpList,
   handleMcpResourceCatalog,
+  handleModelDefault,
   handleModelList,
   handlePermissionSavedList,
+  handlePluginCheck,
   handlePluginList,
   handleProviderList,
   handleReferenceList,
@@ -36,11 +38,16 @@ import {
   handlePersistentPtyCreate,
   handlePersistentPtyList,
   handlePersistentPtySnapshot,
+  handlePluginUpdate,
+  handleRpcCall,
   handleServerPair,
+  handleSessionGenerate,
+  handleSessionStats,
   handleUsageLimits,
   handleWorktreeCreate,
   handleWorktreeList,
   handleWorktreeRefresh,
+  handleWorktreeRemove,
 } from "../handlers/degraded";
 import {
   handleFormCancel,
@@ -53,11 +60,15 @@ import {
   handleConfigGet,
   handleFsFind,
   handleFsList,
+  handleFsRead,
   handleLocationGet,
+  handleLocationReload,
   handleProjectList,
   handleVcsBase,
+  handleVcsBranch,
   handleVcsDiff,
   handleVcsGet,
+  handleVcsStatus,
 } from "../handlers/fs-location";
 import {
   handleSessionBackground,
@@ -88,6 +99,7 @@ import {
 import {
   handleSessionActive,
   handleSessionDiff,
+  handleSessionExport,
   handleSessionGet,
   handleSessionList,
   handleSessionLog,
@@ -109,11 +121,16 @@ function route(method: Route["method"], path: string, handler: Handler): Route {
 export const fsLocationRoutes: Route[] = [
   route("GET", "/api/fs/list", handleFsList),
   route("GET", "/api/fs/find", handleFsFind),
+  // `fs.read` declares `/api/fs/read/*`; the wildcard captures a nested relative path.
+  route("GET", "/api/fs/read/*", handleFsRead),
   route("GET", "/api/location", handleLocationGet),
+  route("POST", "/api/location/reload", handleLocationReload),
   route("GET", "/api/project", handleProjectList),
   route("GET", "/api/config", handleConfigGet),
   route("GET", "/api/vcs", handleVcsGet),
   route("GET", "/api/vcs/base", handleVcsBase),
+  route("GET", "/api/vcs/status", handleVcsStatus),
+  route("GET", "/api/vcs/branch", handleVcsBranch),
   route("GET", "/api/vcs/diff", handleVcsDiff),
 ];
 
@@ -149,6 +166,8 @@ export const sessionRoutes: Route[] = [
   route("PATCH", "/api/session/:sessionID/inbox/:inboxID", handleSessionInboxUpdate),
   route("GET", "/api/session/:sessionID/diff", handleSessionDiff),
   route("POST", "/api/session/:sessionID/view", handleSessionView),
+  route("GET", "/api/experimental/session/:sessionID/export", handleSessionExport),
+  route("POST", "/api/session/:sessionID/generate", handleSessionGenerate),
   route("POST", "/api/experimental/session/:sessionID/wait", handleSessionWait),
   route("GET", "/api/experimental/session/:sessionID/log", handleSessionLog),
 ];
@@ -173,6 +192,7 @@ export const interactionRoutes: Route[] = [
 // Startup catalog reads. Families with no senpi capability answer contract-valid empties.
 export const catalogRoutes: Route[] = [
   route("GET", "/api/model", handleModelList),
+  route("GET", "/api/model/default", handleModelDefault),
   route("GET", "/api/provider", handleProviderList),
   route("GET", "/api/agent", handleAgentList),
   route("GET", "/api/command", handleCommandList),
@@ -182,6 +202,8 @@ export const catalogRoutes: Route[] = [
   route("GET", "/api/mcp/resource", handleMcpResourceCatalog),
   route("GET", "/api/integration", handleIntegrationList),
   route("GET", "/api/plugin", handlePluginList),
+  route("POST", "/api/plugin/check", handlePluginCheck),
+  route("POST", "/api/plugin/update", handlePluginUpdate),
   route("GET", "/api/websearch/provider", handleWebsearchProviders),
   route("GET", "/api/permission/saved", handlePermissionSavedList),
 ];
@@ -190,8 +212,11 @@ export const catalogRoutes: Route[] = [
 // answer 204, and writes that would change visible state answer the endpoint's declared error.
 export const degradationRoutes: Route[] = [
   route("GET", "/api/worktree", handleWorktreeList),
+  route("DELETE", "/api/worktree", handleWorktreeRemove),
   route("POST", "/api/worktree/refresh", handleWorktreeRefresh),
   route("POST", "/api/worktree", handleWorktreeCreate),
+  route("GET", "/api/experimental/session/stats", handleSessionStats),
+  route("POST", "/api/rpc/:rpcID/:method", handleRpcCall),
   route("GET", "/api/experimental/session/:sessionID/terminal", handlePersistentPtyList),
   route("POST", "/api/experimental/session/:sessionID/terminal", handlePersistentPtyCreate),
   route("GET", "/api/experimental/persistent-pty/:ptyID/snapshot", handlePersistentPtySnapshot),

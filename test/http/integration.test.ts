@@ -103,7 +103,7 @@ describe("mounted integration route", () => {
       headers: { ...auth(), "content-type": "application/json" },
       body: JSON.stringify({ integrationID: PROVIDER, key: "sk-ignored" }),
     });
-    expect(key.status).toBe(409);
+    expect(key.status).toBe(404);
     expect(((await key.json()) as Record<string, unknown>)._tag).toBe("IntegrationNotFoundError");
 
     const oauth = await fetch(`${base}/api/integration/${PROVIDER}/connect/oauth`, {
@@ -118,7 +118,7 @@ describe("mounted integration route", () => {
       method: "DELETE",
       headers: auth(),
     });
-    expect(credential.status).toBe(409);
+    expect(credential.status).toBe(400);
     expect(((await credential.json()) as Record<string, unknown>)._tag).toBe("InvalidRequestError");
   });
 });

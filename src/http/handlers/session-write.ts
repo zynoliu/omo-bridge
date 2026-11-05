@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { isAbsolute } from "node:path";
 import {
   MAX_LIST_LIMIT,
@@ -19,7 +20,7 @@ import { HandlerProblem, jsonResponse, noContent, messageOf, respond } from "./p
 //
 // Every capability the senpi facade cannot express is declared optional on the seam. A write that
 // the attached host cannot perform answers the endpoint's declared error instead of a fake 204:
-// `InvalidRequestError` (501 for a missing capability, 400 for a revert the bridge cannot stage).
+// `InvalidRequestError` at 400 (the tag every one of these endpoints declares).
 
 const MAX_DELETED_TOMBSTONES = 4096;
 const ENVIRONMENT_METADATA_KEY = "environment";
@@ -196,9 +197,13 @@ function invalidRequest(message: string, field: string): HandlerProblem {
   return new HandlerProblem(400, "InvalidRequestError", message, { field });
 }
 
-/** A host that cannot perform the write at all: 501 with the endpoint's declared error tag. */
+/**
+ * A host that cannot perform the write at all. `InvalidRequestError` is declared at 400 by every
+ * endpoint that calls this; 501 is not in their `declaredStatuses`, so the client would report an
+ * UnexpectedStatus instead of the declared error.
+ */
 function unsupportedCapability(message: string, field: string): HandlerProblem {
-  return new HandlerProblem(501, "InvalidRequestError", message, { field, kind: "unsupported" });
+  return new HandlerProblem(400, "InvalidRequestError", message, { field, kind: "unsupported" });
 }
 
 /** A revert the bridge cannot express: the endpoint declares `InvalidRequestError` at 400. */
@@ -522,6 +527,10 @@ export async function handleSessionCompact(request: Request, url: URL): Promise<
     if (customInstructions !== undefined && asString(customInstructions) === undefined) {
       throw invalidRequest("customInstructions must be a string", "customInstructions");
     }
+    const delivery = body.delivery === undefined ? "steer" : parseDelivery(body.delivery);
+    if (delivery === undefined) {
+      throw invalidRequest(`delivery must be "steer" or "queue" (found ${JSON.stringify(body.delivery)})`, "delivery");
+    }
 
     const target = await resolveTarget(sessionID);
     const caller = requireTransport();
@@ -532,7 +541,19 @@ export async function handleSessionCompact(request: Request, url: URL): Promise<
     if (target.row !== undefined) await ensureAttached(caller, target.row);
     if (typeof customInstructions === "string") await compact.call(caller, customInstructions);
     else await compact.call(caller);
-    return noContent();
+    // `session.compact` answers 200 `{data: Session.Inbox.Compaction}`, not an empty 204. The receipt
+    // names the compaction this request performed; the host compacts in place, so the inbox is empty
+    // immediately afterwards and nothing is left pending.
+    return jsonResponse(200, {
+      data: {
+        id: asNonEmptyString(body.id) ?? `msg_${randomUUID()}`,
+        sessionID: target.key,
+        time: { created: Date.now() },
+        type: "compaction",
+        payload: {},
+        delivery,
+      },
+    });
   });
 }
 

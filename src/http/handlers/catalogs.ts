@@ -345,6 +345,18 @@ export async function handlePluginList(_request: Request, url: URL): Promise<Res
   return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
 
+// `plugin.check` re-reads the same inventory: the bridge loads no server plugins, so there is no
+// package source to re-check and the truthful answer is the empty list `plugin.list` serves.
+export async function handlePluginCheck(_request: Request, url: URL): Promise<Response> {
+  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+}
+
+// `model.default` declares `Location.response(Schema.UndefinedOr(Model.Info))`: the host reports no
+// default model, so the body carries the location and no `data`. The TUI falls back when it is absent.
+export async function handleModelDefault(_request: Request, url: URL): Promise<Response> {
+  return respond(url, async () => jsonResponse(200, { location: locationFor(url) }));
+}
+
 export async function handleWebsearchProviders(_request: Request, url: URL): Promise<Response> {
   return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
