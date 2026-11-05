@@ -21,8 +21,8 @@ export const MAX_REMEMBERED_ADMISSIONS = 4096;
 
 export type Delivery = "steer" | "queue";
 
-// Naming a session and listing its command surface are plain RPC commands that the SenpiTransport
-// facade does not wrap; the raw attach channel is the only seam this layer may reach them through.
+// Listing the command surface is a plain RPC command the SenpiTransport facade does not wrap yet;
+// the raw attach channel is the only seam this layer may reach it through.
 export interface PromptCommandChannel {
   request<T = unknown>(command: PromptCommand): Promise<T>;
 }
@@ -35,6 +35,8 @@ export type SessionWriteTransport = Pick<
   SenpiTransport,
   "openSession" | "prompt" | "steer" | "followUp" | "getState" | "listSessions"
 > & {
+  /** The facade's rename; a transport without it falls back to the raw `set_session_name` frame. */
+  setSessionName?: (name: string) => Promise<void>;
   readonly sessionId?: string | undefined;
   readonly raw: PromptCommandChannel;
 };
@@ -398,7 +400,9 @@ export async function handleSessionCreate(request: Request, _url: URL): Promise<
     const title = asTrimmed(body.title);
     if (title !== undefined) {
       try {
-        await caller.raw.request({ type: "set_session_name", name: title });
+        const rename = caller.setSessionName;
+        if (typeof rename === "function") await rename.call(caller, title);
+        else await caller.raw.request({ type: "set_session_name", name: title });
       } catch (error) {
         // The session exists either way; a refused name must not report the creation as failed.
         console.warn(`omo-bridge: session ${opened.sessionId} created but not named: ${messageOf(error)}`);

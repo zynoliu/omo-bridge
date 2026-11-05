@@ -39,13 +39,19 @@ class FakeTransport implements SessionWriteTransport {
   readonly steers: Array<{ message: string; recovery: SenpiSteerRecovery | undefined }> = [];
   readonly followUps: Array<{ message: string; recovery: SenpiSteerRecovery | undefined }> = [];
   readonly opens: SenpiOpenSessionOptions[] = [];
+  /** Names sent through the facade's `setSessionName`. */
   readonly names: string[] = [];
+  /** Names sent as raw `set_session_name` frames (the fallback when the facade has no rename). */
+  readonly rawNames: string[] = [];
+  setSessionName: ((name: string) => Promise<void>) | undefined = async (name) => {
+    this.names.push(name);
+  };
   readonly entries: unknown[] = [];
 
   readonly raw: PromptCommandChannel = {
     request: async <T>(command: PromptCommand): Promise<T> => {
       if (command.type === "set_session_name") {
-        this.names.push(command.name);
+        this.rawNames.push(command.name);
         return {} as T;
       }
       if (this.commandSurface === undefined) throw new Error("this host does not list commands");
@@ -164,6 +170,20 @@ describe("POST /api/session", () => {
     expect(info.location).toEqual({ directory: workDir });
     expect(transport.opens).toEqual([{ cwd: workDir, retainOnDisconnect: true }]);
     expect(transport.names).toEqual(["Alpha"]);
+    expect(transport.rawNames).toEqual([]);
+  });
+
+  test("falls back to the raw set_session_name frame when the facade has no rename", async () => {
+    transport.setSessionName = undefined;
+
+    const response = await handleSessionCreate(
+      post("/api/session", { title: "Beta", location: { directory: workDir } }),
+      url("/api/session"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(transport.names).toEqual([]);
+    expect(transport.rawNames).toEqual(["Beta"]);
   });
 
   test("defaults the location to the process cwd and skips an absent title", async () => {

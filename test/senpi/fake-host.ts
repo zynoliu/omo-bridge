@@ -16,7 +16,43 @@ export interface FakeConnectionSummary {
 export interface FakeHostOptions {
   rejectAuth?: boolean;
   enforceInteractiveUserForStop?: boolean;
+  /** The `inputs` of a `get_pending_inputs` answer; defaults to two queued inputs. */
+  pendingInputs?: readonly Record<string, unknown>[];
+  /** The `commands` of a `get_commands` answer. */
+  commands?: readonly Record<string, unknown>[];
 }
+
+// Two queued inputs in the shape of the host's `PendingInputSnapshot.inputs` projections.
+const DEFAULT_PENDING_INPUTS: readonly Record<string, unknown>[] = [
+  {
+    clientMessageId: "msg_queued_1",
+    state: "queued",
+    text: "run the full test suite",
+    requestedMode: "followUp",
+    revision: 1,
+    statusCode: "queued_follow_up",
+    statusText: "Queued as a follow-up",
+    actions: ["edit", "remove"],
+    pendingDecoration: true,
+    supersededVersions: [],
+  },
+  {
+    clientMessageId: "msg_queued_2",
+    state: "queued",
+    text: "also check the diff",
+    requestedMode: "steer",
+    revision: 1,
+    statusCode: "queued_steer",
+    statusText: "Queued as a steer",
+    actions: ["edit", "remove"],
+    pendingDecoration: true,
+    supersededVersions: [],
+  },
+];
+
+const DEFAULT_COMMANDS: readonly Record<string, unknown>[] = [
+  { name: "fix-tests", description: "Fix failing tests", source: "prompt", sourceInfo: {}, syntax: "slash" },
+];
 
 interface ConnectionState {
   index: number;
@@ -36,11 +72,15 @@ export class FakeSenpiHost {
   private readonly server: ReturnType<typeof Bun.listen<ConnectionState>>;
   private readonly sockets = new Set<Bun.Socket<ConnectionState>>();
   private readonly options: FakeHostOptions;
+  private readonly pendingInputs: readonly Record<string, unknown>[];
+  private readonly commands: readonly Record<string, unknown>[];
 
   private constructor(dir: string, options: FakeHostOptions) {
     this.dir = dir;
     this.socketPath = join(dir, "s.sock");
     this.options = options;
+    this.pendingInputs = options.pendingInputs ?? DEFAULT_PENDING_INPUTS;
+    this.commands = options.commands ?? DEFAULT_COMMANDS;
     this.server = Bun.listen<ConnectionState>({
       unix: this.socketPath,
       socket: {
@@ -86,6 +126,21 @@ export class FakeSenpiHost {
 
   framesOfType(type: string): FakeFrame[] {
     return this.frames.filter((entry) => entry.frame.type === type);
+  }
+
+  /** Push one host-to-client frame on every open connection: the host's event stream. */
+  emit(frame: Record<string, unknown>): void {
+    for (const socket of this.sockets) this.write(socket, frame);
+  }
+
+  /**
+   * The host's answer to a client waiting for idle. There is no `wait_for_idle` wire command: the
+   * RpcClient resolves `waitForIdle` on the `agent_idle` event, which the host sends once the
+   * turn's `agent_end` has been delivered.
+   */
+  finishTurn(): void {
+    this.emit({ type: "agent_end" });
+    this.emit({ type: "agent_idle" });
   }
 
   stop(): void {
@@ -171,6 +226,31 @@ export class FakeSenpiHost {
         command: type,
         success: true,
         data: { sessionId: "rpc-1", paused: false },
+      });
+      return;
+    }
+    if (type === "get_pending_inputs") {
+      this.write(socket, {
+        type: "response",
+        id,
+        command: type,
+        success: true,
+        data: {
+          lifetimeId: "fake-lifetime",
+          throughCursor: this.frames.length,
+          inputs: [...this.pendingInputs],
+          outcomes: [],
+        },
+      });
+      return;
+    }
+    if (type === "get_commands") {
+      this.write(socket, {
+        type: "response",
+        id,
+        command: type,
+        success: true,
+        data: { commands: [...this.commands] },
       });
       return;
     }
