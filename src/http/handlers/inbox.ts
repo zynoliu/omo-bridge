@@ -1,5 +1,6 @@
 import type { SenpiSessionSummary, SenpiTransport } from "../../senpi/transport";
 import { STOP_REQUIRES_INTERACTIVE_CLIENT } from "../../senpi/errors";
+import { HandlerProblem, jsonResponse, noContent, messageOf, respond } from "./problem";
 
 // Interrupt, background and pending-inbox (queue) endpoints, plus the `queue_update` diff that turns
 // senpi's full-queue snapshots into per-item opencode events.
@@ -17,8 +18,6 @@ import { STOP_REQUIRES_INTERACTIVE_CLIENT } from "../../senpi/errors";
 //   host's input validation (it insists on `text`) and would not change the mode.
 // - A refused user Stop arrives as `stop_requires_interactive_client` (already mapped by
 //   mapSenpiError) and must surface as 409, never as a generic 503.
-
-const JSON_CONTENT_TYPE = "application/json";
 
 export type Delivery = "steer" | "queue";
 export type PendingInputType = "user" | "synthetic";
@@ -151,48 +150,6 @@ function createdOf(sessionID: string, inboxID: string): string {
   const created = new Date().toISOString();
   firstSeen.set(key, created);
   return created;
-}
-
-class HandlerProblem extends Error {
-  readonly status: number;
-  readonly tag: string;
-  readonly fields: Record<string, unknown>;
-
-  constructor(status: number, tag: string, message: string, fields: Record<string, unknown> = {}) {
-    super(message);
-    this.name = "HandlerProblem";
-    this.status = status;
-    this.tag = tag;
-    this.fields = fields;
-  }
-}
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": JSON_CONTENT_TYPE },
-  });
-}
-
-function noContent(): Response {
-  return new Response(null, { status: 204 });
-}
-
-function errorResponse(status: number, tag: string, message: string, fields: Record<string, unknown> = {}): Response {
-  return jsonResponse(status, { _tag: tag, message, ...fields });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function respond(operation: () => Promise<Response>): Promise<Response> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof HandlerProblem) return errorResponse(error.status, error.tag, error.message, error.fields);
-    return errorResponse(503, "ServiceUnavailableError", messageOf(error), { service: "senpi" });
-  }
 }
 
 function requireTransport(): SessionInboxTransport {
@@ -437,7 +394,7 @@ async function ensureAttached(caller: SessionInboxTransport, row: SenpiSessionSu
  * any other status, so a 204 would make Stop throw).
  */
 export async function handleSessionInterrupt(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const target = await resolveTarget(caller, sessionID);
@@ -467,7 +424,7 @@ export async function handleSessionInterrupt(request: Request, url: URL): Promis
  * is deliberately untouched: the mark is state for the active-session projection, not an operation.
  */
 export async function handleSessionBackground(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const target = await resolveTarget(caller, sessionID);
@@ -483,7 +440,7 @@ export async function handleSessionBackground(_request: Request, url: URL): Prom
  * today) answers an empty list rather than fabricating entries.
  */
 export async function handleSessionInboxList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const target = await resolveTarget(caller, sessionID);
@@ -529,7 +486,7 @@ function pendingInputsOf(answer: unknown, sessionID: string): PendingInput[] {
  * Removes exactly one queued input. `clear_queue` would drop every unrelated item and is never used.
  */
 export async function handleSessionInboxCancel(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const inboxID = inboxIdFromPath(url);
@@ -553,7 +510,7 @@ export async function handleSessionInboxCancel(_request: Request, url: URL): Pro
  * and the 503 says so instead of hiding it.
  */
 export async function handleSessionInboxUpdate(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const inboxID = inboxIdFromPath(url);

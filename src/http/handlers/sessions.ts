@@ -5,11 +5,11 @@ import { emptySessionUsage, readTranscriptEntries, sessionKeyOf, type SessionUsa
 import type { SenpiEntriesResult, SenpiMessages, SenpiTransport } from "../../senpi/transport";
 import { mediaUriFor, wantsMediaRefs } from "./media";
 import { getSessionManagementStore } from "./session-write";
+import { HandlerProblem, jsonResponse, noContent, messageOf, respond } from "./problem";
 
 // Read-only session endpoints. Handlers take (request, url) and read ids from url.pathname, so the
 // transport is injected once with setSessionReadTransport() instead of arriving through a router.
 
-const JSON_CONTENT_TYPE = "application/json";
 const SSE_CONTENT_TYPE = "text/event-stream";
 const DEFAULT_PAGE_LIMIT = 50;
 const MAX_MESSAGE_LIMIT = 200;
@@ -94,53 +94,6 @@ type AgentMessage = SenpiMessages[number];
 type ToolResultMessage = Extract<AgentMessage, { role: "toolResult" }>;
 
 export type PublicCursor = { previous?: string; next?: string };
-
-class HandlerProblem extends Error {
-  readonly status: number;
-  readonly tag: string;
-  readonly fields: Record<string, unknown>;
-
-  constructor(status: number, tag: string, message: string, fields: Record<string, unknown> = {}) {
-    super(message);
-    this.name = "HandlerProblem";
-    this.status = status;
-    this.tag = tag;
-    this.fields = fields;
-  }
-}
-
-function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": JSON_CONTENT_TYPE, ...headers },
-  });
-}
-
-function errorResponse(
-  status: number,
-  tag: string,
-  message: string,
-  fields: Record<string, unknown> = {},
-): Response {
-  return jsonResponse(status, { _tag: tag, message, ...fields });
-}
-
-function noContent(): Response {
-  return new Response(null, { status: 204 });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function respond(operation: () => Promise<Response>): Promise<Response> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof HandlerProblem) return errorResponse(error.status, error.tag, error.message, error.fields);
-    return errorResponse(503, "ServiceUnavailableError", messageOf(error), { service: "senpi" });
-  }
-}
 
 function requireTransport(): SessionReadTransport {
   if (transport === undefined) {
@@ -555,7 +508,7 @@ function paginate<T>(items: T[], offset: number, limit: number): { page: T[]; cu
 }
 
 export async function handleSessionList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const limit = readLimit(url, DEFAULT_PAGE_LIMIT);
     const offset = readCursor(url);
@@ -577,7 +530,7 @@ function readArchived(url: URL): boolean | undefined {
 }
 
 export async function handleSessionActive(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const rows = await caller.listSessions();
     const data: Record<string, { type: "running" }> = {};
@@ -598,7 +551,7 @@ export async function handleSessionActive(_request: Request, url: URL): Promise<
 }
 
 export async function handleSessionGet(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const { mapped } = await requireMappedSession(caller, sessionID);
@@ -607,7 +560,7 @@ export async function handleSessionGet(_request: Request, url: URL): Promise<Res
 }
 
 export async function handleSessionMessages(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const { row } = await requireMappedSession(caller, sessionID);
@@ -620,7 +573,7 @@ export async function handleSessionMessages(request: Request, url: URL): Promise
 }
 
 export async function handleSessionMessageGet(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const messageID = messageIdFromPath(url);
@@ -633,7 +586,7 @@ export async function handleSessionMessageGet(request: Request, url: URL): Promi
 }
 
 export async function handleSessionDiff(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     await requireMappedSession(caller, sessionID);
@@ -656,7 +609,7 @@ async function waitWithDeadline(operation: Promise<void>, timeoutMs: number): Pr
 }
 
 export async function handleSessionWait(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     await requireMappedSession(caller, sessionID);
@@ -675,7 +628,7 @@ export function viewedAtFor(sessionID: string): string | number | undefined {
 }
 
 export async function handleSessionView(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     await requireMappedSession(caller, sessionID);
@@ -695,7 +648,7 @@ export async function handleSessionView(request: Request, url: URL): Promise<Res
 }
 
 export async function handleSessionLog(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     await requireMappedSession(caller, sessionID);

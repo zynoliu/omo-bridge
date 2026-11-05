@@ -1,6 +1,8 @@
 import { classifyUiRequest, PERMISSION_TITLE_PREFIX } from "../../bridge/ui-requests";
 import type { SenpiExtensionUIResponse } from "../../senpi/transport";
 import { eventBus as sharedEventBus, type EventBus } from "../events";
+import { HandlerProblem, jsonResponse, noContent, respond } from "./problem";
+import { requireKnownSession } from "./session-write";
 
 // The permission bridge translates senpi `extension_ui_request` permission prompts into opencode
 // `permission.asked` / `permission.replied` state and turns the TUI's reply back into the
@@ -17,8 +19,6 @@ import { eventBus as sharedEventBus, type EventBus } from "../events";
 //
 // Handlers take (request, url) and read the transport from a module-level seam, matching the other
 // http handlers; route mounting stays an independent change (see src/http/routes).
-
-const JSON_CONTENT_TYPE = "application/json";
 
 /** The option wording the engine's permission prompt uses (`permission-system/prompt.js`). */
 export const DEFAULT_PERMISSION_OPTIONS: readonly string[] = [
@@ -101,48 +101,6 @@ export function listSavedPermissions(sessionID?: string): SavedPermission[] {
   return [...saved.values()]
     .filter((entry) => sessionID === undefined || entry.sessionID === sessionID)
     .map((entry) => ({ ...entry }));
-}
-
-class HandlerProblem extends Error {
-  readonly status: number;
-  readonly tag: string;
-  readonly fields: Record<string, unknown>;
-
-  constructor(status: number, tag: string, message: string, fields: Record<string, unknown> = {}) {
-    super(message);
-    this.name = "HandlerProblem";
-    this.status = status;
-    this.tag = tag;
-    this.fields = fields;
-  }
-}
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": JSON_CONTENT_TYPE },
-  });
-}
-
-function errorResponse(status: number, tag: string, message: string, fields: Record<string, unknown> = {}): Response {
-  return jsonResponse(status, { _tag: tag, message, ...fields });
-}
-
-function noContent(): Response {
-  return new Response(null, { status: 204 });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function respond(operation: () => Promise<Response>): Promise<Response> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof HandlerProblem) return errorResponse(error.status, error.tag, error.message, error.fields);
-    return errorResponse(503, "ServiceUnavailableError", messageOf(error), { service: "senpi" });
-  }
 }
 
 function invalidRequest(message: string, field: string): HandlerProblem {
@@ -448,8 +406,9 @@ function rememberSaved(row: PendingPermission): void {
 }
 
 export async function handlePermissionCreate(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
+    await requireKnownSession(sessionID);
     const payload = await readBody(request);
     const action = requireText(payload.action, "action");
     const resources = requireStringList(payload.resources, "resources");
@@ -461,8 +420,9 @@ export async function handlePermissionCreate(request: Request, url: URL): Promis
 }
 
 export async function handlePermissionList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
+    await requireKnownSession(sessionID);
     const data = [...pending.values()]
       .filter((row) => row.sessionID === sessionID)
       .map(toRequest);
@@ -471,7 +431,7 @@ export async function handlePermissionList(_request: Request, url: URL): Promise
 }
 
 export async function handlePermissionReply(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const requestID = permissionIdFromPath(url);
     const row = pending.get(requestID);

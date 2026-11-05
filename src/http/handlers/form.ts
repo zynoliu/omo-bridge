@@ -8,6 +8,8 @@ import {
 import type { SenpiExtensionUIResponse } from "../../senpi/transport";
 import { eventBus as sharedEventBus, type EventBus } from "../events";
 import { locationInfo, type LocationPublicInfo } from "./fs-location";
+import { HandlerProblem, jsonResponse, noContent, respond } from "./problem";
+import { requireKnownSession } from "./session-write";
 
 // The form bridge translates senpi dialogs into opencode `form.*` state and turns the TUI's answer
 // back into the `extension_ui_response` the engine is blocked on.
@@ -23,8 +25,6 @@ import { locationInfo, type LocationPublicInfo } from "./fs-location";
 //
 // Handlers take (request, url) and read the transport from a module-level seam, matching the other
 // http handlers; route mounting stays an independent change (see src/http/routes).
-
-const JSON_CONTENT_TYPE = "application/json";
 
 /** `Form.Info` (`packages/schema/src/form.ts:136`): what the TUI renders and answers. */
 export type FormFieldOption = {
@@ -161,48 +161,6 @@ export function listPendingForms(sessionID?: string): FormInfo[] {
   return [...forms.values()]
     .filter((row) => row.state === "pending" && (sessionID === undefined || row.sessionID === sessionID))
     .map(toInfo);
-}
-
-class HandlerProblem extends Error {
-  readonly status: number;
-  readonly tag: string;
-  readonly fields: Record<string, unknown>;
-
-  constructor(status: number, tag: string, message: string, fields: Record<string, unknown> = {}) {
-    super(message);
-    this.name = "HandlerProblem";
-    this.status = status;
-    this.tag = tag;
-    this.fields = fields;
-  }
-}
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": JSON_CONTENT_TYPE },
-  });
-}
-
-function errorResponse(status: number, tag: string, message: string, fields: Record<string, unknown> = {}): Response {
-  return jsonResponse(status, { _tag: tag, message, ...fields });
-}
-
-function noContent(): Response {
-  return new Response(null, { status: 204 });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function respond(operation: () => Promise<Response>): Promise<Response> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof HandlerProblem) return errorResponse(error.status, error.tag, error.message, error.fields);
-    return errorResponse(503, "ServiceUnavailableError", messageOf(error), { service: "senpi" });
-  }
 }
 
 function invalidRequest(message: string, field: string): HandlerProblem {
@@ -362,8 +320,9 @@ function requireSend(): (response: SenpiExtensionUIResponse) => Promise<void> {
 }
 
 export async function handleFormCreate(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
+    await requireKnownSession(sessionID);
     const payload = await readBody(request);
     const title = requireText(payload.title, "title");
     const fields = parseFields(payload.fields);
@@ -374,18 +333,19 @@ export async function handleFormCreate(request: Request, url: URL): Promise<Resp
 }
 
 export async function handleSessionFormList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
+    await requireKnownSession(sessionID);
     return jsonResponse(200, { data: listPendingForms(sessionID) });
   });
 }
 
 export async function handleFormList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: listPendingForms() }));
+  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: listPendingForms() }));
 }
 
 export async function handleFormReply(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const formID = formIdFromPath(url);
     const row = requirePendingForm(sessionID, formID);
@@ -408,7 +368,7 @@ export async function handleFormReply(request: Request, url: URL): Promise<Respo
 }
 
 export async function handleFormCancel(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const formID = formIdFromPath(url);
     const row = requirePendingForm(sessionID, formID);

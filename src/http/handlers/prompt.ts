@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { projectFor, toPublicSessionInfo, type SessionRecord } from "../../model/session-map";
 import type { SenpiImages, SenpiPromptOptions, SenpiSessionSummary, SenpiTransport } from "../../senpi/transport";
+import { HandlerProblem, jsonResponse, messageOf, respond } from "./problem";
 import { getSessionManagementStore } from "./session-write";
 
 // Write-side session endpoints: create, prompt, synthetic input and slash commands.
@@ -13,7 +14,6 @@ import { getSessionManagementStore } from "./session-write";
 // Admissions are therefore cached in-process under that same durable key; a repeated delivery
 // returns the stored admission and sends nothing.
 
-const JSON_CONTENT_TYPE = "application/json";
 const DEFAULT_DELIVERY = "queue" as const;
 
 // senpi refuses a client message id longer than 256 characters (docs/rpc.md, durable client identity).
@@ -66,20 +66,6 @@ export type PublicInboxSynthetic = {
 
 type PromptDisposition = "started" | "queued" | "handled";
 
-class HandlerProblem extends Error {
-  readonly status: number;
-  readonly tag: string;
-  readonly fields: Record<string, unknown>;
-
-  constructor(status: number, tag: string, message: string, fields: Record<string, unknown> = {}) {
-    super(message);
-    this.name = "HandlerProblem";
-    this.status = status;
-    this.tag = tag;
-    this.fields = fields;
-  }
-}
-
 let transport: SessionWriteTransport | undefined;
 
 export function setSessionWriteTransport(next: SessionWriteTransport | undefined): void {
@@ -95,30 +81,6 @@ const admissions = new Map<string, AdmissionEntry>();
 
 export function resetPromptAdmissions(): void {
   admissions.clear();
-}
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": JSON_CONTENT_TYPE },
-  });
-}
-
-function errorResponse(status: number, tag: string, message: string, fields: Record<string, unknown> = {}): Response {
-  return jsonResponse(status, { _tag: tag, message, ...fields });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function respond(operation: () => Promise<Response>): Promise<Response> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof HandlerProblem) return errorResponse(error.status, error.tag, error.message, error.fields);
-    return errorResponse(503, "ServiceUnavailableError", messageOf(error), { service: "senpi" });
-  }
 }
 
 function requireTransport(): SessionWriteTransport {
@@ -390,8 +352,8 @@ function admissionOf(
   };
 }
 
-export async function handleSessionCreate(request: Request, _url: URL): Promise<Response> {
-  return respond(async () => {
+export async function handleSessionCreate(request: Request, url: URL): Promise<Response> {
+  return respond(url, async () => {
     const caller = requireTransport();
     const body = await readBody(request);
     const location = asRecord(body.location);
@@ -439,7 +401,7 @@ export async function handleSessionCreate(request: Request, _url: URL): Promise<
 }
 
 export async function handleSessionPrompt(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request);
@@ -474,7 +436,7 @@ export async function handleSessionPrompt(request: Request, url: URL): Promise<R
 }
 
 export async function handleSessionSynthetic(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request);
@@ -536,7 +498,7 @@ async function commandNames(caller: SessionWriteTransport): Promise<Set<string> 
 }
 
 export async function handleSessionCommand(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request);

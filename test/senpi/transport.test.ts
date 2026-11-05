@@ -94,6 +94,19 @@ describe("error mapping", () => {
     }
   });
 
+  test("a host refusal for a session it does not hold maps to session_not_found", () => {
+    // RpcCommandError carries the wire `error` as the message and `errorCode` when errorData is present.
+    expect(mapSenpiError(Object.assign(new Error("unknown_session"), { errorCode: "unknown_session" })).code).toBe(
+      "session_not_found",
+    );
+    // RpcSessionRegistryError carries the code on `code`; older wire payloads carry only the error string.
+    expect(mapSenpiError(Object.assign(new Error("unknown_session"), { code: "unknown_session" })).code).toBe(
+      "session_not_found",
+    );
+    expect(mapSenpiError(new Error("unknown_session")).code).toBe("session_not_found");
+    expect(mapSenpiError(new Error("unknown_session: ses_1")).code).toBe("command_failed");
+  });
+
   test("a lost transport maps to transport_gone", async () => {
     expect(mapSenpiError(new RpcTransportGoneError()).code).toBe("transport_gone");
 

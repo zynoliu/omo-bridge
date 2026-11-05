@@ -1,6 +1,7 @@
 import { isAbsolute, resolve } from "node:path";
 import { eventBus as sharedEventBus, type EventBus } from "../events";
 import { locationInfo } from "./fs-location";
+import { HandlerProblem, jsonResponse, noContent, respond } from "./problem";
 
 // Shell endpoints map the TUI's shell surface onto senpi's one-shot `bash()`.
 //
@@ -12,7 +13,6 @@ import { locationInfo } from "./fs-location";
 // Handlers take (request, url) and read the transport from a module-level seam: the http layer
 // owns no connection, and route mounting stays an independent change (see src/http/routes).
 
-const JSON_CONTENT_TYPE = "application/json";
 export const DEFAULT_SHELL_OUTPUT_LIMIT = 64 * 1024;
 const SHELL_NAME = "bash";
 // Shell.Info.file is required by the TUI schema. senpi keeps bash output in memory here, so there
@@ -92,48 +92,6 @@ let idSequence = 0;
 export function resetShells(): void {
   shells.clear();
   idSequence = 0;
-}
-
-class HandlerProblem extends Error {
-  readonly status: number;
-  readonly tag: string;
-  readonly fields: Record<string, unknown>;
-
-  constructor(status: number, tag: string, message: string, fields: Record<string, unknown> = {}) {
-    super(message);
-    this.name = "HandlerProblem";
-    this.status = status;
-    this.tag = tag;
-    this.fields = fields;
-  }
-}
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": JSON_CONTENT_TYPE },
-  });
-}
-
-function errorResponse(status: number, tag: string, message: string, fields: Record<string, unknown> = {}): Response {
-  return jsonResponse(status, { _tag: tag, message, ...fields });
-}
-
-function noContent(): Response {
-  return new Response(null, { status: 204 });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function respond(operation: () => Promise<Response>): Promise<Response> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof HandlerProblem) return errorResponse(error.status, error.tag, error.message, error.fields);
-    return errorResponse(503, "ServiceUnavailableError", messageOf(error), { service: "senpi" });
-  }
 }
 
 function shellNotFound(id: string): HandlerProblem {
@@ -268,7 +226,7 @@ function pageOutput(record: ShellRecord, cursor: number, limit: number): ShellOu
 }
 
 export async function handleSessionShell(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const payload = await readBody(request);
     const command = payload.command;
@@ -324,7 +282,7 @@ export async function handleSessionShell(request: Request, url: URL): Promise<Re
 }
 
 export async function handleShellList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const directory = locationDirectory(url);
     const data = [...shells.values()]
       .filter((record) => record.cwd === directory)
@@ -335,7 +293,7 @@ export async function handleShellList(_request: Request, url: URL): Promise<Resp
 }
 
 export async function handleShellGet(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const id = shellIdFromPath(url);
     const record = shells.get(id);
     if (record === undefined) throw shellNotFound(id);
@@ -344,7 +302,7 @@ export async function handleShellGet(_request: Request, url: URL): Promise<Respo
 }
 
 export async function handleShellOutput(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const id = shellIdFromPath(url);
     const record = shells.get(id);
     if (record === undefined) throw shellNotFound(id);
@@ -358,7 +316,7 @@ export async function handleShellOutput(_request: Request, url: URL): Promise<Re
 }
 
 export async function handleShellRemove(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const id = shellIdFromPath(url);
     shells.delete(id);
     return noContent();
