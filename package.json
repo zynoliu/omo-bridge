@@ -1,0 +1,24 @@
+{
+  "name": "omo-bridge",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "bin": {
+    "omo-bridge": "./bin/omo-bridge"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "contracts:check": "bun run scripts/contracts-check.ts",
+    "selfcheck": "bun run scripts/selfcheck.ts"
+  },
+  "dependencies": {
+    "@code-yeongyu/senpi": "2026.11.4-2",
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "5.9.3"
+  }
+}
