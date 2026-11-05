@@ -1,0 +1,31 @@
+{
+  "location": {
+    "directory": "/Users/zyno/project",
+    "project": {
+      "id": "prj_01hx",
+      "directory": "/Users/zyno/project",
+      "canonical": "/Users/zyno/project"
+    }
+  },
+  "data": [
+    {
+      "id": "build",
+      "name": "Build",
+      "request": {
+        "settings": {},
+        "headers": {},
+        "body": {}
+      },
+      "description": "Default agent for bridge sessions",
+      "mode": "primary",
+      "hidden": false,
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "allow"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.step.started",
+  "title": "event.session.step.started",
+  "description": "Derived from packages/schema/src/session-event.ts:334 - assistant message opened.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.step.started"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "assistantMessageID": {
+          "type": "string"
+        },
+        "agent": {
+          "type": "string"
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "providerID": {
+              "type": "string"
+            },
+            "variant": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "providerID"
+          ]
+        },
+        "snapshot": {
+          "type": "string"
+        },
+        "started": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "agent",
+        "model",
+        "started"
+      ]
+    }
+  }
+}

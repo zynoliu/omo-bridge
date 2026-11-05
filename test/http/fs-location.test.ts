@@ -268,12 +268,25 @@ describe("handleVcsBase", () => {
 });
 
 describe("handleVcsDiff", () => {
-  test("parses numstat into file diffs", async () => {
+  test("parses the unified diff into file diffs with patch text and status", async () => {
     appendFileSync(join(repo, "alpha.txt"), "beta\n");
     const response = await handleVcsDiff(request("/api/vcs/diff"), requestUrl("/api/vcs/diff", { "location[directory]": repo }));
     expect(response.status).toBe(200);
     const body = (await response.json()) as { location: LocationPublicInfo; data: FileDiff[] };
-    expect(body.data).toEqual([{ file: "alpha.txt", additions: 1, deletions: 0 }]);
+    expect(body.data).toHaveLength(1);
+    const [diff] = body.data;
+    expect(diff).toMatchObject({ file: "alpha.txt", additions: 1, deletions: 0, status: "modified" });
+    expect(diff?.patch).toContain("+beta");
+  });
+
+  test("marks a newly added file", async () => {
+    writeFileSync(join(repo, "added.txt"), "new\n");
+    run(["git", "add", "-N", "added.txt"], repo);
+    const response = await handleVcsDiff(request("/api/vcs/diff"), requestUrl("/api/vcs/diff", { "location[directory]": repo }));
+    const body = (await response.json()) as { data: FileDiff[] };
+    const added = body.data.find((diff) => diff.file === "added.txt");
+    expect(added).toMatchObject({ additions: 1, deletions: 0, status: "added" });
+    expect(added?.patch).toContain("+new");
   });
 
   test("returns an empty array outside a repository", async () => {

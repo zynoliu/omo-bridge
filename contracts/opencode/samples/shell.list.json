@@ -1,0 +1,28 @@
+{
+  "location": {
+    "directory": "/Users/zyno/project",
+    "project": {
+      "id": "prj_01hx",
+      "directory": "/Users/zyno/project",
+      "canonical": "/Users/zyno/project"
+    }
+  },
+  "data": [
+    {
+      "id": "sh_01hx",
+      "status": "exited",
+      "command": "bun test",
+      "cwd": "/Users/zyno/project",
+      "shell": "bash",
+      "file": "",
+      "exit": 0,
+      "metadata": {
+        "sessionID": "ses_01hx"
+      },
+      "time": {
+        "started": 1793851200000,
+        "completed": 1793851210000
+      }
+    }
+  ]
+}

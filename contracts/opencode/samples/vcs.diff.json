@@ -1,0 +1,19 @@
+{
+  "location": {
+    "directory": "/Users/zyno/project",
+    "project": {
+      "id": "prj_01hx",
+      "directory": "/Users/zyno/project",
+      "canonical": "/Users/zyno/project"
+    }
+  },
+  "data": [
+    {
+      "file": "src/index.ts",
+      "patch": "@@ -1,2 +1,3 @@\n",
+      "additions": 1,
+      "deletions": 0,
+      "status": "modified"
+    }
+  ]
+}

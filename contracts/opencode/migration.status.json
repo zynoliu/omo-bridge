@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/migration.status",
+  "title": "migration.status",
+  "description": "Derived from packages/protocol/src/groups/migration.ts:10 - success body of GET /api/experimental/migration/v1.",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "required",
+            "completed"
+          ]
+        }
+      },
+      "required": [
+        "status"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "running"
+        },
+        "progress": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "numerator": {
+              "type": "integer"
+            },
+            "denominator": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "label"
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "progress"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "error"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "error"
+      ]
+    }
+  ]
+}

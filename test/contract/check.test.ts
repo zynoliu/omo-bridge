@@ -30,7 +30,7 @@ describe("contracts:check", () => {
   test("passes on the checked-in contracts", async () => {
     const result = await runCheck();
     expect(result.code).toBe(0);
-    expect(result.stdout.trim()).toMatch(/^contracts: ok \(opencode \d+ endpoints, senpi \d+ frames\)$/);
+    expect(result.stdout.trim()).toMatch(/^contracts: ok \(opencode \d+ endpoints, \d+ samples, senpi \d+ frames\)$/);
   });
 
   test("fails on a tampered opencode schema and names opencode", async () => {
@@ -44,6 +44,26 @@ describe("contracts:check", () => {
       expect(result.code).not.toBe(0);
       expect(result.stderr).toContain("opencode:");
       expect(result.stderr).toContain("permission.request");
+      expect(result.stdout).not.toContain("contracts: ok");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("fails on a tampered sample and names the endpoint", async () => {
+    const dir = tempCopy(OPENCODE);
+    try {
+      const file = join(dir, "samples", "session.messages.json");
+      const sample = JSON.parse(readFileSync(file, "utf8")) as { data: Record<string, unknown>[] };
+      const assistant = sample.data.find((message) => message.type === "assistant");
+      if (assistant === undefined) throw new Error("sample has no assistant message");
+      delete assistant.agent;
+      assistant.time = { created: "2026-11-05T08:00:00.000Z" };
+      writeFileSync(file, `${JSON.stringify(sample, null, 2)}\n`);
+      const result = await runCheck({ OMO_BRIDGE_CONTRACTS_OPENCODE_DIR: dir });
+      expect(result.code).not.toBe(0);
+      expect(result.stderr).toContain("opencode: sample session.messages");
+      expect(result.stderr).toContain("agent");
       expect(result.stdout).not.toContain("contracts: ok");
     } finally {
       rmSync(dir, { recursive: true, force: true });

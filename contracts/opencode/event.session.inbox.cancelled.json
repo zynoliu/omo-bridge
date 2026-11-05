@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.inbox.cancelled",
+  "title": "event.session.inbox.cancelled",
+  "description": "Derived from packages/schema/src/session-event.ts:230 - queued input cancelled.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.inbox.cancelled"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "inboxID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionID",
+        "inboxID"
+      ]
+    }
+  }
+}

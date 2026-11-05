@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.tool.input.delta",
+  "title": "event.session.tool.input.delta",
+  "description": "Derived from packages/schema/src/session-event.ts:492 - tool argument fragment (live only).",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.tool.input.delta"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "assistantMessageID": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "delta": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "id",
+        "delta"
+      ]
+    }
+  }
+}

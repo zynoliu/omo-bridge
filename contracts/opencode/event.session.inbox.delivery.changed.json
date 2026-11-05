@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.inbox.delivery.changed",
+  "title": "event.session.inbox.delivery.changed",
+  "description": "Derived from packages/schema/src/session-event.ts:237 - queued input delivery switched.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.inbox.delivery.changed"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "inboxID": {
+          "type": "string"
+        },
+        "delivery": {
+          "enum": [
+            "steer",
+            "queue"
+          ]
+        }
+      },
+      "required": [
+        "sessionID",
+        "inboxID",
+        "delivery"
+      ]
+    }
+  }
+}

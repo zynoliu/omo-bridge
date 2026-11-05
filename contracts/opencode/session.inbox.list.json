@@ -1,0 +1,385 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/session.inbox.list",
+  "title": "session.inbox.list",
+  "description": "Derived from packages/protocol/src/groups/session.ts:65 - success body of GET /api/session/:sessionID/inbox.",
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "created": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "created"
+                ]
+              },
+              "type": {
+                "const": "user"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "string"
+                        },
+                        "mime": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "const": "inline"
+                                }
+                              },
+                              "required": [
+                                "type"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "const": "uri"
+                                },
+                                "uri": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "uri"
+                              ]
+                            }
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "mention": {
+                          "type": "object",
+                          "properties": {
+                            "start": {
+                              "type": "number"
+                            },
+                            "end": {
+                              "type": "number"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "start",
+                            "end",
+                            "text"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "mime",
+                        "source"
+                      ]
+                    }
+                  },
+                  "agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "mention": {
+                          "type": "object",
+                          "properties": {
+                            "start": {
+                              "type": "number"
+                            },
+                            "end": {
+                              "type": "number"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "start",
+                            "end",
+                            "text"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  },
+                  "skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "mention": {
+                          "type": "object",
+                          "properties": {
+                            "start": {
+                              "type": "number"
+                            },
+                            "end": {
+                              "type": "number"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "start",
+                            "end",
+                            "text"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ]
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              "delivery": {
+                "enum": [
+                  "steer",
+                  "queue"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "sessionID",
+              "time",
+              "type",
+              "payload",
+              "delivery"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "created": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "created"
+                ]
+              },
+              "type": {
+                "const": "synthetic"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              "delivery": {
+                "enum": [
+                  "steer",
+                  "queue"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "sessionID",
+              "time",
+              "type",
+              "payload",
+              "delivery"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "created": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "created"
+                ]
+              },
+              "type": {
+                "const": "compaction"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {}
+              },
+              "delivery": {
+                "enum": [
+                  "steer",
+                  "queue"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "sessionID",
+              "time",
+              "type",
+              "payload",
+              "delivery"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "created": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "created"
+                ]
+              },
+              "type": {
+                "const": "move"
+              },
+              "delivery": {
+                "enum": [
+                  "steer",
+                  "queue"
+                ]
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "projectID": {
+                    "type": "string"
+                  },
+                  "subpath": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "object",
+                    "properties": {
+                      "directory": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "directory"
+                    ]
+                  }
+                },
+                "required": [
+                  "projectID",
+                  "location"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "sessionID",
+              "time",
+              "type",
+              "delivery",
+              "payload"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

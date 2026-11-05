@@ -1,0 +1,24 @@
+{
+  "data": {
+    "id": "ses_01hx",
+    "projectID": "prj_01hx",
+    "cost": 0.0123,
+    "tokens": {
+      "input": 1200,
+      "output": 340,
+      "reasoning": 0,
+      "cache": {
+        "read": 0,
+        "write": 0
+      }
+    },
+    "time": {
+      "created": 1793851200000,
+      "updated": 1793854800000
+    },
+    "title": "Fix contracts",
+    "location": {
+      "directory": "/Users/zyno/project"
+    }
+  }
+}

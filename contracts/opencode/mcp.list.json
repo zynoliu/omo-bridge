@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/mcp.list",
+  "title": "mcp.list",
+  "description": "Derived from packages/schema/src/mcp.ts:91 - success body of GET /api/mcp.",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "connected"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "pending"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "disabled"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "failed"
+                  },
+                  "error": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "error"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "needs_auth"
+                  },
+                  "error": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "error"
+                ]
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "integrationID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ]
+      }
+    }
+  }
+}

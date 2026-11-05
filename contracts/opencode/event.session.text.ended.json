@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.text.ended",
+  "title": "event.session.text.ended",
+  "description": "Derived from packages/schema/src/session-event.ts:420 - text block closed.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.text.ended"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "assistantMessageID": {
+          "type": "string"
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "text": {
+          "type": "string"
+        },
+        "native": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "ordinal",
+        "text"
+      ]
+    }
+  }
+}

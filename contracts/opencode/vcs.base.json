@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/vcs.base",
+  "title": "vcs.base",
+  "description": "Derived from packages/schema/src/vcs.ts:21 - success body of GET /api/vcs/base (null when no base is resolvable).",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "source": {
+              "enum": [
+                "reflog",
+                "default"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "ref",
+            "source"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

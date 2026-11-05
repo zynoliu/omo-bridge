@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.usage.updated",
+  "title": "event.session.usage.updated",
+  "description": "Derived from packages/schema/src/session-event.ts:172 - run usage totals.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.usage.updated"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "cost": {
+          "type": "number"
+        },
+        "tokens": {
+          "type": "object",
+          "properties": {
+            "input": {
+              "type": "number"
+            },
+            "output": {
+              "type": "number"
+            },
+            "reasoning": {
+              "type": "number"
+            },
+            "cache": {
+              "type": "object",
+              "properties": {
+                "read": {
+                  "type": "number"
+                },
+                "write": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "read",
+                "write"
+              ]
+            }
+          },
+          "required": [
+            "input",
+            "output",
+            "reasoning",
+            "cache"
+          ]
+        }
+      },
+      "required": [
+        "sessionID",
+        "cost",
+        "tokens"
+      ]
+    }
+  }
+}

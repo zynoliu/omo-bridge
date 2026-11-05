@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/mcp.resourceCatalog",
+  "title": "mcp.resourceCatalog",
+  "description": "Derived from packages/schema/src/mcp.ts:120 - success body of GET /api/mcp/resource.",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "server": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "server",
+              "name",
+              "uri"
+            ]
+          }
+        },
+        "templates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "server": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "uriTemplate": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "server",
+              "name",
+              "uriTemplate"
+            ]
+          }
+        }
+      },
+      "required": [
+        "resources",
+        "templates"
+      ]
+    }
+  }
+}
