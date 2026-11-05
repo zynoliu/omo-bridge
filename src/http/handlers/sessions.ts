@@ -631,7 +631,9 @@ export async function handleSessionDiff(_request: Request, url: URL): Promise<Re
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     await requireMappedSession(caller, sessionID);
-    return jsonResponse(200, { data: [] }); // todos 17/6: snapshot diffs
+    // A turn diff needs the snapshot the host took before the turn; senpi keeps none, and the
+    // working-tree diff would answer a different question. DEGRADATIONS.md declares this empty read.
+    return jsonResponse(200, { data: [] });
   });
 }
 
