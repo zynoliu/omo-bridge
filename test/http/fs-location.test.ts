@@ -189,19 +189,20 @@ describe("handleFsFind", () => {
 });
 
 describe("handleLocationGet", () => {
-  test("returns the requested location and satisfies location.publicInfo", async () => {
+  test("returns the requested location as a bare Location.PublicInfo", async () => {
     const response = await handleLocationGet(request("/api/location"), requestUrl("/api/location", { "location[directory]": repo }));
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { location: LocationPublicInfo };
-    expect(validateResponse("location.publicInfo", body.location)).toEqual({ ok: true });
-    expect(body.location.directory).toBe(repo);
+    const body = (await response.json()) as LocationPublicInfo & { location?: unknown };
+    expect(validateResponse("location.get", body)).toEqual({ ok: true });
+    expect(body.directory).toBe(repo);
+    expect(body).not.toHaveProperty("location");
   });
 
   test("defaults to the process working directory", async () => {
     const response = await handleLocationGet(request("/api/location"), requestUrl("/api/location"));
-    const body = (await response.json()) as { location: LocationPublicInfo };
-    expect(body.location.directory).toBe(process.cwd());
-    expect(body.location.project.canonical).toBe(realpathSync(process.cwd()));
+    const body = (await response.json()) as LocationPublicInfo;
+    expect(body.directory).toBe(process.cwd());
+    expect(body.project.canonical).toBe(realpathSync(process.cwd()));
   });
 });
 

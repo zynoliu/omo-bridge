@@ -11,6 +11,7 @@ import {
   handleMcpResourceCatalog,
   handleModelList,
   handlePermissionSavedList,
+  handlePluginList,
   handleProviderList,
   handleReferenceList,
   handleSessionSwitchAgent,
@@ -243,6 +244,7 @@ describe("empty catalogs", () => {
     ["/api/integration", handleIntegrationList],
     ["/api/websearch/provider", handleWebsearchProviders],
     ["/api/permission/saved", handlePermissionSavedList],
+    ["/api/plugin", handlePluginList],
     ["/api/form", handleFormList],
     ["/api/command", handleCommandList],
   ];
@@ -265,6 +267,14 @@ describe("empty catalogs", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as Envelope<{ resources: unknown[]; templates: unknown[] }>;
     expect(body.data).toEqual({ resources: [], templates: [] });
+  });
+
+  test("/api/plugin answers the empty plugin.list envelope the TUI reads at startup", async () => {
+    const response = await handlePluginList(get("/api/plugin"), urlOf("/api/plugin", { "location[directory]": WORK_DIR }));
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Envelope<unknown[]>;
+    expect(body.data).toEqual([]);
+    expect(validateResponse("plugin.list", body)).toEqual({ ok: true });
   });
 });
 

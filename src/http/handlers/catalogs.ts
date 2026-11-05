@@ -303,6 +303,14 @@ export async function handleIntegrationList(_request: Request, url: URL): Promis
   return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
 
+// `plugin.list` declares `Location.response(Schema.Array(Plugin.Info))`
+// (`packages/protocol/src/groups/plugin.ts:12`), which the TUI reads as `{location, data}`
+// (`packages/tui/src/plugin/context.tsx:540`). senpi has no plugin registry and the bridge loads no
+// server plugins, so the empty inventory is the truthful answer rather than a missing route.
+export async function handlePluginList(_request: Request, url: URL): Promise<Response> {
+  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+}
+
 export async function handleWebsearchProviders(_request: Request, url: URL): Promise<Response> {
   return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
