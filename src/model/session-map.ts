@@ -50,6 +50,23 @@ export interface SessionPermission {
   effect: "allow" | "deny" | "ask";
 }
 
+export type SessionTokenUsage = {
+  input: number;
+  output: number;
+  reasoning: number;
+  cache: { read: number; write: number };
+};
+
+/** Cumulative usage the host reported for one session, summed across its executions. */
+export type SessionUsage = {
+  cost: number;
+  tokens: SessionTokenUsage;
+};
+
+export function emptySessionUsage(): SessionUsage {
+  return { cost: 0, tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } };
+}
+
 export interface SessionRecord {
   key: string;
   /** The routing id observed for this record; connection-scoped, never persisted nor exposed as the id. */
@@ -65,6 +82,8 @@ export interface SessionRecord {
   archivedAt?: string;
   metadata?: Record<string, unknown>;
   permissions?: SessionPermission[];
+  /** Absent until the host reports usage for this session; zero is never fabricated here. */
+  usage?: SessionUsage;
 }
 
 export interface SessionCursor {
@@ -116,9 +135,6 @@ export type PublicSessionInfo = {
   location: { directory: string };
 };
 
-/** Cost/tokens are aggregated by the usage pipeline; this layer reports the contract defaults. */
-const EMPTY_TOKENS = { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } as const;
-
 function defaultWarn(message: string): void {
   console.warn(message);
 }
@@ -136,6 +152,81 @@ function asString(value: unknown): string | undefined {
 function asNonEmptyString(value: unknown): string | undefined {
   const text = asString(value)?.trim();
   return text === undefined || text.length === 0 ? undefined : text;
+}
+
+function usageNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function cloneUsage(usage: SessionUsage): SessionUsage {
+  return { cost: usage.cost, tokens: { ...usage.tokens, cache: { ...usage.tokens.cache } } };
+}
+
+/**
+ * Reads every shape the bridge meets: the host transcript and senpi wire (`cacheRead`/`cacheWrite`,
+ * `cost.total`) and the opencode event/persisted form (`tokens.cache.read`/`tokens.cache.write`,
+ * numeric `cost`). A record with no numeric field at all is not usage and returns undefined.
+ */
+export function readSessionUsage(value: unknown): SessionUsage | undefined {
+  const record = asRecord(value);
+  if (record === undefined) return undefined;
+  const tokens = asRecord(record.tokens) ?? record;
+  const cache = asRecord(tokens.cache);
+  const costRecord = asRecord(record.cost);
+  const cost = usageNumber(record.cost) ?? usageNumber(costRecord?.total);
+  const input = usageNumber(tokens.input);
+  const output = usageNumber(tokens.output);
+  const reasoning = usageNumber(tokens.reasoning);
+  const cacheRead = usageNumber(tokens.cacheRead) ?? usageNumber(cache?.read);
+  const cacheWrite = usageNumber(tokens.cacheWrite) ?? usageNumber(cache?.write);
+  if ([cost, input, output, reasoning, cacheRead, cacheWrite].every((entry) => entry === undefined)) return undefined;
+  return {
+    cost: cost ?? 0,
+    tokens: {
+      input: input ?? 0,
+      output: output ?? 0,
+      reasoning: reasoning ?? 0,
+      cache: { read: cacheRead ?? 0, write: cacheWrite ?? 0 },
+    },
+  };
+}
+
+function addUsageTotals(into: SessionUsage, usage: SessionUsage): SessionUsage {
+  return {
+    cost: into.cost + usage.cost,
+    tokens: {
+      input: into.tokens.input + usage.tokens.input,
+      output: into.tokens.output + usage.tokens.output,
+      reasoning: into.tokens.reasoning + usage.tokens.reasoning,
+      cache: {
+        read: into.tokens.cache.read + usage.tokens.cache.read,
+        write: into.tokens.cache.write + usage.tokens.cache.write,
+      },
+    },
+  };
+}
+
+/** True when every cumulative field of `candidate` covers `current`; totals only ever grow. */
+function coversUsage(candidate: SessionUsage, current: SessionUsage): boolean {
+  return (
+    candidate.cost >= current.cost &&
+    candidate.tokens.input >= current.tokens.input &&
+    candidate.tokens.output >= current.tokens.output &&
+    candidate.tokens.reasoning >= current.tokens.reasoning &&
+    candidate.tokens.cache.read >= current.tokens.cache.read &&
+    candidate.tokens.cache.write >= current.tokens.cache.write
+  );
+}
+
+/**
+ * The transcript is the host's own append-only ledger. A seed that covers the live total replaces
+ * it (the run is on disk now); a seed that lags keeps the live total, so re-reading a transcript the
+ * host has not flushed yet can neither drop nor duplicate a run the event stream already reported.
+ */
+function reconcileUsage(current: SessionUsage | undefined, seeded: SessionUsage | undefined): SessionUsage | undefined {
+  if (seeded === undefined) return current;
+  if (current === undefined) return seeded;
+  return coversUsage(seeded, current) ? seeded : current;
 }
 
 /** Normalizes anything timestamp-shaped into the ISO form the read handlers emit. */
@@ -206,11 +297,12 @@ export function toPublicSessionInfo(record: SessionRecord): PublicSessionInfo {
   const created = epochMillisOf(record.firstSeenAt);
   const updated = epochMillisOf(record.lastSeenAt);
   const archived = record.archived === true ? epochMillisOf(record.archivedAt ?? record.lastSeenAt) : undefined;
+  const usage = record.usage ?? emptySessionUsage();
   return {
     id: record.key,
     projectID: record.projectID,
-    cost: 0,
-    tokens: { ...EMPTY_TOKENS, cache: { ...EMPTY_TOKENS.cache } },
+    cost: usage.cost,
+    tokens: { ...usage.tokens, cache: { ...usage.tokens.cache } },
     time: { created, updated, ...(archived === undefined ? {} : { archived }) },
     title: record.name ?? basename(record.cwd),
     location: { directory: record.cwd },
@@ -222,6 +314,7 @@ function cloneRecord(record: SessionRecord): SessionRecord {
     ...record,
     ...(record.metadata === undefined ? {} : { metadata: { ...record.metadata } }),
     ...(record.permissions === undefined ? {} : { permissions: record.permissions.map((entry) => ({ ...entry })) }),
+    ...(record.usage === undefined ? {} : { usage: cloneUsage(record.usage) }),
   };
 }
 
@@ -280,6 +373,7 @@ function parseRecord(value: unknown): SessionRecord | undefined {
   const archived = typeof record.archived === "boolean" ? record.archived : undefined;
   const archivedAt = toIso(record.archivedAt);
   const metadata = asRecord(record.metadata);
+  const usage = readSessionUsage(record.usage);
   let permissions: SessionPermission[] | undefined;
   if (record.permissions !== undefined) {
     if (!Array.isArray(record.permissions)) return undefined;
@@ -303,6 +397,7 @@ function parseRecord(value: unknown): SessionRecord | undefined {
     ...(archivedAt === undefined ? {} : { archivedAt }),
     ...(metadata === undefined ? {} : { metadata }),
     ...(permissions === undefined ? {} : { permissions }),
+    ...(usage === undefined ? {} : { usage }),
   };
 }
 
@@ -419,6 +514,36 @@ function lastEntryTimestamp(entries: Record<string, unknown>[]): string | undefi
   return undefined;
 }
 
+function usageFromEntries(entries: Record<string, unknown>[]): SessionUsage | undefined {
+  let total: SessionUsage | undefined;
+  const counted = new Set<string>();
+  for (const entry of entries) {
+    if (entry.type !== "message") continue;
+    const message = asRecord(entry.message);
+    if (message?.role !== "assistant") continue;
+    const id = asNonEmptyString(entry.id) ?? asNonEmptyString(message.id);
+    if (id !== undefined) {
+      if (counted.has(id)) continue;
+      counted.add(id);
+    }
+    const usage = readSessionUsage(message.usage);
+    if (usage === undefined) continue;
+    total = total === undefined ? usage : addUsageTotals(total, usage);
+  }
+  return total;
+}
+
+/**
+ * Seeds from the host's own transcript, the only place a re-listed session's usage survives a
+ * reconnect: `list_sessions` carries no totals. A session whose provider reports no usage (or whose
+ * file cannot be read) gets no seed and keeps whatever the event stream reported, never an estimate.
+ */
+function usageFromSessionFile(file: string | undefined): SessionUsage | undefined {
+  if (file === undefined) return undefined;
+  const parsed = readJsonl(file);
+  return parsed === undefined ? undefined : usageFromEntries(parsed.entries);
+}
+
 export class SessionMap {
   readonly stateDir: string;
   readonly agentDir: string;
@@ -426,6 +551,7 @@ export class SessionMap {
 
   private readonly warn: (message: string) => void;
   private readonly records = new Map<string, SessionRecord>();
+  private readonly pendingUsage = new Map<string, SessionUsage>();
 
   private constructor(options: SessionMapOptions) {
     this.stateDir = options.stateDir;
@@ -458,8 +584,31 @@ export class SessionMap {
   }
 
   /**
+   * Records one run's usage, as reported by `session.usage.updated`. The host transcript wins when
+   * it is readable: senpi persists an assistant message before its `message_end` frame, so the
+   * transcript already covers every message the event sums, and re-reading it also stops a seed
+   * taken mid-run from counting that run twice. Without a transcript the run is added to the
+   * event-only total. A session the map has not adopted yet keeps its usage pending until `upsert`.
+   */
+  addUsage(key: string, usage: SessionUsage): void {
+    const record = this.records.get(key);
+    if (record === undefined) {
+      const pending = this.pendingUsage.get(key);
+      this.pendingUsage.set(key, pending === undefined ? cloneUsage(usage) : addUsageTotals(pending, usage));
+      return;
+    }
+    const seeded = usageFromSessionFile(record.sessionPath);
+    if (seeded !== undefined) {
+      record.usage = reconcileUsage(record.usage, seeded);
+      return;
+    }
+    record.usage = record.usage === undefined ? cloneUsage(usage) : addUsageTotals(record.usage, usage);
+  }
+
+  /**
    * Records one senpi listing row under its durable key, preserving bridge-side state (archive,
-   * metadata, permissions, renames) and the original first-seen timestamp.
+   * metadata, permissions, renames) and the original first-seen timestamp. Usage is re-seeded from
+   * the host transcript when that file is readable; see `reconcileUsage`.
    */
   upsert(row: SessionListRow, seenAt: string = new Date().toISOString()): SessionRecord {
     const key = durableKeyOf(row);
@@ -468,6 +617,7 @@ export class SessionMap {
     const projectID = projectFor(row.cwd).id;
     const name = row.name === undefined ? existing?.name : row.name;
     const sessionPath = asNonEmptyString(row.sessionPath) ?? existing?.sessionPath;
+    const usage = reconcileUsage(existing?.usage, usageFromSessionFile(sessionPath));
     const record: SessionRecord = {
       key,
       routingId: row.sessionId,
@@ -483,7 +633,15 @@ export class SessionMap {
       ...(existing?.permissions === undefined
         ? {}
         : { permissions: existing.permissions.map((entry) => ({ ...entry })) }),
+      ...(usage === undefined ? {} : { usage }),
     };
+    const pending = this.pendingUsage.get(key);
+    if (pending !== undefined) {
+      this.pendingUsage.delete(key);
+      // A transcript seed already covers any run the host persisted; pending usage is the only
+      // record of a run on a session the host cannot offer a transcript for.
+      if (record.usage === undefined) record.usage = pending;
+    }
     this.records.set(key, record);
     return cloneRecord(record);
   }
@@ -566,6 +724,7 @@ export class SessionMap {
       const headerCreated = toIso(header?.timestamp) ?? stats.birthtime.toISOString();
       const updated = laterOf(lastEntryTimestamp(parsed.entries) ?? stats.mtime.toISOString(), stats.mtime.toISOString());
       const name = existing?.name ?? diskNameOf(parsed.entries);
+      const usage = reconcileUsage(existing?.usage, usageFromEntries(parsed.entries));
       const record: SessionRecord = {
         key,
         routingId: existing?.routingId ?? "",
@@ -581,6 +740,7 @@ export class SessionMap {
         ...(existing?.permissions === undefined
           ? {}
           : { permissions: existing.permissions.map((entry) => ({ ...entry })) }),
+        ...(usage === undefined ? {} : { usage }),
       };
       this.records.set(key, record);
       result.records += 1;

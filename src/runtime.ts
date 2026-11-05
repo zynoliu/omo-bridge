@@ -15,7 +15,7 @@ import {
 import { setSessionReadTransport } from "./http/handlers/sessions";
 import { setShellEventBus, setShellTransport, type ShellBashResult } from "./http/handlers/shell";
 import { createServer, type BridgeServer } from "./http/server";
-import { MAX_LIST_LIMIT, SessionMap } from "./model/session-map";
+import { MAX_LIST_LIMIT, SessionMap, readSessionUsage, type SessionUsage } from "./model/session-map";
 import { SenpiTransport, defaultKeyRoot } from "./senpi/transport";
 import { createLifecycleProjector } from "./translate/lifecycle";
 import { createStreamProjector } from "./translate/stream";
@@ -35,6 +35,8 @@ export type FrameDispatchOptions = {
   resolveSessionID?: (routingID: string | undefined) => string | undefined;
   defaultSessionID?: () => string | undefined;
   warn?: (message: string) => void;
+  /** Receives each run's summed usage before the matching event reaches the bus. */
+  onUsage?: (sessionID: string, usage: SessionUsage) => void;
 };
 
 export type FrameDispatch = {
@@ -69,12 +71,15 @@ function frameSessionID(frame: Record<string, unknown>): string | undefined {
  * Consumes the transport's event stream: `extension_ui_request` frames become pending permissions
  * and forms, every other frame is projected to opencode events on the shared bus. One projector set
  * per session; a projector that throws is logged and skipped so the subscription keeps running.
+ * A run's usage total is handed to `onUsage` before its event is published, so a listener of the
+ * event always observes the aggregate already applied.
  */
 export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDispatch {
   const bus = options.bus ?? sharedEventBus;
   const warn = options.warn ?? ((message: string): void => console.warn(`omo-bridge: ${message}`));
   const resolveSessionID = options.resolveSessionID ?? ((routingID: string | undefined) => routingID);
   const defaultSessionID = options.defaultSessionID ?? (() => undefined);
+  const onUsage = options.onUsage;
 
   const projectors = new Map<
     string,
@@ -84,6 +89,17 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
 let messageSequence = 0;
 
   const sink = (event: OpenCodeEvent): void => {
+    if (event.type === "session.usage.updated" && onUsage !== undefined) {
+      const usage = readSessionUsage(event.data);
+      const sessionID = asString(event.data.sessionID);
+      if (usage !== undefined && sessionID !== undefined) {
+        try {
+          onUsage(sessionID, usage);
+        } catch (error) {
+          warn(`usage aggregation failed for ${sessionID}: ${messageOf(error)}`);
+        }
+      }
+    }
     bus.publish({ type: event.type, created: event.created, data: event.data });
   };
 
@@ -275,6 +291,14 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
     bus: sharedEventBus,
     resolveSessionID,
     defaultSessionID: () => transport?.sessionId,
+    onUsage: (sessionID, usage) => {
+      sessionMap.addUsage(sessionID, usage);
+      try {
+        sessionMap.flush();
+      } catch (error) {
+        console.warn(`omo-bridge: could not persist usage for ${sessionID}: ${messageOf(error)}`);
+      }
+    },
   });
   const unsubscribe = transport?.onEvent(dispatch.handle);
 

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
 import { basename } from "node:path";
-import { sessionKeyOf } from "../../model/session-map";
+import { emptySessionUsage, sessionKeyOf, type SessionUsage } from "../../model/session-map";
 import type { SenpiEntriesResult, SenpiMessages, SenpiTransport } from "../../senpi/transport";
 import { mediaUriFor, wantsMediaRefs } from "./media";
 import { getSessionManagementStore } from "./session-write";
@@ -21,8 +21,6 @@ export function setSessionWaitTimeoutMs(value: number): void {
   sessionWaitTimeoutMs = value;
 }
 const DEFAULT_AGENT = "build"; // senpi has no agent selection; this is the projection
-// PublicSessionInfo requires cost/tokens; usage aggregates arrive with the event pipeline (todo 12).
-const EMPTY_TOKENS = { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } as const;
 
 export type SessionReadTransport = Pick<
   SenpiTransport,
@@ -283,15 +281,25 @@ function archivedAtOf(row: SenpiEntriesRow): number | undefined {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+/**
+ * Usage is bridge-side state: the dispatch path adds each run's `session.usage.updated` total to the
+ * session map, and the map re-seeds from the transcript on reconnect. A row the map has not adopted
+ * has no reported usage, so the contract's zero is the absence of data, not an estimate.
+ */
+function usageOf(row: SenpiEntriesRow): SessionUsage {
+  return getSessionManagementStore()?.get(sessionKeyOf(row))?.usage ?? emptySessionUsage();
+}
+
 function toMappedSession(row: SenpiEntriesRow): MappedSession {
   const id = sessionIdOf(row);
   const time = sessionTimes(id, row.sessionPath);
   const archived = archivedAtOf(row);
+  const usage = usageOf(row);
   const info: PublicSessionInfo = {
     id,
     projectID: projectIdOf(row.cwd),
-    cost: 0,
-    tokens: { ...EMPTY_TOKENS, cache: { ...EMPTY_TOKENS.cache } },
+    cost: usage.cost,
+    tokens: { ...usage.tokens, cache: { ...usage.tokens.cache } },
     time: { ...time, ...(archived === undefined ? {} : { archived }) },
     title: row.name ?? basename(row.cwd),
     location: { directory: row.cwd },
