@@ -9,6 +9,42 @@ import { FakeSenpiHost } from "./fake-host";
 
 const repoRoot = join(import.meta.dir, "..", "..");
 
+/**
+ * The stdout spy must run in a fresh process: every test file shares one module registry, so an
+ * in-process import of the transport would be a cache hit and assert nothing. That child pays Bun's
+ * startup plus the transport's import graph (measured: ~1.1 s on an idle machine, past 5 s while the
+ * machine is loaded), so it runs while this file is evaluated instead of inside a test body. The
+ * assertion is about import-time stdout, not about how fast the machine can import the graph; the
+ * deadline below only bounds a child that never exits.
+ */
+const IMPORT_SPY_DEADLINE_MS = 60_000;
+
+type ImportSpyRun = { readonly exitCode: number; readonly stdout: string; readonly stderr: string };
+
+async function runImportSpy(): Promise<ImportSpyRun> {
+  const child = Bun.spawn([process.execPath, join("test", "senpi", "no-ui-request-spy.ts")], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const deadline = setTimeout(() => child.kill(), IMPORT_SPY_DEADLINE_MS);
+  try {
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+    return { exitCode, stdout, stderr };
+  } finally {
+    clearTimeout(deadline);
+  }
+}
+
+const importSpy = await runImportSpy().then(
+  (run): { readonly run: ImportSpyRun } => ({ run }),
+  (error: unknown): { readonly error: unknown } => ({ error }),
+);
+
 // Compile-time: the facade must expose all four queue/idle methods; a missing one fails this Pick.
 const facadeSurface: Pick<
   SenpiTransport,
@@ -17,15 +53,29 @@ const facadeSurface: Pick<
 void facadeSurface;
 
 describe("error mapping", () => {
-  test("a missing private socket maps to socket_missing", async () => {
-    const transport = new SenpiTransport({ socketPath: join(repoRoot, ".nonexistent-senpi.sock"), keyRoot: repoRoot });
-    const error = await transport.connect().then(
-      () => undefined,
-      (caught: unknown) => caught,
-    );
-    expect(error).toBeInstanceOf(SenpiTransportError);
-    expect((error as SenpiTransportError).code).toBe("socket_missing");
-    await transport.dispose();
+  test("a missing private socket maps to socket_missing, and no ENOENT escapes the process", async () => {
+    const escaped: unknown[] = [];
+    const record = (error: unknown): void => {
+      escaped.push(error);
+    };
+    process.on("unhandledRejection", record);
+    process.on("uncaughtException", record);
+    try {
+      const transport = new SenpiTransport({ socketPath: join(repoRoot, ".nonexistent-senpi.sock"), keyRoot: repoRoot });
+      const error = await transport.connect().then(
+        () => undefined,
+        (caught: unknown) => caught,
+      );
+      expect(error).toBeInstanceOf(SenpiTransportError);
+      expect((error as SenpiTransportError).code).toBe("socket_missing");
+      await transport.dispose();
+      // One tick drains a late socket error; there is nothing to wait for when none was emitted.
+      await new Promise((resolve) => setImmediate(resolve));
+    } finally {
+      process.off("unhandledRejection", record);
+      process.off("uncaughtException", record);
+    }
+    expect(escaped).toEqual([]);
   });
 
   test("a host authentication refusal maps to auth_failed", async () => {
@@ -200,15 +250,9 @@ describe("module surface", () => {
     expect(typeof AttachClient).toBe("function");
   });
 
-  test("importing the transport emits no extension_ui_request on stdout", async () => {
-    const child = Bun.spawn([process.execPath, join("test", "senpi", "no-ui-request-spy.ts")], {
-      cwd: repoRoot,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    const stdout = await new Response(child.stdout).text();
-    const stderr = await new Response(child.stderr).text();
-    const exitCode = await child.exited;
+  test("importing the transport emits no extension_ui_request on stdout", () => {
+    if ("error" in importSpy) throw importSpy.error;
+    const { exitCode, stdout, stderr } = importSpy.run;
     expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
     const parsed = JSON.parse(stdout.trim()) as { offending: string[]; hasTransport: boolean };
     expect(parsed.offending).toEqual([]);

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { RpcClient } from "@code-yeongyu/senpi";
 import { SenpiTransportError, mapSenpiError } from "./errors";
 import { RawChannel } from "./raw";
+import { assertPrivateSocketExists } from "./socket-path";
 
 export const DEFAULT_CLIENT_WIDTH = 80;
 export const DEFAULT_CLIENT_CAPABILITIES = ["interactive_user", "question"] as const;
@@ -123,6 +124,7 @@ export class SenpiTransport {
       );
     }
     assertPrivateSocket(socketPath);
+    assertPrivateSocketExists(socketPath);
 
     const client = new RpcClient({
       socketPath,
@@ -134,14 +136,21 @@ export class SenpiTransport {
         this.emitDisconnect(mapSenpiError(error));
       },
     });
+    // Track the client before the attempt can fail, so dispose() covers an in-flight connect too.
+    this.client = client;
     try {
       await client.start();
       await client.setClientInfo(this.width, [...this.capabilities]);
     } catch (error) {
+      if (this.client === client) this.client = undefined;
       await client.stop().catch(() => undefined);
       throw mapSenpiError(error);
     }
-    this.client = client;
+    if (this.disposed) {
+      if (this.client === client) this.client = undefined;
+      await client.stop().catch(() => undefined);
+      throw new SenpiTransportError("transport_gone", "the senpi transport was disposed while connecting");
+    }
     this.unsubscribeClient = client.onEvent((event) => {
       for (const listener of this.eventListeners) listener(event);
     });
