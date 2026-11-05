@@ -28,7 +28,7 @@ Exit code `0` means the scenario's assertions held; anything else means they did
 
 1. Starts an isolated bridge: temporary state directory, random port in 4500-4899, random password; waits for `GET /api/info` to answer 200.
 2. Launches `bun run bin/omo-bridge tui` in a PTY (no `--session`, so the launcher's own session bootstrap is exercised).
-3. Renders the PTY stream into a parsed screen grid (`script/qa/lib/frame.mjs`), so assertions read rendered text rather than raw ANSI.
+3. Renders the PTY stream through **xterm.js** in a page (`script/qa/lib/xterm.mjs`), so assertions read xterm's rendered buffer rather than raw ANSI; `QA_RENDERER=tmux` falls back to a tmux pane and `script/qa/lib/frame.mjs` parses its output.
 4. Types `你好`, presses `Enter`, and classifies the outcome as exactly one of:
    - `reply` — a new assistant line appeared,
    - `error` — a failure or "session not found" line appeared,
@@ -39,12 +39,12 @@ Exit code `0` means the scenario's assertions held; anything else means they did
 
 | File | Content |
 | --- | --- |
-| `report.json` | outcome, checks, durations, exit code, render mode, screenshot path, evidence paths |
+| `report.json` | outcome, checks, durations, exit code, render mode, screenshot path, evidence paths, and a `history` cross-check read from the bridge (`total`, `assistant`, `lastText`) |
 | `frame-before.txt` | parsed screen before typing |
 | `frame-after.txt` | parsed screen after the run |
 | `transcript.txt` | raw PTY stream |
 | `bridge.log` | bridge stdout/stderr for this run |
-| `frame.png` | screenshot of the parsed frame (only when `renderMode: "webview"`) |
+| `frame.png` | screenshot of the rendered terminal (only when `renderMode: "webview"`) |
 
 ## Reproducing a failure
 
