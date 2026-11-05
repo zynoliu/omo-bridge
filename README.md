@@ -43,9 +43,27 @@ It also generates a password and writes it to `state/bridge.json`. If you want a
 `OMO_BRIDGE_PASSWORD` before starting. Either value is the `OPENCODE_PASSWORD` the TUI must send.
 
 ```sh
-# 3. In the TUI fork, attach the dev TUI to that bridge.
+# 3. Launch the TUI against that bridge. One command; it reads the url and password from
+#    state/bridge.json and gives the TUI its own state directory.
+bun run bin/omo-bridge tui
+```
+
+`tui` forwards extra arguments to the TUI, so `bun run bin/omo-bridge tui --session <id>` opens a
+session directly. It runs the fork's `bun run dev --server <url>` under a standalone Bun
+(`OMO_BRIDGE_TUI_BUN`, default: the Bun running the launcher) with `OMO_BRIDGE_TUI_DIR` naming the
+checkout (default: the reference fork above).
+
+The TUI keys its persisted tabs by channel (`<XDG_STATE_HOME>/opencode/<channel>/tui/tabs.json`), so
+two backends sharing a channel share one tab list - and a tab opened against the real opencode
+service carries a session id the bridge does not have, which is why switching between them shows
+"session not found". `tui` sets `OPENCODE_TUI_CHANNEL=bridge-<hash of the bridge state dir>`, so each
+bridge gets its own tabs and sessions from different backends never mix.
+
+Attaching by hand works too, as long as the channel stays distinct:
+
+```sh
 cd "/Users/zyno/OmO Projects/my-tui/opencode"
-OPENCODE_PASSWORD=<pw> bun run dev --server http://127.0.0.1:<port>
+OPENCODE_TUI_CHANNEL=bridge OPENCODE_PASSWORD=<pw> bun run dev --server http://127.0.0.1:<port>
 ```
 
 `bun run dev` in the fork runs `bun run --cwd packages/cli src/index.ts`. Run the TUI under a

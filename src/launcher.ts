@@ -987,6 +987,7 @@ Commands:
   start    Run the bridge in the foreground on a private senpi host (default)
   status   Probe the bridge recorded in <stateDir>/bridge.json
   stop     End the recorded omo-bridge process and its private senpi host
+  tui      Launch the TUI against this bridge with its own isolated TUI state
 `;
 
 export async function runForeground(options: StartOptions = {}): Promise<void> {
@@ -1038,6 +1039,11 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
     }
     if (command === "stop") {
       console.log(JSON.stringify(await stop()));
+      return;
+    }
+    if (command === "tui") {
+      const { runTui } = await import("./tui-launch");
+      await runTui(argv.slice(1));
       return;
     }
     if (command === "help" || command === "--help" || command === "-h") {
