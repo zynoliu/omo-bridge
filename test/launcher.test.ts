@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { homedir, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import { resolveConfig } from "../src/config";
 import {
   BRIDGE_STATE_FILE,
   BRIDGE_STATE_MODE,
   LauncherError,
+  assertPrivateSocket,
+  defaultAgentDir,
   parseLaunchSpecDocument,
+  resolveAgentDir,
   sanitizeHostEnvironment,
   start,
   stop,
@@ -16,7 +19,7 @@ import {
   type StartedBridge,
 } from "../src/launcher";
 import { BASIC_USERNAME, createServer } from "../src/http/server";
-import type { BridgeRuntime } from "../src/runtime";
+import { probeModelAvailability, type BridgeRuntime } from "../src/runtime";
 import { SenpiTransportError } from "../src/senpi/errors";
 import type { SenpiTransport } from "../src/senpi/transport";
 
@@ -201,6 +204,122 @@ describe("launch spec", () => {
     expect(document.core.multi_session).toBe(true);
     expect(document.core.extensions).toHaveLength(1);
     expect(document.env).toEqual({ OMO_NATIVE: "1" });
+  });
+});
+
+describe("private host agent directory", () => {
+  const isolatedHome = "/tmp/omo-bridge-isolated-home";
+  const realAgentDir = (): string => join(userInfo().homedir, ".omo", "agent");
+
+  test("defaults to the real user's ~/.omo/agent even under an isolated HOME", () => {
+    expect(defaultAgentDir()).toBe(realAgentDir());
+    expect(resolveAgentDir({})).toBe(realAgentDir());
+    expect(resolveAgentDir({ HOME: isolatedHome })).toBe(realAgentDir());
+  });
+
+  test("OMO_BRIDGE_AGENT_DIR overrides every other setting and reaches the host and runtime", async () => {
+    const stateDir = tempStateDir();
+    const override = join(stateDir, "agent-override");
+    let hostEnv: Record<string, string> | undefined;
+    let runtimeEnv: NodeJS.ProcessEnv | undefined;
+
+    const started = await launch({
+      env: {
+        PATH: process.env.PATH,
+        HOME: isolatedHome,
+        OMO_BRIDGE_PORT: "0",
+        OMO_BRIDGE_PASSWORD: PASSWORD,
+        OMO_BRIDGE_STATE_DIR: stateDir,
+        OMO_CODING_AGENT_DIR: join(stateDir, "wrong-agent"),
+        OMO_BRIDGE_AGENT_DIR: override,
+      },
+      deps: {
+        runCommand: async (_argv, env) => {
+          hostEnv = env;
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ action: "start", socket: join(stateDir, "senpi.sock"), pid: 4242 }),
+            stderr: "",
+          } satisfies CommandResult;
+        },
+        createRuntime: async (env) => {
+          runtimeEnv = env;
+          return fakeRuntime(undefined, env);
+        },
+      },
+    });
+
+    expect(hostEnv?.OMO_CODING_AGENT_DIR).toBe(override);
+    expect(runtimeEnv?.OMO_BRIDGE_KEY_ROOT).toBe(override);
+    expect(started.agentDir).toBe(override);
+  });
+
+  test("the private host gets the real agent dir when nothing overrides it", async () => {
+    const stateDir = tempStateDir();
+    let hostEnv: Record<string, string> | undefined;
+
+    await launch({
+      env: {
+        PATH: process.env.PATH,
+        HOME: isolatedHome,
+        OMO_BRIDGE_PORT: "0",
+        OMO_BRIDGE_PASSWORD: PASSWORD,
+        OMO_BRIDGE_STATE_DIR: stateDir,
+      },
+      deps: {
+        runCommand: async (_argv, env) => {
+          hostEnv = env;
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ action: "start", socket: join(stateDir, "senpi.sock"), pid: 4242 }),
+            stderr: "",
+          } satisfies CommandResult;
+        },
+        createRuntime: async (env) => fakeRuntime(undefined, env),
+      },
+    });
+
+    expect(hostEnv?.OMO_CODING_AGENT_DIR).toBe(realAgentDir());
+  });
+
+  test("the shared daemon socket is still refused", () => {
+    const shared = join(homedir(), ".omo", "agent", "rpc", "rpc.sock");
+    expect(() => assertPrivateSocket(shared)).toThrow(LauncherError);
+    expect(() => assertPrivateSocket(shared)).toThrow("shared senpi socket");
+    expect(() => assertPrivateSocket(shared, tempStateDir())).toThrow("shared senpi socket");
+  });
+});
+
+describe("model catalog probe", () => {
+  const model = (provider: string, id: string) => ({ provider, id, contextWindow: 200_000, reasoning: false });
+
+  test("a fake host with zero models logs the counts and warns about OMO_BRIDGE_AGENT_DIR", async () => {
+    const logged: string[] = [];
+    const warned: string[] = [];
+
+    const report = await probeModelAvailability(
+      { getAvailableModels: async () => [] },
+      { log: (message) => logged.push(message), warn: (message) => warned.push(message) },
+    );
+
+    expect(report).toEqual({ models: 0, providers: 0 });
+    expect(logged).toEqual(["omo-bridge: models=0 providers=0"]);
+    expect(warned).toHaveLength(1);
+    expect(warned[0]).toContain("OMO_BRIDGE_AGENT_DIR");
+  });
+
+  test("a populated catalog counts models and distinct providers without a warning", async () => {
+    const logged: string[] = [];
+    const warned: string[] = [];
+
+    const report = await probeModelAvailability(
+      { getAvailableModels: async () => [model("kimi", "k2"), model("kimi", "k3"), model("ollama", "qwen")] },
+      { log: (message) => logged.push(message), warn: (message) => warned.push(message) },
+    );
+
+    expect(report).toEqual({ models: 3, providers: 2 });
+    expect(logged).toEqual(["omo-bridge: models=3 providers=2"]);
+    expect(warned).toHaveLength(0);
   });
 });
 

@@ -9,7 +9,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { resolveConfig, type Config } from "./config";
 import { setSessionInboxTransport } from "./http/handlers/inbox";
@@ -142,6 +142,8 @@ export type ShutdownReport = {
 export type StartedBridge = {
   readonly config: Config;
   readonly state: BridgeState;
+  /** The agent directory this bridge gave the private host (models.json source and RPC key root). */
+  readonly agentDir: string;
   readonly runtime: BridgeRuntime;
   readonly host: EnsuredHost;
   readonly recovery: SessionRecovery | undefined;
@@ -303,13 +305,47 @@ export function resolveStateDir(env: NodeJS.ProcessEnv = process.env, override?:
   return resolve(trimmed.length === 0 ? DEFAULT_STATE_DIR : trimmed);
 }
 
-/** The agent directory the private host publishes its RPC key under. */
+/**
+ * The user's real home from the account database, so an isolated `HOME` (a QA harness, a sandbox)
+ * cannot move the agent directory the bridge points its private host at.
+ */
+function realHomeDir(): string {
+  try {
+    const home = userInfo().homedir;
+    if (home.length > 0) return home;
+  } catch {
+    // No account entry: fall back to the environment's home.
+  }
+  return homedir();
+}
+
+/** The agent directory the private host reads models.json from and publishes its RPC key under. */
+export function defaultAgentDir(): string {
+  return join(realHomeDir(), ".omo", "agent");
+}
+
 export function resolveAgentDir(env: NodeJS.ProcessEnv = process.env): string {
-  for (const key of ["OMO_CODING_AGENT_DIR", "SENPI_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR", "OMO_BRIDGE_KEY_ROOT"]) {
+  for (const key of [
+    "OMO_BRIDGE_AGENT_DIR",
+    "OMO_CODING_AGENT_DIR",
+    "SENPI_CODING_AGENT_DIR",
+    "PI_CODING_AGENT_DIR",
+    "OMO_BRIDGE_KEY_ROOT",
+  ]) {
     const value = env[key]?.trim();
     if (value !== undefined && value.length > 0) return resolve(value);
   }
-  return join(homedir(), ".omo", "agent");
+  return defaultAgentDir();
+}
+
+/**
+ * The environment an omo/senpi child receives. The agent directory is always resolved here and
+ * written explicitly, so the private host reads the user's real model configuration instead of
+ * whatever bare default its own process would pick; every inherited host/session identity is
+ * still stripped by `sanitizeHostEnvironment`.
+ */
+export function privateHostEnvironment(env: NodeJS.ProcessEnv = process.env): Record<string, string> {
+  return { ...sanitizeHostEnvironment(env), OMO_CODING_AGENT_DIR: resolveAgentDir(env) };
 }
 
 export function resolveOmoBinary(env: NodeJS.ProcessEnv = process.env): string {
@@ -493,7 +529,7 @@ export async function ensurePrivateHost(options: {
   await validateLaunchSpecFile(options.launchSpecPath);
   if (pathExists(socket) && !isSocketFile(socket)) removeFile(socket);
 
-  const env = sanitizeHostEnvironment(options.env);
+  const env = privateHostEnvironment(options.env);
   const binary = resolveOmoBinary(options.env);
   const run = options.deps?.runCommand ?? defaultRunCommand;
   const spawn = options.deps?.spawnDetached ?? defaultSpawnDetached;
@@ -540,7 +576,7 @@ async function stopPrivateHost(
   const absolute = assertPrivateSocket(socket, stateDir);
   if (!isSocketFile(absolute)) return undefined;
   const run = deps.runCommand ?? defaultRunCommand;
-  const sanitized = sanitizeHostEnvironment(env);
+  const sanitized = privateHostEnvironment(env);
   return run(
     [resolveOmoBinary(env), "host", "stop", "--socket", absolute, "--json"],
     sanitized,
@@ -823,7 +859,7 @@ export async function start(options: StartOptions = {}): Promise<StartedBridge> 
     return lastReport;
   };
 
-  return { config, state, runtime, host, recovery, transport: proxy, stop };
+  return { config, state, agentDir, runtime, host, recovery, transport: proxy, stop };
 }
 
 export async function status(options: { env?: NodeJS.ProcessEnv; stateDir?: string; deps?: LauncherDeps } = {}): Promise<BridgeStatusReport> {
@@ -946,6 +982,7 @@ export async function runForeground(options: StartOptions = {}): Promise<void> {
 
   console.log(`omo-bridge listening on ${started.state.url}`);
   console.log(`omo-bridge private senpi host (${started.host.mode}) on ${started.state.socket}`);
+  console.log(`omo-bridge agent dir ${started.agentDir}`);
   if (started.recovery === undefined) {
     console.warn("omo-bridge: no senpi transport is attached; session routes answer 503");
   }

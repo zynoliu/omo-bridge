@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { classifyUiRequest } from "./bridge/ui-requests";
 import { resolveConfig, type Config } from "./config";
 import { eventBus as sharedEventBus, type EventBus } from "./http/events";
@@ -159,6 +160,63 @@ function bashOverRaw(transport: SenpiTransport): (command: string) => Promise<Sh
   return (command: string) => transport.raw.request<ShellBashResult>({ type: "bash", command });
 }
 
+export type ModelAvailability = { models: number; providers: number };
+
+export type ModelProbeOptions = {
+  log?: (message: string) => void;
+  warn?: (message: string) => void;
+};
+
+/**
+ * Reports what the private host's model catalog actually holds. The host reads `models.json` from
+ * its agent directory, so a catalog of zero means the host was pointed somewhere without the user's
+ * configuration - the one failure that leaves the TUI with no model to select. Returns undefined
+ * when the host could not answer at all; a probe never fails the bridge's startup.
+ */
+export async function probeModelAvailability(
+  transport: Pick<SenpiTransport, "getAvailableModels">,
+  options: ModelProbeOptions = {},
+): Promise<ModelAvailability | undefined> {
+  const log = options.log ?? ((message: string): void => console.log(message));
+  const warn = options.warn ?? ((message: string): void => console.warn(message));
+  let models: readonly { provider?: unknown }[];
+  try {
+    models = await transport.getAvailableModels();
+  } catch (error) {
+    warn(`omo-bridge: could not read the model catalog from the private host: ${messageOf(error)}`);
+    return undefined;
+  }
+  const providers = new Set<string>();
+  for (const model of models) {
+    if (typeof model.provider === "string" && model.provider.length > 0) providers.add(model.provider);
+  }
+  log(`omo-bridge: models=${models.length} providers=${providers.size}`);
+  if (models.length === 0) {
+    warn(
+      "omo-bridge: the private host reports no models; set OMO_BRIDGE_AGENT_DIR to the agent directory that holds the real models.json (default ~/.omo/agent)",
+    );
+  }
+  return { models: models.length, providers: providers.size };
+}
+
+const CATALOG_SESSION_FILE = "model-catalog.jsonl";
+
+/**
+ * `get_available_models` is session-scoped on the senpi wire, so a connection that holds no session
+ * cannot answer `GET /api/model` at all - the read the TUI performs before it has a model to offer.
+ * Keep one bridge-private session for that read: its transcript lives in the bridge state directory,
+ * never in the user's agent directory, and it is released on disconnect so the private host still
+ * stops cleanly. Opening a session from the user's own store would append resume bookkeeping to a
+ * transcript the bridge does not own, which this deliberately avoids.
+ */
+async function attachCatalogSession(transport: SenpiTransport, stateDir: string): Promise<void> {
+  await transport.openSession({
+    sessionPath: join(stateDir, CATALOG_SESSION_FILE),
+    cwd: stateDir,
+    retainOnDisconnect: false,
+  });
+}
+
 /** Without OMO_BRIDGE_SENPI_SOCKET the server still starts and session routes answer 503. */
 export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promise<BridgeRuntime> {
   const config = resolveConfig(env);
@@ -187,6 +245,12 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
     } catch (error) {
       console.warn(`omo-bridge: could not seed the session map from senpi: ${messageOf(error)}`);
     }
+    try {
+      await attachCatalogSession(transport, config.stateDir);
+    } catch (error) {
+      console.warn(`omo-bridge: could not attach the model catalog session: ${messageOf(error)}`);
+    }
+    await probeModelAvailability(transport);
   }
 
   const resolveSessionID = (routingID: string | undefined): string | undefined => {
