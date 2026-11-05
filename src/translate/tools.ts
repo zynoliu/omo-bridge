@@ -185,19 +185,37 @@ export function createToolProjector(ctx: TranslateContext, sink: EventSink = () 
       ignore();
       return;
     }
-    const created = emit("session.tool.called", {
+    const input = asRecord(record.args) ?? {};
+    const name = asNonEmptyString(record.toolName) ?? "unknown";
+    // A call can be discovered at execution time when no `toolcall_start` was streamed. The TUI
+    // only creates a tool row from `session.tool.input.started`, so a discovered call has to
+    // announce the same two input events a streamed toolcall would before the execution event.
+    const discovered = !pending.has(id);
+    const startedAt = discovered
+      ? emit("session.tool.input.started", {
+          sessionID: ctx.sessionID,
+          assistantMessageID: messageID,
+          id,
+          name,
+        })
+      : undefined;
+    if (discovered) {
+      emit("session.tool.input.ended", {
+        sessionID: ctx.sessionID,
+        assistantMessageID: messageID,
+        id,
+        text: stringifyArguments(input) ?? "{}",
+      });
+      pending.set(id, { name, startedAt: startedAt ?? ctx.now() });
+      messageOfCall.set(id, messageID);
+    }
+    emit("session.tool.called", {
       sessionID: ctx.sessionID,
       assistantMessageID: messageID,
       id,
-      input: asRecord(record.args) ?? {},
+      input,
       executed: true,
     });
-    // A call can be discovered at execution time when a toolcall_start was missed; the permission
-    // bridge still wants it, so register it with the execution start as its best-known time.
-    if (!pending.has(id)) {
-      pending.set(id, { name: asNonEmptyString(record.toolName) ?? "unknown", startedAt: created });
-      messageOfCall.set(id, messageID);
-    }
   };
 
   const handleExecutionUpdate = (record: Record<string, unknown>): void => {

@@ -578,6 +578,27 @@ describe("runtime frame dispatch", () => {
     setFormEventBus(undefined);
   });
 
+  test("mints one message id for stream and tool frames that arrive without one", async () => {
+    const bus = createEventBus({ capacity: 32 });
+    const dispatch = createFrameDispatch({ bus, defaultSessionID: () => "ses_frame_dispatch" });
+    const subscription = bus.subscribe({ types: ["session.step.started", "session.tool.input.started"] });
+
+    dispatch.handle({
+      type: "message_start",
+      message: { role: "assistant", content: [], provider: "anthropic", model: "claude-sonnet-4", timestamp: 1 },
+    });
+    dispatch.handle({
+      type: "message_update",
+      assistantMessageEvent: { type: "toolcall_start", contentIndex: 1, id: "call_mount", toolName: "bash" },
+    });
+    const [step, tool] = await readEvents(subscription, 2);
+    subscription.close();
+
+    expect(step!.data.assistantMessageID).toBeDefined();
+    expect(tool!.type).toBe("session.tool.input.started");
+    expect(tool!.data.assistantMessageID).toBe(step!.data.assistantMessageID);
+  });
+
   test("a projector error is reported and the subscription keeps consuming frames", () => {
     const warnings: string[] = [];
     const throwingBus: EventBus = {

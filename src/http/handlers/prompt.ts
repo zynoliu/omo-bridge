@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { projectFor, toPublicSessionInfo, type SessionRecord } from "../../model/session-map";
 import type { SenpiImages, SenpiPromptOptions, SenpiSessionSummary, SenpiTransport } from "../../senpi/transport";
+import { getSessionManagementStore } from "./session-write";
 
 // Write-side session endpoints: create, prompt, synthetic input and slash commands.
 //
@@ -196,7 +197,13 @@ async function resolveTarget(
 ): Promise<{ row: SenpiSessionSummary; key: string }> {
   const rows = await caller.listSessions();
   for (const row of rows) {
-    if (matchesRow(row, sessionID)) return { row, key: durableKeyOf(row) };
+    if (matchesRow(row, sessionID)) {
+      // Event dispatch resolves senpi's connection-scoped routing id through the session map. A
+      // session the map has not seen yet would keep emitting rpc-* ids the TUI cannot attach to a
+      // session, so adopt it here as well as on creation.
+      getSessionManagementStore()?.upsert(row);
+      return { row, key: durableKeyOf(row) };
+    }
   }
   throw sessionNotFound(sessionID);
 }
@@ -423,7 +430,11 @@ export async function handleSessionCreate(request: Request, _url: URL): Promise<
       firstSeenAt: observedAt,
       lastSeenAt: observedAt,
     };
-    return jsonResponse(200, { data: toPublicSessionInfo(record) });
+    // The session map is what turns senpi's routing id into the durable id event dispatch serves;
+    // without this every session created after startup keeps an rpc-* id on its live deltas that the
+    // TUI cannot attach to the session it is showing.
+    const persisted = getSessionManagementStore()?.upsert(row ?? { sessionId: opened.sessionId, cwd });
+    return jsonResponse(200, { data: toPublicSessionInfo(persisted ?? record) });
   });
 }
 

@@ -1,3 +1,4 @@
+import { DEFAULT_AGENT } from "../model/message-projection";
 import type { EventSink, OpenCodeEvent, TranslateContext } from "./types";
 
 // Projects senpi's assistant streaming frames onto the opencode session events the TUI renders.
@@ -114,13 +115,15 @@ export function createStreamProjector(ctx: TranslateContext, sink: EventSink = (
     drafts.clear();
     settled.clear();
 
-    const agent = asNonEmptyString(message.agent);
+    const agent = asNonEmptyString(message.agent) ?? DEFAULT_AGENT;
     const modelID = asNonEmptyString(message.model);
     const providerID = asNonEmptyString(message.provider);
     emit("session.step.started", {
       sessionID: ctx.sessionID,
       assistantMessageID: id,
-      ...(agent === undefined ? {} : { agent }),
+      // The TUI's AssistantFooter title-cases the agent on every assistant row; an assistant frame
+      // without one crashes the session view, and the durable message projection already says build.
+      agent,
       ...(modelID === undefined || providerID === undefined ? {} : { model: { id: modelID, providerID } }),
       started: asNonNegativeInteger(message.timestamp) ?? ctx.now(),
     });

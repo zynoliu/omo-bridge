@@ -290,11 +290,11 @@ describe("handleCommandList", () => {
 });
 
 describe("handleSessionSwitchModel", () => {
-  test("calls setModel with the nested selection and answers 204", async () => {
+  test("calls setModel with the TUI's nested Model.Ref and answers 204", async () => {
     const transport = new FakeCatalogTransport();
     setCatalogTransport(transport);
     const response = await handleSessionSwitchModel(
-      post("/api/session/ses-1/model", { model: { provider: "anthropic", id: "claude-sonnet-4" } }),
+      post("/api/session/ses-1/model", { model: { providerID: "anthropic", id: "claude-sonnet-4" } }),
       urlOf("/api/session/ses-1/model"),
     );
     expect(response.status).toBe(204);

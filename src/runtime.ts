@@ -80,6 +80,7 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
     { stream: ReturnType<typeof createStreamProjector>; tools: ReturnType<typeof createToolProjector>; lifecycle: ReturnType<typeof createLifecycleProjector> }
   >();
   let sequence = 0;
+let messageSequence = 0;
 
   const sink = (event: OpenCodeEvent): void => {
     bus.publish({ type: event.type, created: event.created, data: event.data });
@@ -100,6 +101,13 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
 
   const project = (frame: Record<string, unknown>, sessionID: string): void => {
     const set = projectorsFor(sessionID);
+    // senpi's assistant `message_start` frame carries no message id, but the stream and tool
+    // projectors both key their events by it. Mint one id here so they agree on the same message
+    // instead of each projector inventing a different fallback.
+    const started = frame.type === "message_start" ? asRecord(frame.message) : undefined;
+    if (started?.role === "assistant" && asString(started.id) === undefined) {
+      started.id = `msg_${sessionID}_${++messageSequence}`;
+    }
     const entries = [
       ["stream", set.stream],
       ["tools", set.tools],
