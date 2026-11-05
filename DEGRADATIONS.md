@@ -44,6 +44,25 @@ fails on any 5xx. TUI references are relative to `/Users/zyno/OmO Projects/my-tu
 | `GET /api/form` | `200 {location, data:[...pending forms]}` (form.ts, re-exported through catalogs.ts) | Home shows no pending forms unless an engine frame filed one: `packages/tui/src/routes/home.tsx:38`, `packages/tui/src/routes/session/index.tsx:215` | Forms are session-scoped interaction requests. A fresh bridge has none; a question or dialog frame that arrives over the event stream is listed here until it is answered or cancelled | None: this path is already state-backed from `extension_ui_request` frames, not a degraded empty |
 | `GET /api/agent`, `/api/skill`, `/api/reference`, `/api/websearch/provider` | `200 {location, data:[]}` (catalogs.ts) | Agent picker is empty, skill/reference autocomplete contributes nothing, websearch provider list is empty, `packages/tui/src/context/local.tsx:60`, `packages/tui/src/component/dialog-skill.tsx:26`, `packages/tui/src/component/prompt/autocomplete.tsx:293`, `packages/client/src/solid/data.ts:2134` (websearch has no direct `tui/src` reader) | senpi reports models and slash commands only; it has no agent registry, skill discovery, reference store or search-provider registry | Agent/skill/reference/websearch-provider catalogs |
 
+## Session usage totals
+
+`cost` and `tokens` on `GET /api/session` and `GET /api/session/:id` are cumulative over the session's
+executions. The host's own transcript is the authority: the map sums the `usage` of every assistant
+message in the session file (the `cost.total`, `input`, `output`, `reasoning`, `cacheRead` and
+`cacheWrite` fields). It seeds that total when a session is adopted (startup, create, fork, re-list)
+and re-reads it when `session.usage.updated` arrives, because senpi persists an assistant message
+before its `message_end` frame and therefore before the run's `agent_end` total. A session with no
+readable transcript is the exception: the bridge adds the event's total to its record and persists it.
+The re-read is also what keeps a reconnect from double counting: a seed replaces the aggregate
+instead of being added to it, and a seed that has not caught up with the live total is ignored rather
+than added. `list_sessions` carries no totals, so the transcript is the only host-provided seed.
+
+When the transcript has no assistant usage (a provider that reports none) or the file cannot be read,
+the bridge keeps the last total the event stream reported and otherwise answers the contract's zero.
+It never estimates cost or invents token counts: a zero on this surface means "senpi reported no
+usage for this session", not "free". The same zero applies to a row the session map has not adopted
+(for example a listing row read before the startup seed ran).
+
 ## Deliberate status choices
 
 Upstream declares some of these errors at different statuses. The bridge keeps the declared `_tag` and message
