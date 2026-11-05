@@ -8,6 +8,7 @@ export type SenpiErrorCode =
   | "shared_socket_forbidden"
   | "not_connected"
   | "no_session"
+  | "session_unreadable"
   | "attach_unavailable"
   | "command_failed";
 

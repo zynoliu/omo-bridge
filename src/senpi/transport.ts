@@ -45,6 +45,17 @@ export interface SenpiOpenSessionOptions {
   retainOnDisconnect?: boolean;
 }
 
+export interface SenpiSessionReadTarget {
+  sessionId: string;
+  sessionPath?: string;
+}
+
+/** The transcript reads a scoped per-session connection serves. */
+export interface SenpiSessionReader {
+  getEntries(since?: string, page?: SenpiEntriesPage): Promise<SenpiEntriesResult>;
+  getMessages(): Promise<SenpiMessages>;
+}
+
 export interface SenpiConnectResult {
   socketPath: string;
   keyRoot: string;
@@ -82,6 +93,7 @@ export class SenpiTransport {
   private readonly disconnectListeners = new Set<(error: SenpiTransportError) => void>();
   private client: RpcClient | undefined;
   private unsubscribeClient: (() => void) | undefined;
+  private readonly readers = new Map<string, Promise<RpcClient>>();
   private connectedResult: SenpiConnectResult | undefined;
   private sessionIdValue: string | undefined;
   private disposed = false;
@@ -175,6 +187,34 @@ export class SenpiTransport {
       this.sessionIdValue = opened.sessionId;
       return opened;
     } catch (error) {
+      throw mapSenpiError(error);
+    }
+  }
+
+  /**
+   * A reader attached to `target` on its own connection, or undefined when the streaming client
+   * already holds that session. That client carries exactly one routing id and the pinned RpcClient
+   * drops every frame tagged with another, so a sibling read through it would silence the turn it
+   * is running; this connection attaches by path, never sends prompts, and is kept per session.
+   */
+  async readSessionFor(target: SenpiSessionReadTarget): Promise<SenpiSessionReader | undefined> {
+    if (this.sessionIdValue !== undefined && this.sessionIdValue === target.sessionId) return undefined;
+    const cached = this.readers.get(target.sessionId);
+    if (cached !== undefined) {
+      return this.readerSurface(await cached);
+    }
+    if (target.sessionPath === undefined) {
+      throw new SenpiTransportError(
+        "session_unreadable",
+        `session ${target.sessionId} is not the attached session and the host lists no path to read it by`,
+      );
+    }
+    const opening = this.openReader(target.sessionId, target.sessionPath);
+    this.readers.set(target.sessionId, opening);
+    try {
+      return this.readerSurface(await opening);
+    } catch (error) {
+      if (this.readers.get(target.sessionId) === opening) this.readers.delete(target.sessionId);
       throw mapSenpiError(error);
     }
   }
@@ -278,11 +318,14 @@ export class SenpiTransport {
     this.raw.close();
     this.unsubscribeClient?.();
     this.unsubscribeClient = undefined;
+    const readers = [...this.readers.values()];
+    this.readers.clear();
     const client = this.client;
     this.client = undefined;
     this.connectedResult = undefined;
     this.sessionIdValue = undefined;
     if (client) await client.stop();
+    await Promise.allSettled(readers.map((opening) => opening.then((reader) => reader.stop())));
   }
 
   private requireClient(): RpcClient {
@@ -292,13 +335,74 @@ export class SenpiTransport {
     return this.client;
   }
 
+  private async openReader(sessionId: string, sessionPath: string): Promise<RpcClient> {
+    this.requireClient();
+    const socketPath = this.socketPath;
+    if (socketPath === undefined) {
+      throw new SenpiTransportError(
+        "socket_missing",
+        "OMO_BRIDGE_SENPI_SOCKET is not set; the bridge only talks to a private senpi socket",
+      );
+    }
+    assertPrivateSocket(socketPath);
+    const client = new RpcClient({
+      socketPath,
+      keyRoot: this.keyRoot,
+      onDisconnect: () => {
+        this.forgetReader(sessionId, client);
+      },
+    });
+    try {
+      await client.start();
+      await client.setClientInfo(this.width, []);
+      // `attended: false` attaches alongside an existing hold instead of releasing it; the retained
+      // session outlives this connection, so a read never closes a session the user still has open.
+      const opened = await client.openSession({
+        sessionPath,
+        retain_on_disconnect: true,
+        attended: false,
+      });
+      if (opened.sessionId !== sessionId) {
+        throw new SenpiTransportError(
+          "session_unreadable",
+          `the host answered ${opened.sessionId} for ${sessionId}; refusing to project another session's transcript`,
+        );
+      }
+      return client;
+    } catch (error) {
+      await client.stop().catch(() => undefined);
+      throw mapSenpiError(error);
+    }
+  }
+
+  private readerSurface(client: RpcClient): SenpiSessionReader {
+    return {
+      getEntries: (since, page) => this.callOn(client, (target) => target.getEntries(since, page)),
+      getMessages: () => this.callOn(client, (target) => target.getMessages()),
+    };
+  }
+
+  private forgetReader(sessionId: string, client: RpcClient): void {
+    const opening = this.readers.get(sessionId);
+    if (opening === undefined) return;
+    void opening
+      .then((opened) => {
+        if (opened === client) this.readers.delete(sessionId);
+      })
+      .catch(() => undefined);
+  }
+
   private emitDisconnect(error: SenpiTransportError): void {
     for (const listener of this.disconnectListeners) listener(error);
   }
 
   private async call<T>(operation: (client: RpcClient) => Promise<T>): Promise<T> {
+    return this.callOn(this.requireClient(), operation);
+  }
+
+  private async callOn<T>(client: RpcClient, operation: (client: RpcClient) => Promise<T>): Promise<T> {
     try {
-      return await operation(this.requireClient());
+      return await operation(client);
     } catch (error) {
       throw mapSenpiError(error);
     }
