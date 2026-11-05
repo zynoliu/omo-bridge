@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/location.publicInfo",
+  "title": "location.publicInfo",
+  "description": "Derived from packages/schema/src/location.ts:29 - success body of GET /api/location.",
+  "type": "object",
+  "properties": {
+    "directory": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "directory": {
+          "type": "string"
+        },
+        "canonical": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "directory",
+        "canonical"
+      ]
+    }
+  },
+  "required": [
+    "directory",
+    "project"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/error.envelope",
+  "title": "error.envelope",
+  "description": "Derived from packages/protocol/src/errors.ts:5 - tagged error envelope shared by every failing endpoint.",
+  "type": "object",
+  "required": [
+    "_tag",
+    "message"
+  ],
+  "properties": {
+    "_tag": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true,
+  "$comment": "tagged errors declared in packages/protocol/src/errors.ts: LocationNotFoundError, InvalidRequestError, RpcError, RpcInternalError, UnauthorizedError, ConflictError, SessionBusyError, ServiceUnavailableError, UnknownError, ProviderNotFoundError, IntegrationNotFoundError, IntegrationAttemptNotFoundError, IntegrationMethodNotFoundError, ProjectNotFoundError, FileNotFoundError, PluginNotFoundError, AgentNotFoundError, SessionNotFoundError, MessageNotFoundError, SkillNotFoundError, McpServerNotFoundError, CommandNotFoundError, CommandExecutionError, InvalidCursorError, PermissionNotFoundError, PermissionSavedNotFoundError, FormNotFoundError, FormAlreadySettledError, FormInvalidAnswerError, ForbiddenError, PtyNotFoundError, PtyFeatureUnsupportedError, ShellNotFoundError, ModelNotFoundError, UnsupportedModelError, ProviderRequestError, ScheduleNotFoundError, ArtifactNotFoundError"
+}

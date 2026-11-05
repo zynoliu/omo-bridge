@@ -1,0 +1,238 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/session.v1Info",
+  "title": "session.v1Info",
+  "description": "Derived from packages/schema/src/v1/session.ts:534 - v1 session shape still served to older clients.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "projectID": {
+      "type": "string"
+    },
+    "workspaceID": {
+      "type": "string"
+    },
+    "directory": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "parentID": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "additions": {
+          "type": "number"
+        },
+        "deletions": {
+          "type": "number"
+        },
+        "files": {
+          "type": "number"
+        },
+        "diffs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "additions": {
+                "type": "number"
+              },
+              "deletions": {
+                "type": "number"
+              },
+              "status": {
+                "enum": [
+                  "added",
+                  "deleted",
+                  "modified"
+                ]
+              }
+            },
+            "required": [
+              "additions",
+              "deletions"
+            ]
+          }
+        }
+      },
+      "required": [
+        "additions",
+        "deletions",
+        "files"
+      ]
+    },
+    "cost": {
+      "type": "number"
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "number"
+        },
+        "output": {
+          "type": "number"
+        },
+        "reasoning": {
+          "type": "number"
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "read": {
+              "type": "number"
+            },
+            "write": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "read",
+            "write"
+          ]
+        }
+      },
+      "required": [
+        "input",
+        "output",
+        "reasoning",
+        "cache"
+      ]
+    },
+    "share": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "agent": {
+      "type": "string"
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "providerID": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "providerID"
+      ]
+    },
+    "version": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {}
+    },
+    "time": {
+      "type": "object",
+      "properties": {
+        "created": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compacting": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "archived": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "created",
+        "updated"
+      ]
+    },
+    "permission": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "permission": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "action": {
+            "enum": [
+              "allow",
+              "deny",
+              "ask"
+            ]
+          }
+        },
+        "required": [
+          "permission",
+          "pattern",
+          "action"
+        ]
+      }
+    },
+    "revert": {
+      "type": "object",
+      "properties": {
+        "messageID": {
+          "type": "string"
+        },
+        "partID": {
+          "type": "string"
+        },
+        "snapshot": {
+          "type": "string"
+        },
+        "diff": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "messageID"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "slug",
+    "projectID",
+    "directory",
+    "version",
+    "time"
+  ]
+}

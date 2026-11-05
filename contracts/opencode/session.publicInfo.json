@@ -1,0 +1,268 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/session.publicInfo",
+  "title": "session.publicInfo",
+  "description": "Derived from packages/protocol/src/groups/session.ts:45 - Session.Info with location narrowed to Location.PublicRef; session.list rows.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "parentID": {
+      "type": "string"
+    },
+    "fork": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "boundary": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "before"
+                },
+                "messageID": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "messageID"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "through"
+                },
+                "messageID": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "messageID"
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "sessionID",
+        "boundary"
+      ]
+    },
+    "projectID": {
+      "type": "string"
+    },
+    "agent": {
+      "type": "string"
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "providerID": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "providerID"
+      ]
+    },
+    "cost": {
+      "type": "number"
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "number"
+        },
+        "output": {
+          "type": "number"
+        },
+        "reasoning": {
+          "type": "number"
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "read": {
+              "type": "number"
+            },
+            "write": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "read",
+            "write"
+          ]
+        }
+      },
+      "required": [
+        "input",
+        "output",
+        "reasoning",
+        "cache"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "succeeded",
+        "failed",
+        "interrupted"
+      ]
+    },
+    "time": {
+      "type": "object",
+      "properties": {
+        "created": {
+          "type": "string"
+        },
+        "updated": {
+          "type": "string"
+        },
+        "busy": {
+          "type": "string"
+        },
+        "idle": {
+          "type": "string"
+        },
+        "viewed": {
+          "type": "string"
+        },
+        "archived": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created",
+        "updated"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "subpath": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {}
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "effect": {
+            "enum": [
+              "allow",
+              "deny",
+              "ask"
+            ]
+          }
+        },
+        "required": [
+          "action",
+          "resource",
+          "effect"
+        ]
+      }
+    },
+    "revert": {
+      "type": "object",
+      "properties": {
+        "messageID": {
+          "type": "string"
+        },
+        "partID": {
+          "type": "string"
+        },
+        "snapshot": {
+          "type": "string"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "additions": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deletions": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "status": {
+                "enum": [
+                  "added",
+                  "deleted",
+                  "modified"
+                ]
+              },
+              "more": {
+                "const": true
+              }
+            },
+            "required": [
+              "file",
+              "patch",
+              "additions",
+              "deletions",
+              "status"
+            ]
+          }
+        }
+      },
+      "required": [
+        "messageID"
+      ]
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "projectID",
+    "cost",
+    "tokens",
+    "time",
+    "location"
+  ]
+}

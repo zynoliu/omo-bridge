@@ -1,0 +1,27 @@
+{
+  "id": "ses_01hx",
+  "slug": "wire-the-bridge",
+  "projectID": "prj_01hx",
+  "directory": "/Users/zyno/project",
+  "version": "1.18.0",
+  "time": {
+    "created": 1762315200000,
+    "updated": 1762315260000
+  },
+  "title": "Wire the bridge",
+  "agent": "build",
+  "model": {
+    "id": "claude-sonnet-4-5",
+    "providerID": "anthropic"
+  },
+  "cost": 0.0123,
+  "tokens": {
+    "input": 1200,
+    "output": 300,
+    "reasoning": 0,
+    "cache": {
+      "read": 0,
+      "write": 0
+    }
+  }
+}
