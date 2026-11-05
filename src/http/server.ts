@@ -2,6 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { hostname, tmpdir } from "node:os";
 import type { Config } from "../config";
 import { validateResponse } from "../contract/validate";
+import { createRouter } from "./router";
+import { routes } from "./routes";
 
 /** The opencode version the TUI expects, so it does not warn about a protocol mismatch. */
 export const BRIDGE_PROTOCOL_VERSION = "2.2.5";
@@ -13,16 +15,7 @@ const JSON_CONTENT_TYPE = "application/json";
 
 export type BridgeServer = ReturnType<typeof Bun.serve>;
 
-type RouteContext = {
-  config: Config;
-  port: number;
-};
-
-type RouteHandler = (request: Request, context: RouteContext) => Response;
-
-const ROUTES: ReadonlyMap<string, ReadonlyMap<string, RouteHandler>> = new Map([
-  ["/api/info", new Map<string, RouteHandler>([["GET", infoHandler]])],
-]);
+const IDLE_TIMEOUT_SECONDS = 60;
 
 function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -70,12 +63,12 @@ function rejectUnauthenticated(request: Request, config: Config): Response | nul
   return usernameOk && passwordOk ? null : unauthorized("invalid credentials");
 }
 
-function infoHandler(_request: Request, context: RouteContext): Response {
+function infoHandler(config: Config, port: number): Response {
   const body = {
     version: BRIDGE_PROTOCOL_VERSION,
     pid: process.pid,
     hostname: hostname(),
-    urls: [`http://${context.config.host}:${context.port}`],
+    urls: [`http://${config.host}:${port}`],
     paths: { tmp: tmpdir() },
     capabilities: { persistentPty: false },
   };
@@ -86,30 +79,23 @@ function infoHandler(_request: Request, context: RouteContext): Response {
   return jsonResponse(200, body);
 }
 
-function handleRequest(request: Request, config: Config, port: number): Response {
-  const rejected = rejectUnauthenticated(request, config);
-  if (rejected !== null) return rejected;
-
-  const pathname = new URL(request.url).pathname;
-  const routes = ROUTES.get(pathname);
-  if (routes === undefined) return errorResponse(404, "NotFoundError", `no route for ${request.method} ${pathname}`);
-
-  const handler = routes.get(request.method);
-  if (handler === undefined) {
-    return errorResponse(405, "MethodNotAllowedError", `${request.method} is not allowed on ${pathname}`, {
-      allow: [...routes.keys()].join(", "),
-    });
-  }
-  return handler(request, { config, port });
-}
-
 export function createServer(config: Config): BridgeServer {
   let server: BridgeServer | undefined;
+  const currentPort = (): number => server?.port ?? config.port;
+
+  const router = createRouter([
+    { method: "GET", path: "/api/info", handler: () => infoHandler(config, currentPort()) },
+    ...routes,
+  ]);
+
   server = Bun.serve({
     hostname: config.host,
     port: config.port,
-    fetch(request: Request): Response {
-      return handleRequest(request, config, server?.port ?? config.port);
+    idleTimeout: IDLE_TIMEOUT_SECONDS,
+    fetch(request: Request): Response | Promise<Response> {
+      const rejected = rejectUnauthenticated(request, config);
+      if (rejected !== null) return rejected;
+      return router(request);
     },
   });
   return server;
