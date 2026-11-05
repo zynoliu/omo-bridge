@@ -14,7 +14,8 @@
     "contracts:check": "bun run scripts/contracts-check.ts",
     "surface:extract": "bun run scripts/surface-extract.ts",
     "surface:check": "bun run scripts/surface-extract.ts --check",
-    "selfcheck": "bun run scripts/selfcheck.ts"
+    "selfcheck": "bun run scripts/selfcheck.ts",
+    "qa:tui": "bun run script/qa/web-terminal-visual-qa.mjs"
   },
   "dependencies": {
     "@code-yeongyu/senpi": "2026.11.4-2",
