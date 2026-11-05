@@ -45,6 +45,13 @@ export type FrameDispatch = {
 
 const FEEDBACK_INPUT_TITLE = "feedback";
 
+/** The durable id a host transcript path carries: `<timestamp>_<uuid>.jsonl`. */
+function durableIdOf(sessionPath: string | undefined): string | undefined {
+  if (sessionPath === undefined) return undefined;
+  const base = sessionPath.slice(sessionPath.lastIndexOf("/") + 1);
+  return /_([0-9a-f-]{36})\.jsonl$/.exec(base)?.[1];
+}
+
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -281,10 +288,13 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
   const resolveSessionID = (routingID: string | undefined): string | undefined => {
     if (routingID === undefined) return undefined;
     if (sessionMap.has(routingID)) return routingID;
-    const known = sessionMap
-      .list({ limit: MAX_LIST_LIMIT, includeArchived: true })
-      .data.find((record) => record.routingId === routingID);
-    return known?.key;
+    const known = sessionMap.list({ limit: MAX_LIST_LIMIT, includeArchived: true }).data;
+    const byRouting = known.find((record) => record.routingId === routingID);
+    if (byRouting !== undefined) return byRouting.key;
+    // Host frames name a session by its durable id, not by the connection-scoped routing id the
+    // transport reports. A session the TUI created itself is filed under the id the TUI minted, so
+    // without this match its deltas keep the durable id and the TUI drops every one of them.
+    return known.find((record) => durableIdOf(record.sessionPath) === routingID)?.key;
   };
 
   const dispatch = createFrameDispatch({

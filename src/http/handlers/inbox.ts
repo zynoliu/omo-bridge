@@ -1,5 +1,6 @@
 import type { SenpiSessionSummary, SenpiTransport } from "../../senpi/transport";
 import { STOP_REQUIRES_INTERACTIVE_CLIENT } from "../../senpi/errors";
+import { getSessionManagementStore } from "./session-write";
 import { HandlerProblem, jsonResponse, noContent, messageOf, respond } from "./problem";
 
 // Interrupt, background and pending-inbox (queue) endpoints, plus the `queue_update` diff that turns
@@ -359,9 +360,24 @@ async function resolveTarget(
   caller: SessionInboxTransport,
   sessionID: string,
 ): Promise<{ row: SenpiSessionSummary; key: string }> {
+  const store = getSessionManagementStore();
+  const stored = store?.get(sessionID);
   const rows = await caller.listSessions();
   for (const row of rows) {
-    if (matchesRow(row, sessionID)) return { row, key: durableKeyOf(row) };
+    if (matchesRow(row, sessionID) || (stored !== undefined && row.sessionId === stored.routingId)) {
+      return { row, key: stored === undefined ? durableKeyOf(row) : stored.key };
+    }
+  }
+  if (stored !== undefined) {
+    return {
+      row: {
+        sessionId: stored.routingId,
+        cwd: stored.cwd,
+        durableSessionId: stored.key,
+        ...(stored.sessionPath === undefined ? {} : { sessionPath: stored.sessionPath }),
+      } as SenpiSessionSummary,
+      key: stored.key,
+    };
   }
   throw sessionNotFound(sessionID);
 }

@@ -158,15 +158,32 @@ async function resolveTarget(
   caller: SessionWriteTransport,
   sessionID: string,
 ): Promise<{ row: SenpiSessionSummary; key: string }> {
+  const store = getSessionManagementStore();
+  // The TUI addresses a session by the id it minted, and the host lists that session under its own
+  // routing id only. Resolving from host rows alone answers "session not found" to the first prompt
+  // on every session the TUI created itself.
+  const stored = store?.get(sessionID);
   const rows = await caller.listSessions();
   for (const row of rows) {
-    if (matchesRow(row, sessionID)) {
-      // Event dispatch resolves senpi's connection-scoped routing id through the session map. A
-      // session the map has not seen yet would keep emitting rpc-* ids the TUI cannot attach to a
-      // session, so adopt it here as well as on creation.
-      getSessionManagementStore()?.upsert(row);
-      return { row, key: durableKeyOf(row) };
-    }
+    if (!matchesRow(row, sessionID)) continue;
+    // Event dispatch resolves senpi's connection-scoped routing id through the session map. A
+    // session the map has not seen yet would keep emitting rpc-* ids the TUI cannot attach to a
+    // session, so adopt it here as well as on creation.
+    store?.upsert(row);
+    return { row, key: durableKeyOf(row) };
+  }
+  if (stored !== undefined) {
+    const row = rows.find((candidate) => candidate.sessionId === stored.routingId);
+    if (row !== undefined) return { row, key: stored.key };
+    return {
+      row: {
+        sessionId: stored.routingId,
+        cwd: stored.cwd,
+        durableSessionId: stored.key,
+        ...(stored.sessionPath === undefined ? {} : { sessionPath: stored.sessionPath }),
+      } as SenpiSessionSummary,
+      key: stored.key,
+    };
   }
   throw sessionNotFound(sessionID);
 }
