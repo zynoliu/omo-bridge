@@ -28,6 +28,7 @@ import {
   handleMcpConnect,
   handleMcpDisconnect,
   handleMigrationV1Status,
+  handlePersistentPtyConnect,
   handlePersistentPtyConnectToken,
   handlePersistentPtyCreate,
   handlePersistentPtyList,
@@ -125,6 +126,19 @@ describe("persistent terminal degradation", () => {
     const body = await tagged(response);
     expect(body._tag).toBe("PtyNotFoundError");
     expect(body.ptyID).toBe("pty 1");
+  });
+
+  test("connect answers the same PtyNotFoundError as snapshot, carrying the requested ptyID", async () => {
+    const response = await call(
+      handlePersistentPtyConnect,
+      "GET",
+      "/api/experimental/persistent-pty/pty-1/connect",
+    );
+    expect(response.status).toBe(404);
+    const body = await tagged(response);
+    expect(body._tag).toBe("PtyNotFoundError");
+    expect(body.ptyID).toBe("pty-1");
+    expect(body.message).toBe("persistent terminal pty-1 is not available");
   });
 
   test("connectToken answers PtyNotFoundError carrying the requested ptyID", async () => {
@@ -376,6 +390,12 @@ describe("degradation sweep", () => {
       method: "GET",
       path: "/api/experimental/persistent-pty/pty-1/snapshot",
       handler: handlePersistentPtySnapshot,
+    },
+    {
+      name: "persistentPty.connect",
+      method: "GET",
+      path: "/api/experimental/persistent-pty/pty-1/connect",
+      handler: handlePersistentPtyConnect,
     },
     {
       name: "persistentPty.connectToken",

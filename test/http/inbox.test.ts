@@ -1,11 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   backgroundedSessionIDs,
-  handleSessionBackground,
-  handleSessionInboxCancel,
-  handleSessionInboxList,
-  handleSessionInboxUpdate,
-  handleSessionInterrupt,
   resetSessionInboxState,
   setSessionInboxTransport,
   snapshotQueue,
@@ -15,6 +10,8 @@ import {
   type QueueEntry,
   type SessionInboxTransport,
 } from "../../src/http/handlers/inbox";
+import { createRouter } from "../../src/http/router";
+import { routes } from "../../src/http/routes";
 import type {
   SenpiAbortAnswer,
   SenpiAbortOptions,
@@ -101,8 +98,12 @@ function row(overrides: Record<string, unknown> = {}): SenpiSessionSummary {
   } as SenpiSessionSummary;
 }
 
-function url(path: string): URL {
-  return new URL(`http://bridge.test${path}`);
+// Requests go through the mounted route table, so a missing mount (a router 404) or the old
+// `{data: []}` stub fails these tests the same way it would fail the TUI.
+const router = createRouter(routes);
+
+function dispatch(request: Request): Promise<Response> {
+  return router(request);
 }
 
 function request(method: string, path: string, body?: unknown): Request {
@@ -145,33 +146,25 @@ afterEach(() => {
 
 describe("POST /api/session/:sessionID/interrupt", () => {
   test("sends abort with intent stop, never a bare abort", async () => {
-    const response = await handleSessionInterrupt(
-      request("POST", "/api/session/durable-1/interrupt", {}),
-      url("/api/session/durable-1/interrupt"),
-    );
+    const response = await dispatch(request("POST", "/api/session/durable-1/interrupt", {}));
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
+    expect(await bodyOf(response)).toEqual({ interrupted: true });
     expect(transport.aborts).toEqual([{ intent: "stop" }]);
     expect(transport.raw.commands).toEqual([]);
   });
 
   test("accepts an absent body and a resume query", async () => {
-    const response = await handleSessionInterrupt(
-      request("POST", "/api/session/durable-1/interrupt?resume=true"),
-      url("/api/session/durable-1/interrupt?resume=true"),
-    );
+    const response = await dispatch(request("POST", "/api/session/durable-1/interrupt?resume=true"));
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
     expect(transport.raw.commands).toEqual([{ type: "resume_session", mode: "continue" }]);
   });
 
   test("resumes when the body asks for it", async () => {
-    const response = await handleSessionInterrupt(
-      request("POST", "/api/session/durable-1/interrupt", { resume: true }),
-      url("/api/session/durable-1/interrupt"),
-    );
+    const response = await dispatch(request("POST", "/api/session/durable-1/interrupt", { resume: true }));
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
     expect(transport.raw.commands).toEqual([{ type: "resume_session", mode: "continue" }]);
   });
 
@@ -181,10 +174,7 @@ describe("POST /api/session/:sessionID/interrupt", () => {
       { code: "stop_requires_interactive_client" },
     );
 
-    const response = await handleSessionInterrupt(
-      request("POST", "/api/session/durable-1/interrupt", {}),
-      url("/api/session/durable-1/interrupt"),
-    );
+    const response = await dispatch(request("POST", "/api/session/durable-1/interrupt", {}));
 
     expect(response.status).toBe(409);
     const body = await bodyOf(response);
@@ -196,10 +186,7 @@ describe("POST /api/session/:sessionID/interrupt", () => {
   });
 
   test("404s an unknown session before touching the host", async () => {
-    const response = await handleSessionInterrupt(
-      request("POST", "/api/session/nope/interrupt", {}),
-      url("/api/session/nope/interrupt"),
-    );
+    const response = await dispatch(request("POST", "/api/session/nope/interrupt", {}));
 
     expect(response.status).toBe(404);
     expect((await bodyOf(response))._tag).toBe("SessionNotFoundError");
@@ -207,9 +194,8 @@ describe("POST /api/session/:sessionID/interrupt", () => {
   });
 
   test("400s a malformed body", async () => {
-    const response = await handleSessionInterrupt(
+    const response = await dispatch(
       new Request("http://bridge.test/api/session/durable-1/interrupt", { method: "POST", body: "{" }),
-      url("/api/session/durable-1/interrupt"),
     );
 
     expect(response.status).toBe(400);
@@ -219,10 +205,7 @@ describe("POST /api/session/:sessionID/interrupt", () => {
 
 describe("POST /api/session/:sessionID/background", () => {
   test("marks the session and leaves the turn alone", async () => {
-    const response = await handleSessionBackground(
-      request("POST", "/api/session/durable-1/background"),
-      url("/api/session/durable-1/background"),
-    );
+    const response = await dispatch(request("POST", "/api/session/durable-1/background"));
 
     expect(response.status).toBe(204);
     expect(backgroundedSessionIDs()).toEqual(["durable-1"]);
@@ -231,10 +214,7 @@ describe("POST /api/session/:sessionID/background", () => {
   });
 
   test("404s an unknown session", async () => {
-    const response = await handleSessionBackground(
-      request("POST", "/api/session/nope/background"),
-      url("/api/session/nope/background"),
-    );
+    const response = await dispatch(request("POST", "/api/session/nope/background"));
 
     expect(response.status).toBe(404);
     expect(backgroundedSessionIDs()).toEqual([]);
@@ -243,10 +223,7 @@ describe("POST /api/session/:sessionID/background", () => {
 
 describe("GET /api/session/:sessionID/inbox", () => {
   test("answers an empty list when the transport has no pending-input ledger", async () => {
-    const response = await handleSessionInboxList(
-      request("GET", "/api/session/durable-1/inbox"),
-      url("/api/session/durable-1/inbox"),
-    );
+    const response = await dispatch(request("GET", "/api/session/durable-1/inbox"));
 
     expect(response.status).toBe(200);
     expect(await bodyOf(response)).toEqual({ data: [] });
@@ -261,10 +238,7 @@ describe("GET /api/session/:sessionID/inbox", () => {
       ],
     };
 
-    const response = await handleSessionInboxList(
-      request("GET", "/api/session/durable-1/inbox"),
-      url("/api/session/durable-1/inbox"),
-    );
+    const response = await dispatch(request("GET", "/api/session/durable-1/inbox"));
 
     expect(response.status).toBe(200);
     const data = (await bodyOf(response)).data as Array<Record<string, unknown>>;
@@ -279,14 +253,8 @@ describe("GET /api/session/:sessionID/inbox", () => {
     transport.providePending = true;
     transport.pendingAnswer = [{ id: "msg_1", text: "hello", delivery: "steer" }];
 
-    const first = await handleSessionInboxList(
-      request("GET", "/api/session/durable-1/inbox"),
-      url("/api/session/durable-1/inbox"),
-    );
-    const second = await handleSessionInboxList(
-      request("GET", "/api/session/durable-1/inbox"),
-      url("/api/session/durable-1/inbox"),
-    );
+    const first = await dispatch(request("GET", "/api/session/durable-1/inbox"));
+    const second = await dispatch(request("GET", "/api/session/durable-1/inbox"));
 
     const createdFirst = ((await bodyOf(first)).data as Array<{ time: { created: string } }>)[0]?.time.created;
     const createdSecond = ((await bodyOf(second)).data as Array<{ time: { created: string } }>)[0]?.time.created;
@@ -300,10 +268,7 @@ describe("DELETE /api/session/:sessionID/inbox/:inboxID", () => {
     transport.ordered = [queued({ queuedId: "q_3" }), queued({ queuedId: "q_4", text: "second" })];
     transport.raw.answers.set("dequeue_message", { queuedId: "q_3", status: "removed" });
 
-    const response = await handleSessionInboxCancel(
-      request("DELETE", "/api/session/durable-1/inbox/q_3"),
-      url("/api/session/durable-1/inbox/q_3"),
-    );
+    const response = await dispatch(request("DELETE", "/api/session/durable-1/inbox/q_3"));
 
     expect(response.status).toBe(204);
     expect(transport.raw.commands).toEqual([{ type: "dequeue_message", queuedId: "q_3" }]);
@@ -314,10 +279,7 @@ describe("DELETE /api/session/:sessionID/inbox/:inboxID", () => {
     transport.ordered = [queued({ queuedId: "q_7", clientMessageId: "msg_7" })];
     transport.raw.answers.set("dequeue_message", { queuedId: "q_7", status: "removed" });
 
-    const response = await handleSessionInboxCancel(
-      request("DELETE", "/api/session/durable-1/inbox/msg_7"),
-      url("/api/session/durable-1/inbox/msg_7"),
-    );
+    const response = await dispatch(request("DELETE", "/api/session/durable-1/inbox/msg_7"));
 
     expect(response.status).toBe(204);
     expect(transport.raw.commands).toEqual([{ type: "dequeue_message", queuedId: "q_7" }]);
@@ -326,10 +288,7 @@ describe("DELETE /api/session/:sessionID/inbox/:inboxID", () => {
   test("404s an id the host queue does not hold, without sending clear_queue", async () => {
     transport.ordered = [queued({ queuedId: "q_3" })];
 
-    const response = await handleSessionInboxCancel(
-      request("DELETE", "/api/session/durable-1/inbox/q_9"),
-      url("/api/session/durable-1/inbox/q_9"),
-    );
+    const response = await dispatch(request("DELETE", "/api/session/durable-1/inbox/q_9"));
 
     expect(response.status).toBe(404);
     expect((await bodyOf(response))._tag).toBe("NotFoundError");
@@ -340,10 +299,7 @@ describe("DELETE /api/session/:sessionID/inbox/:inboxID", () => {
     transport.ordered = [queued({ queuedId: "q_3" })];
     transport.raw.answers.set("dequeue_message", { queuedId: "q_3", status: "already_delivered" });
 
-    const response = await handleSessionInboxCancel(
-      request("DELETE", "/api/session/durable-1/inbox/q_3"),
-      url("/api/session/durable-1/inbox/q_3"),
-    );
+    const response = await dispatch(request("DELETE", "/api/session/durable-1/inbox/q_3"));
 
     expect(response.status).toBe(404);
     expect((await bodyOf(response))._tag).toBe("NotFoundError");
@@ -357,9 +313,8 @@ describe("PATCH /api/session/:sessionID/inbox/:inboxID", () => {
     transport.raw.answers.set("dequeue_message", { queuedId: "q_3", status: "removed" });
     transport.raw.answers.set("steer", { disposition: "queued" });
 
-    const response = await handleSessionInboxUpdate(
+    const response = await dispatch(
       request("PATCH", "/api/session/durable-1/inbox/q_3", { delivery: "steer" }),
-      url("/api/session/durable-1/inbox/q_3"),
     );
 
     expect(response.status).toBe(204);
@@ -375,9 +330,8 @@ describe("PATCH /api/session/:sessionID/inbox/:inboxID", () => {
     transport.ordered = [queued({ queuedId: "q_4", text: "later", mode: "steer" })];
     transport.raw.answers.set("dequeue_message", { queuedId: "q_4", status: "removed" });
 
-    const response = await handleSessionInboxUpdate(
+    const response = await dispatch(
       request("PATCH", "/api/session/durable-1/inbox/q_4", { delivery: "queue" }),
-      url("/api/session/durable-1/inbox/q_4"),
     );
 
     expect(response.status).toBe(204);
@@ -390,9 +344,8 @@ describe("PATCH /api/session/:sessionID/inbox/:inboxID", () => {
   test("is a no-op when the input already has that delivery", async () => {
     transport.ordered = [queued({ queuedId: "q_5", mode: "steer" })];
 
-    const response = await handleSessionInboxUpdate(
+    const response = await dispatch(
       request("PATCH", "/api/session/durable-1/inbox/q_5", { delivery: "steer" }),
-      url("/api/session/durable-1/inbox/q_5"),
     );
 
     expect(response.status).toBe(204);
@@ -402,16 +355,14 @@ describe("PATCH /api/session/:sessionID/inbox/:inboxID", () => {
   test("404s an unknown input and 400s an unknown delivery", async () => {
     transport.ordered = [queued({ queuedId: "q_5" })];
 
-    const missing = await handleSessionInboxUpdate(
+    const missing = await dispatch(
       request("PATCH", "/api/session/durable-1/inbox/q_6", { delivery: "queue" }),
-      url("/api/session/durable-1/inbox/q_6"),
     );
     expect(missing.status).toBe(404);
     expect((await bodyOf(missing))._tag).toBe("NotFoundError");
 
-    const invalid = await handleSessionInboxUpdate(
+    const invalid = await dispatch(
       request("PATCH", "/api/session/durable-1/inbox/q_5", { delivery: "later" }),
-      url("/api/session/durable-1/inbox/q_5"),
     );
     expect(invalid.status).toBe(400);
     expect((await bodyOf(invalid))._tag).toBe("InvalidRequestError");
@@ -429,9 +380,8 @@ describe("PATCH /api/session/:sessionID/inbox/:inboxID", () => {
       throw new Error("session is gone");
     };
 
-    const response = await handleSessionInboxUpdate(
+    const response = await dispatch(
       request("PATCH", "/api/session/durable-1/inbox/q_8", { delivery: "steer" }),
-      url("/api/session/durable-1/inbox/q_8"),
     );
 
     expect(response.status).toBe(503);
@@ -439,6 +389,38 @@ describe("PATCH /api/session/:sessionID/inbox/:inboxID", () => {
     expect(body._tag).toBe("ServiceUnavailableError");
     expect(body.message).toContain("was removed but could not be re-queued as steer");
     expect(channel.commands.map((command) => command.type)).toEqual(["dequeue_message", "steer"]);
+  });
+});
+
+describe("mounted session inbox routes", () => {
+  test("the router reaches all five routes and the list is the real projection, not the stub", async () => {
+    transport.providePending = true;
+    transport.pendingAnswer = [{ id: "msg_mount", text: "pending over the router", delivery: "steer" }];
+    transport.ordered = [queued({ queuedId: "q_mount", text: "move me", mode: "followUp" })];
+
+    const interrupted = await dispatch(request("POST", "/api/session/durable-1/interrupt", {}));
+    expect(interrupted.status).toBe(200);
+
+    const background = await dispatch(request("POST", "/api/session/durable-1/background"));
+    expect(background.status).toBe(204);
+
+    const listed = await dispatch(request("GET", "/api/session/durable-1/inbox"));
+    expect(listed.status).toBe(200);
+    const items = (await bodyOf(listed)).data as Array<Record<string, unknown>>;
+    expect(items.map((item) => [item.id, item.text, item.delivery])).toEqual([
+      ["msg_mount", "pending over the router", "steer"],
+    ]);
+
+    const cancelled = await dispatch(request("DELETE", "/api/session/durable-1/inbox/q_mount"));
+    expect(cancelled.status).toBe(204);
+    expect(transport.raw.commands).toEqual([{ type: "dequeue_message", queuedId: "q_mount" }]);
+
+    transport.ordered = [queued({ queuedId: "q_move", text: "move me", mode: "followUp" })];
+    const updated = await dispatch(
+      request("PATCH", "/api/session/durable-1/inbox/q_move", { delivery: "steer" }),
+    );
+    expect(updated.status).toBe(204);
+    expect(transport.raw.commands.at(-1)).toEqual({ type: "steer", message: "move me", enqueueOrder: 1 });
   });
 });
 

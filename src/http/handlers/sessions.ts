@@ -581,18 +581,6 @@ export async function handleSessionMessageGet(request: Request, url: URL): Promi
   });
 }
 
-export async function handleSessionInboxList(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
-    const caller = requireTransport();
-    const sessionID = sessionIdFromPath(url);
-    await requireMappedSession(caller, sessionID);
-    // The inbox projection is empty, but it is a message read that may carry files, so it honours
-    // the same capability the TUI sends; item files will be projected with it once items exist.
-    void wantsMediaRefs(request);
-    return jsonResponse(200, { data: [] }); // todo 13: pending-input ledger
-  });
-}
-
 export async function handleSessionDiff(_request: Request, url: URL): Promise<Response> {
   return respond(async () => {
     const caller = requireTransport();

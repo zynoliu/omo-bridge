@@ -8,7 +8,6 @@ import {
   handleSessionActive,
   handleSessionDiff,
   handleSessionGet,
-  handleSessionInboxList,
   handleSessionList,
   handleSessionLog,
   handleSessionMessageGet,
@@ -20,9 +19,21 @@ import {
   viewedAtFor,
   type SessionReadTransport,
 } from "../../src/http/handlers/sessions";
+import {
+  handleSessionInboxList,
+  setSessionInboxTransport,
+  type SessionInboxTransport,
+} from "../../src/http/handlers/inbox";
 import { sessionManagementStore, setSessionManagementStore } from "../../src/http/handlers/session-write";
 import { SessionMap } from "../../src/model/session-map";
-import type { SenpiEntriesResult, SenpiMessages, SenpiSessionState, SenpiSessionSummary } from "../../src/senpi/transport";
+import type {
+  SenpiAbortAnswer,
+  SenpiEntriesResult,
+  SenpiMessages,
+  SenpiOpenSessionResult,
+  SenpiSessionState,
+  SenpiSessionSummary,
+} from "../../src/senpi/transport";
 
 type Entries = SenpiEntriesResult["entries"];
 type Messages = SenpiMessages;
@@ -176,6 +187,7 @@ beforeEach(() => {
 
 afterEach(() => {
   setSessionReadTransport(undefined);
+  setSessionInboxTransport(undefined);
   setSessionManagementStore(undefined);
   setSessionWaitTimeoutMs(SESSION_WAIT_TIMEOUT_MS);
   rmSync(workDir, { recursive: true, force: true });
@@ -531,9 +543,26 @@ describe("session messages", () => {
   });
 });
 
+/**
+ * The inbox handlers read their own seam; this adapter exposes the same fake through it so the
+ * empty-read and unknown-session assertions keep exercising the mounted handler.
+ */
+function inboxSeam(fake: FakeTransport): SessionInboxTransport {
+  return {
+    sessionId: fake.sessionId,
+    listSessions: () => fake.listSessions(),
+    getState: () => fake.getState(),
+    abort: async () => undefined as SenpiAbortAnswer,
+    openSession: async () => ({ sessionId: fake.sessionId }) as SenpiOpenSessionResult,
+    raw: { request: async <T>() => ({}) as T },
+  };
+}
+
 describe("empty read clusters", () => {
   test("inbox and diff return empty arrays for a known session", async () => {
-    setSessionReadTransport(new FakeTransport({ sessions: [session({ durableSessionId: "durable-1" })] }));
+    const fake = new FakeTransport({ sessions: [session({ durableSessionId: "durable-1" })] });
+    setSessionReadTransport(fake);
+    setSessionInboxTransport(inboxSeam(fake));
 
     const inbox = await handleSessionInboxList(
       get("/api/session/durable-1/inbox"),
@@ -548,7 +577,9 @@ describe("empty read clusters", () => {
   });
 
   test("unknown session still 404s on inbox and diff", async () => {
-    setSessionReadTransport(new FakeTransport());
+    const fake = new FakeTransport();
+    setSessionReadTransport(fake);
+    setSessionInboxTransport(inboxSeam(fake));
     const inbox = await handleSessionInboxList(get("/api/session/nope/inbox"), url("/api/session/nope/inbox"));
     expect(inbox.status).toBe(404);
     expect((await bodyOf(inbox))._tag).toBe("SessionNotFoundError");

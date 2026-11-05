@@ -433,6 +433,8 @@ async function ensureAttached(caller: SessionInboxTransport, row: SenpiSessionSu
  *
  * A user Stop is `abort({intent:"stop"})`, which pauses the session until human input or an explicit
  * resume (senpi#3811). A bare `abort()` is non-user cleanup and must never back this endpoint.
+ * Answers the client's declared success: 200 `{interrupted: boolean}` (the generated client rejects
+ * any other status, so a 204 would make Stop throw).
  */
 export async function handleSessionInterrupt(request: Request, url: URL): Promise<Response> {
   return respond(async () => {
@@ -454,7 +456,7 @@ export async function handleSessionInterrupt(request: Request, url: URL): Promis
     if (resume) {
       await caller.raw.request({ type: "resume_session", mode: "continue" });
     }
-    return noContent();
+    return jsonResponse(200, { interrupted: true });
   });
 }
 
