@@ -1,0 +1,22 @@
+{
+  "id": "anthropic/claude-sonnet-4",
+  "modelID": "claude-sonnet-4",
+  "providerID": "anthropic",
+  "name": "Claude Sonnet 4",
+  "capabilities": {
+    "tools": true,
+    "input": ["text", "image"],
+    "output": ["text"]
+  },
+  "variants": [],
+  "time": {
+    "released": 1750000000000
+  },
+  "cost": [],
+  "status": "active",
+  "enabled": true,
+  "limit": {
+    "context": 200000,
+    "output": 8192
+  }
+}

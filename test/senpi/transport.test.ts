@@ -2,11 +2,19 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { RpcTransportGoneError } from "@code-yeongyu/senpi";
 import { SenpiTransportError, mapSenpiError } from "../../src/senpi/errors";
+import { handleSessionInboxList, setSessionInboxTransport } from "../../src/http/handlers/inbox";
 import { loadAttachClient } from "../../src/senpi/raw";
 import { SenpiTransport } from "../../src/senpi/transport";
 import { FakeSenpiHost } from "./fake-host";
 
 const repoRoot = join(import.meta.dir, "..", "..");
+
+// Compile-time: the facade must expose all four queue/idle methods; a missing one fails this Pick.
+const facadeSurface: Pick<
+  SenpiTransport,
+  "getPendingInputs" | "getCommands" | "setSessionName" | "waitForIdle"
+> = SenpiTransport.prototype;
+void facadeSurface;
 
 describe("error mapping", () => {
   test("a missing private socket maps to socket_missing", async () => {
@@ -93,6 +101,95 @@ describe("client declaration", () => {
     } finally {
       await transport.dispose();
       host.stop();
+    }
+  });
+});
+
+describe("queue and idle facade", () => {
+  test("exposes the four methods at runtime", () => {
+    const transport = new SenpiTransport({ socketPath: join(repoRoot, "x.sock"), keyRoot: repoRoot });
+    expect(typeof transport.getPendingInputs).toBe("function");
+    expect(typeof transport.getCommands).toBe("function");
+    expect(typeof transport.setSessionName).toBe("function");
+    expect(typeof transport.waitForIdle).toBe("function");
+  });
+
+  test("answers the host's pending-input ledger and command surface", async () => {
+    const host = FakeSenpiHost.start();
+    const transport = new SenpiTransport({ socketPath: host.socketPath, keyRoot: host.dir });
+    try {
+      await transport.connect();
+      await transport.openSession({ cwd: host.dir });
+
+      const pending = await transport.getPendingInputs();
+      expect(pending?.inputs.map((input) => input.clientMessageId)).toEqual(["msg_queued_1", "msg_queued_2"]);
+
+      const commands = await transport.getCommands();
+      expect(commands.map((command) => command.name)).toEqual(["fix-tests"]);
+
+      await transport.setSessionName("Renamed by the facade");
+      expect(host.framesOfType("set_session_name")[0]?.frame.name).toBe("Renamed by the facade");
+    } finally {
+      await transport.dispose();
+      host.stop();
+    }
+  });
+
+  test("the inbox handler lists two enqueued inputs through the real transport", async () => {
+    const host = FakeSenpiHost.start();
+    const transport = new SenpiTransport({ socketPath: host.socketPath, keyRoot: host.dir });
+    setSessionInboxTransport(transport);
+    try {
+      await transport.connect();
+      await transport.openSession({ cwd: host.dir });
+
+      const response = await handleSessionInboxList(
+        new Request("http://bridge.test/api/session/durable-1/inbox"),
+        new URL("http://bridge.test/api/session/durable-1/inbox"),
+      );
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { data: Array<Record<string, unknown>> };
+      expect(body.data.map((item) => [item.id, item.sessionID, item.text, item.delivery])).toEqual([
+        ["msg_queued_1", "durable-1", "run the full test suite", "queue"],
+        ["msg_queued_2", "durable-1", "also check the diff", "steer"],
+      ]);
+    } finally {
+      setSessionInboxTransport(undefined);
+      await transport.dispose();
+      host.stop();
+    }
+  });
+
+  test("waitForIdle resolves within 100ms of the turn ending", async () => {
+    const host = FakeSenpiHost.start();
+    const transport = new SenpiTransport({ socketPath: host.socketPath, keyRoot: host.dir });
+    try {
+      await transport.connect();
+      const idle = transport.waitForIdle(2_000);
+      const started = Date.now();
+      host.finishTurn();
+      await idle;
+      expect(Date.now() - started).toBeLessThan(100);
+    } finally {
+      await transport.dispose();
+      host.stop();
+    }
+  });
+
+  test("the new calls refuse a transport that never connected", async () => {
+    const transport = new SenpiTransport({ socketPath: join(repoRoot, "x.sock"), keyRoot: repoRoot });
+    for (const call of [
+      () => transport.getPendingInputs(),
+      () => transport.getCommands(),
+      () => transport.setSessionName("x"),
+      () => transport.waitForIdle(1),
+    ]) {
+      const error = await call().then(
+        () => undefined,
+        (caught: unknown) => caught,
+      );
+      expect(error).toBeInstanceOf(SenpiTransportError);
+      expect((error as SenpiTransportError).code).toBe("not_connected");
     }
   });
 });

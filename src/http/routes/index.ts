@@ -10,6 +10,12 @@ import {
   handleVcsGet,
 } from "../handlers/fs-location";
 import {
+  handleSessionCommand,
+  handleSessionCreate,
+  handleSessionPrompt,
+  handleSessionSynthetic,
+} from "../handlers/prompt";
+import {
   handleSessionActive,
   handleSessionDiff,
   handleSessionGet,
@@ -45,8 +51,12 @@ export const fsLocationRoutes: Route[] = [
 // path match, so the static route has to win or "active" would be read as a session id.
 export const sessionRoutes: Route[] = [
   route("GET", "/api/session", handleSessionList),
+  route("POST", "/api/session", handleSessionCreate),
   route("GET", "/api/session/active", handleSessionActive),
   route("GET", "/api/session/:sessionID", handleSessionGet),
+  route("POST", "/api/session/:sessionID/prompt", handleSessionPrompt),
+  route("POST", "/api/session/:sessionID/synthetic", handleSessionSynthetic),
+  route("POST", "/api/session/:sessionID/command", handleSessionCommand),
   route("GET", "/api/session/:sessionID/message", handleSessionMessages),
   route("GET", "/api/session/:sessionID/message/:messageID", handleSessionMessageGet),
   route("GET", "/api/session/:sessionID/inbox", handleSessionInboxList),

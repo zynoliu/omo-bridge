@@ -1,10 +1,10 @@
-import { type Config, ConfigError, resolveConfig } from "./config";
-import { createServer } from "./http/server";
+import { ConfigError } from "./config";
+import { createRuntime, type BridgeRuntime } from "./runtime";
 
-function main(): void {
-  let config: Config;
+async function main(): Promise<void> {
+  let runtime: BridgeRuntime;
   try {
-    config = resolveConfig();
+    runtime = await createRuntime();
   } catch (error) {
     if (error instanceof ConfigError) {
       console.error(`omo-bridge: ${error.message}`);
@@ -13,18 +13,27 @@ function main(): void {
     throw error;
   }
 
-  const server = createServer(config);
+  const { config, server } = runtime;
   console.log(`omo-bridge listening on http://${config.host}:${server.port}`);
+  if (runtime.transport === undefined) {
+    console.warn("omo-bridge: no senpi transport (OMO_BRIDGE_SENPI_SOCKET is unset); session routes answer 503");
+  }
 
   let stopping = false;
-  const shutdown = (): void => {
+  const shutdown = (signal: NodeJS.Signals): void => {
     if (stopping) return;
     stopping = true;
-    server.stop(true);
-    process.exit(0);
+    console.log(`omo-bridge: ${signal} received, shutting down`);
+    void runtime.close().then(
+      () => process.exit(0),
+      (error: unknown) => {
+        console.error(`omo-bridge: shutdown failed: ${error instanceof Error ? error.message : String(error)}`);
+        process.exit(0);
+      },
+    );
   };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 }
 
-main();
+void main();

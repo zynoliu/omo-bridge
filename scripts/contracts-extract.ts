@@ -65,6 +65,13 @@ export const ENDPOINTS: Endpoint[] = [
     note: "success body of GET /api/location",
   },
   {
+    id: "model.info",
+    kind: "decl",
+    file: "packages/schema/src/model.ts",
+    name: "Info",
+    note: "success body rows of GET /api/model",
+  },
+  {
     id: "error.envelope",
     kind: "errors",
     file: "packages/protocol/src/errors.ts",

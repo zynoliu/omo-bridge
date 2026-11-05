@@ -24,6 +24,11 @@ export type SenpiMessages = Awaited<ReturnType<RpcClient["getMessages"]>>;
 export type SenpiModelInfo = Awaited<ReturnType<RpcClient["getAvailableModels"]>>[number];
 export type SenpiSelectedModel = Awaited<ReturnType<RpcClient["setModel"]>>;
 export type SenpiExtensionUIResponse = Parameters<RpcClient["sendExtensionUIResponse"]>[0];
+export type SenpiPendingInputs = Awaited<ReturnType<RpcClient["getPendingInputs"]>>;
+export type SenpiSlashCommand = Awaited<ReturnType<RpcClient["getCommands"]>>[number];
+
+/** Facade methods an older client may not carry; a missing one degrades instead of throwing. */
+type OptionalClientMethod = "getPendingInputs" | "getCommands" | "setSessionName" | "waitForIdle";
 
 export interface SenpiTransportOptions {
   socketPath?: string;
@@ -222,6 +227,33 @@ export class SenpiTransport {
     return this.call((client) => client.getAvailableModels());
   }
 
+  /** The host's slash-command surface; a client without the command answers an empty surface. */
+  async getCommands(): Promise<SenpiSlashCommand[]> {
+    const listed = await this.callWhenSupported("getCommands", (client) => client.getCommands());
+    return listed ?? [];
+  }
+
+  /**
+   * The pending inputs in durable custody. A client older than the pending-input ledger has no such
+   * method: the answer is undefined, which the inbox handler renders as an empty list.
+   */
+  async getPendingInputs(knownClientMessageIds?: readonly string[]): Promise<SenpiPendingInputs | undefined> {
+    return this.callWhenSupported("getPendingInputs", (client) => client.getPendingInputs(knownClientMessageIds));
+  }
+
+  /** Rename the attached session; a client without the command leaves the name alone. */
+  async setSessionName(name: string): Promise<void> {
+    await this.callWhenSupported("setSessionName", (client) => client.setSessionName(name), { session: true });
+  }
+
+  /**
+   * Resolve once the session is idle. A client without the wait resolves at once: there is nothing
+   * this facade can wait on, and a missing method must not turn a wait into a failure.
+   */
+  async waitForIdle(timeout?: number): Promise<void> {
+    await this.callWhenSupported("waitForIdle", (client) => client.waitForIdle(timeout));
+  }
+
   sendExtensionUIResponse(response: SenpiExtensionUIResponse): Promise<void> {
     return this.call((client) => client.sendExtensionUIResponse(response));
   }
@@ -267,6 +299,28 @@ export class SenpiTransport {
   private async call<T>(operation: (client: RpcClient) => Promise<T>): Promise<T> {
     try {
       return await operation(this.requireClient());
+    } catch (error) {
+      throw mapSenpiError(error);
+    }
+  }
+
+  /**
+   * Run one facade call whose client method may be absent on an older client. The client is still
+   * required first (a disconnected transport must answer `not_connected`), and a refusal from a
+   * present method is mapped exactly like every other call.
+   */
+  private async callWhenSupported<T>(
+    method: OptionalClientMethod,
+    operation: (client: RpcClient) => Promise<T>,
+    options: { session?: boolean } = {},
+  ): Promise<T | undefined> {
+    const client = this.requireClient();
+    if (options.session === true && this.sessionIdValue === undefined) {
+      throw new SenpiTransportError("no_session", "call openSession() before this command");
+    }
+    if (typeof (client as unknown as Record<string, unknown>)[method] !== "function") return undefined;
+    try {
+      return await operation(client);
     } catch (error) {
       throw mapSenpiError(error);
     }
