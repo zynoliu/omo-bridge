@@ -24,13 +24,6 @@ export function classify(before, after) {
   if (error !== undefined) return { outcome: "error", line: error };
   const footer = added.find((line) => ASSISTANT_FOOTER.test(line));
   if (footer !== undefined) return { outcome: "reply", line: footer };
-  const text = added.find(
-    (line) =>
-      !USER_ECHO.test(line) &&
-      !/^[✓✗●◆◦›»+]/u.test(line) &&
-      (line.match(/[\p{L}\p{Script=Han}]/gu) ?? []).length >= 2,
-  );
-  if (text !== undefined) return { outcome: "reply", line: text };
   return { outcome: "idle", line: "" };
 }
 
@@ -45,7 +38,12 @@ export default {
     let matched = "";
     let tui;
     try {
-      tui = await ctx.startTui({ stateDir: bridge.stateDir, cols: 120, rows: 36 });
+      tui = await ctx.startTui({
+        stateDir: bridge.stateDir,
+        cols: 120,
+        rows: 36,
+        ...(ctx.fault === "bogus-session" ? { sessionID: `ses_qa_missing_${Date.now().toString(36)}` } : {}),
+      });
       const ready = await tui.waitFor(
         (text) => text.includes("Build ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
         60_000,
@@ -57,6 +55,28 @@ export default {
       }
       const beforeText = await tui.text();
       const frameBefore = await ctx.writeFile("frame-before.txt", beforeText);
+
+      if (ctx.fault === "bridge-down") {
+        await bridge.stop();
+        await Bun.sleep(500);
+      }
+      if (ctx.fault === "host-down") {
+        const hosts = Bun.spawn(["pgrep", "-f", `${bridge.stateDir}/senpi.sock`], { stdout: "pipe" });
+        const pids = (await new Response(hosts.stdout).text()).split("\n").map((v) => Number.parseInt(v, 10));
+        for (const pid of pids) {
+          if (Number.isInteger(pid) && pid > 0) {
+            try {
+              process.kill(pid, "SIGKILL");
+            } catch {
+              // Already gone.
+            }
+          }
+        }
+        await Bun.sleep(1000);
+      }
+      if (ctx.fault === "bogus-session") {
+        await Bun.sleep(1500);
+      }
 
       await tui.write("你好");
       await Bun.sleep(800);
@@ -97,6 +117,7 @@ export default {
         ready,
         opened,
         openRequested: process.env.QA_OPEN_SESSION !== "0",
+        fault: ctx.fault ?? null,
         durations: { totalMs: Date.now() - started, replyWaitMs: Date.now() - sentAt },
         exitCode: outcome === "reply" && !checks.error ? 0 : 1,
         renderMode: screenshot.written ? "webview" : "text",

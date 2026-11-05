@@ -48,15 +48,21 @@ Exit code `0` means the scenario's assertions held; anything else means they did
 
 ## Reproducing a failure
 
-A run is only evidence that the suite can fail when the failure is injected, not borrowed from a
-flaky provider. This suite has observed both outcomes on one machine:
+A green run proves the path works; it does not prove the suite can fail. `--fault` injects a real
+failure the TUI survives, so the evidence still has a frame to read:
 
-- green (`outcome: "reply"`) when the assistant answers;
-- non-zero (`outcome: "error"`) when the provider returns an upstream error — the frame showed
-  `Session failed` / `the provider returned an unexpected error`, and the report carried that text.
+```sh
+bun run qa:tui -- --scenario send-message --fault host-down
+```
 
-There is no injected-fault mode yet: `--agent-dir` points the bridge at another agent directory but
-the host still resolves its model catalog, so it does not by itself produce a deterministic red.
+`host-down` kills the bridge's private senpi host after the TUI is ready. The TUI stays up, the
+prompt cannot run, and `report.json` says `outcome: "error"` with a frame showing e.g.
+`Failed to prepare session` / `Failed to switch model: UnexpectedStatus: 503`. A second mode,
+`--fault bridge-down`, stops the whole bridge; that run also exits non-zero but its frame is empty
+because the app exits with the bridge, so it is the weaker evidence.
+
+Observed on this machine: the bare command is green (the assistant answers), `--fault host-down` is
+red with a readable frame.
 
 ## Cleanup
 

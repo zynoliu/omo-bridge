@@ -8,18 +8,22 @@ const USAGE = `Usage: bun run qa:tui -- --scenario <name> [--evidence-dir <dir>]
 Options:
   --scenario <name>      scenario module under script/qa/scenarios/<name>.mjs (default: send-message)
   --evidence-dir <dir>   where frames, transcript, bridge log, report and screenshot are written
+  --agent-dir <dir>      run the bridge against this agent directory
+  --fault <mode>         inject a deterministic failure: "bridge-down" stops the bridge after the
+                         TUI is ready, so the prompt cannot succeed
   --keep                 keep the bridge state directory instead of deleting it
   --help                 print this message
 `;
 
 function parseArgs(argv) {
-  const options = { scenario: "send-message", evidenceDir: undefined, agentDir: undefined, keep: false, help: false };
+  const options = { scenario: "send-message", evidenceDir: undefined, agentDir: undefined, fault: undefined, keep: false, help: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--help" || arg === "-h") options.help = true;
     else if (arg === "--scenario") options.scenario = argv[++i];
     else if (arg === "--evidence-dir") options.evidenceDir = argv[++i];
     else if (arg === "--agent-dir") options.agentDir = argv[++i];
+    else if (arg === "--fault") options.fault = argv[++i];
     else if (arg === "--keep") options.keep = true;
   }
   if (options.evidenceDir === undefined) {
@@ -51,6 +55,7 @@ async function main() {
     bunExe,
     evidenceDir: options.evidenceDir,
     agentDir: options.agentDir,
+    fault: options.fault,
     startBridge: (input = {}) => startBridge({ repo, bunExe, evidenceDir: options.evidenceDir, ...input }),
     createSession: (input) => createSession(input),
     startTui: (input = {}) => startTui({ repo, bunExe, ...input }),
