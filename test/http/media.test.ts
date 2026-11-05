@@ -60,6 +60,10 @@ class FakeTransport implements SessionReadTransport {
   async getMessages(): Promise<SenpiMessages> {
     return [];
   }
+
+  async openSession(): Promise<SenpiOpenSessionResult> {
+    return { sessionId: ROUTING_ID } as SenpiOpenSessionResult;
+  }
 }
 
 function entries(): SenpiEntriesResult["entries"] {

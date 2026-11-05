@@ -24,7 +24,7 @@ const DEFAULT_AGENT = "build"; // senpi has no agent selection; this is the proj
 
 export type SessionReadTransport = Pick<
   SenpiTransport,
-  "listSessions" | "getState" | "getEntries" | "getMessages"
+  "listSessions" | "getState" | "getEntries" | "getMessages" | "openSession"
 > & {
   readonly sessionId?: string | undefined;
   waitForIdle?: (timeout?: number) => Promise<void>;
@@ -334,6 +334,17 @@ async function requireMappedSession(
   throw sessionNotFound(sessionID);
 }
 
+// Entries, messages and state are read from the transport's attached session, not from an id in the
+// request, so a read for a session the transport is not attached to (a restart, or a sibling session)
+// would project whichever transcript is attached. Attach the mapped session first, as the write paths do.
+// An already-attached session is left alone: the TUI polls this endpoint mid-turn, and re-attaching a
+// running session is not something this read path may risk.
+async function attachSession(caller: SessionReadTransport, row: SenpiEntriesRow): Promise<void> {
+  if (row.sessionPath === undefined) return;
+  if (caller.sessionId !== undefined && caller.sessionId === row.sessionId) return;
+  await caller.openSession({ sessionPath: row.sessionPath, retainOnDisconnect: true });
+}
+
 function timestampMillis(value: unknown): number {
   if (typeof value === "string") {
     const parsed = Date.parse(value);
@@ -567,7 +578,8 @@ export async function handleSessionMessages(request: Request, url: URL): Promise
   return respond(async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
-    await requireMappedSession(caller, sessionID);
+    const { row } = await requireMappedSession(caller, sessionID);
+    await attachSession(caller, row);
     const limit = readLimit(url, DEFAULT_PAGE_LIMIT, MAX_MESSAGE_LIMIT);
     const offset = readCursor(url);
     const messages = await readMessages(caller, wantsMediaRefs(request));
@@ -581,7 +593,8 @@ export async function handleSessionMessageGet(request: Request, url: URL): Promi
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const messageID = messageIdFromPath(url);
-    await requireMappedSession(caller, sessionID);
+    const { row } = await requireMappedSession(caller, sessionID);
+    await attachSession(caller, row);
     const messages = await readMessages(caller, wantsMediaRefs(request));
     const message = messages.find((candidate) => candidate.id === messageID);
     if (message === undefined) throw messageNotFound(sessionID, messageID);

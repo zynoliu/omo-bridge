@@ -20,6 +20,13 @@ export interface FakeHostOptions {
   pendingInputs?: readonly Record<string, unknown>[];
   /** The `commands` of a `get_commands` answer. */
   commands?: readonly Record<string, unknown>[];
+  /** Rows a `list_sessions` answer reports; defaults to one durable session in the fake's directory. */
+  sessions?: readonly Record<string, unknown>[];
+  /**
+   * Session entries by transcript path, answered by `get_entries`. The real host serves entries for the
+   * session the connection is attached to, which is what lets a test catch a read of the wrong session.
+   */
+  transcripts?: Record<string, readonly Record<string, unknown>[]>;
 }
 
 // Two queued inputs in the shape of the host's `PendingInputSnapshot.inputs` projections.
@@ -59,6 +66,8 @@ interface ConnectionState {
   buffer: string;
   capabilities: string[];
   frames: Record<string, unknown>[];
+  sessionPath?: string;
+  sessionId?: string;
 }
 
 const HANDSHAKE_COMMAND = "get_protocol_info";
@@ -189,13 +198,28 @@ export class FakeSenpiHost {
       return;
     }
     if (type === "open_session") {
+      const sessionPath = typeof frame.sessionPath === "string" ? frame.sessionPath : state.sessionPath;
+      const sessionId = this.sessionIdFor(sessionPath, state);
+      state.sessionPath = sessionPath;
+      state.sessionId = sessionId;
       this.write(socket, {
         type: "response",
         id,
         command: type,
         success: true,
-        data: { sessionId: "rpc-1", attached: true, state: { sessionId: "rpc-1", paused: false } },
+        data: { sessionId, sessionPath, attached: true, state: { sessionId, paused: false } },
       });
+      return;
+    }
+    if (type === "get_entries") {
+      const sessionId = typeof frame.sessionId === "string" ? frame.sessionId : state.sessionId;
+      const sessionPath = this.pathForSession(sessionId) ?? state.sessionPath;
+      const entries = sessionPath === undefined ? [] : (this.options.transcripts?.[sessionPath] ?? []);
+      this.write(socket, { type: "response", id, command: type, success: true, data: { entries, leafId: null } });
+      return;
+    }
+    if (type === "get_messages") {
+      this.write(socket, { type: "response", id, command: type, success: true, data: { messages: [] } });
       return;
     }
     if (type === "list_sessions") {
@@ -204,18 +228,7 @@ export class FakeSenpiHost {
         id,
         command: type,
         success: true,
-        data: {
-          sessions: [
-            {
-              sessionId: "rpc-1",
-              durableSessionId: "durable-1",
-              sessionPath: join(this.dir, "session.jsonl"),
-              cwd: this.dir,
-              status: "open",
-              attachments: 1,
-            },
-          ],
-        },
+        data: { sessions: this.options.sessions ?? [this.defaultSessionRow()] },
       });
       return;
     }
@@ -279,6 +292,28 @@ export class FakeSenpiHost {
       return;
     }
     this.write(socket, { type: "response", id, command: type, success: true });
+  }
+
+  private defaultSessionRow(): Record<string, unknown> {
+    return {
+      sessionId: "rpc-1",
+      durableSessionId: "durable-1",
+      sessionPath: join(this.dir, "session.jsonl"),
+      cwd: this.dir,
+      status: "open",
+      attachments: 1,
+    };
+  }
+
+  private sessionIdFor(sessionPath: string | undefined, state: ConnectionState): string {
+    const known = (this.options.sessions ?? []).find((row) => row.sessionPath === sessionPath);
+    if (typeof known?.sessionId === "string") return known.sessionId;
+    return state.sessionId ?? "rpc-1";
+  }
+
+  private pathForSession(sessionId: string | undefined): string | undefined {
+    const row = (this.options.sessions ?? []).find((candidate) => candidate.sessionId === sessionId);
+    return typeof row?.sessionPath === "string" ? row.sessionPath : undefined;
   }
 
   private write(socket: Bun.Socket<ConnectionState>, payload: unknown): void {

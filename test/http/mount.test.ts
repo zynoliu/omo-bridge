@@ -81,8 +81,8 @@ class FakeSenpi {
     this.responses.push({ type: "set_session_name", name });
   }
 
-  async openSession(): Promise<unknown> {
-    return { sessionId: ROUTING_ID };
+  async openSession(): Promise<SenpiOpenSessionResult> {
+    return { sessionId: ROUTING_ID } as SenpiOpenSessionResult;
   }
 
   async unloadSession(options: unknown): Promise<void> {

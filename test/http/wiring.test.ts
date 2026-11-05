@@ -5,7 +5,13 @@ import { join } from "node:path";
 import { resolveConfig } from "../../src/config";
 import { setSessionReadTransport, type SessionReadTransport } from "../../src/http/handlers/sessions";
 import { BASIC_USERNAME, createServer, type BridgeServer } from "../../src/http/server";
-import type { SenpiEntriesResult, SenpiMessages, SenpiSessionState, SenpiSessionSummary } from "../../src/senpi/transport";
+import type {
+  SenpiEntriesResult,
+  SenpiMessages,
+  SenpiOpenSessionResult,
+  SenpiSessionState,
+  SenpiSessionSummary,
+} from "../../src/senpi/transport";
 
 const PASSWORD = "wiring-password";
 const SESSION_ID = "durable-wiring-1";
@@ -38,6 +44,10 @@ class FakeSenpiTransport implements SessionReadTransport {
 
   async getMessages(): Promise<SenpiMessages> {
     return this.messages;
+  }
+
+  async openSession(): Promise<SenpiOpenSessionResult> {
+    return { sessionId: this.sessionId } as SenpiOpenSessionResult;
   }
 }
 

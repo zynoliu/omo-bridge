@@ -30,6 +30,7 @@ import type {
   SenpiAbortAnswer,
   SenpiEntriesResult,
   SenpiMessages,
+  SenpiOpenSessionOptions,
   SenpiOpenSessionResult,
   SenpiSessionState,
   SenpiSessionSummary,
@@ -42,26 +43,31 @@ interface FakeOptions {
   sessions?: SenpiSessionSummary[];
   states?: Map<string, SenpiSessionState>;
   entries?: Entries;
+  transcripts?: Map<string, Entries>;
   messages?: Messages;
   entriesError?: Error;
   waitForIdle?: (timeout?: number) => Promise<void>;
 }
 
 class FakeTransport implements SessionReadTransport {
-  readonly sessionId = "rpc-1";
+  sessionId = "rpc-1";
   readonly sessions: SenpiSessionSummary[];
   readonly entries: Entries;
+  readonly transcripts: Map<string, Entries> | undefined;
   readonly messages: Messages;
   readonly entriesError: Error | undefined;
   readonly waitForIdle: ((timeout?: number) => Promise<void>) | undefined;
   readonly waitTimeouts: number[] = [];
   readonly states: Map<string, SenpiSessionState>;
+  readonly opened: string[] = [];
+  attachedPath: string | undefined;
   listCalls = 0;
   stateCalls = 0;
 
   constructor(options: FakeOptions = {}) {
     this.sessions = options.sessions ?? [];
     this.entries = options.entries ?? [];
+    this.transcripts = options.transcripts;
     this.messages = options.messages ?? [];
     this.entriesError = options.entriesError;
     this.states = options.states ?? new Map();
@@ -87,8 +93,22 @@ class FakeTransport implements SessionReadTransport {
     return state;
   }
 
+  async openSession(options?: SenpiOpenSessionOptions): Promise<SenpiOpenSessionResult> {
+    const sessionPath = options?.sessionPath;
+    if (sessionPath !== undefined) {
+      this.attachedPath = sessionPath;
+      this.opened.push(sessionPath);
+      const row = this.sessions.find((candidate) => candidate.sessionPath === sessionPath);
+      if (typeof row?.sessionId === "string") this.sessionId = row.sessionId;
+    }
+    return { sessionId: this.sessionId } as SenpiOpenSessionResult;
+  }
+
   async getEntries(): Promise<SenpiEntriesResult> {
     if (this.entriesError !== undefined) throw this.entriesError;
+    if (this.transcripts !== undefined && this.attachedPath !== undefined) {
+      return { entries: this.transcripts.get(this.attachedPath) ?? [], leafId: null };
+    }
     return { entries: this.entries, leafId: null };
   }
 
@@ -540,6 +560,70 @@ describe("session messages", () => {
     const body = await bodyOf(missing);
     expect(body._tag).toBe("MessageNotFoundError");
     expect(body.messageID).toBe("e9");
+  });
+
+  test("a completed turn returns its assistant text block when the transport is attached elsewhere", async () => {
+    const sessionPath = join(workDir, "alpha.jsonl");
+    writeFileSync(sessionPath, `${JSON.stringify({ type: "session", id: "alpha" })}\n`);
+    const transport = new FakeTransport({
+      sessions: [session({ durableSessionId: "durable-1", sessionPath })],
+      transcripts: new Map([
+        [
+          "/work/other/session.jsonl",
+          entriesOf([extensionsEntry("notice-1", "2026-11-05T00:00:09.000Z", "anthropic", "claude-sonnet-4")]),
+        ],
+        [sessionPath, messageEntries()],
+      ]),
+    });
+    transport.attachedPath = "/work/other/session.jsonl";
+    transport.sessionId = "rpc-stale";
+    setSessionReadTransport(transport);
+
+    const body = await bodyOf(
+      await handleSessionMessages(get("/api/session/durable-1/message"), url("/api/session/durable-1/message")),
+    );
+    const data = body.data as Array<Record<string, unknown>>;
+    expect(data.some((message) => message.type === "user" && message.text === "hello")).toBe(true);
+    const assistant = data.find((message) => message.type === "assistant");
+    expect(assistant).toBeDefined();
+    const content = assistant!.content as Array<Record<string, unknown>>;
+    expect(content.some((part) => part.type === "text" && part.text === "hi")).toBe(true);
+    expect(transport.opened).toEqual([sessionPath]);
+  });
+
+  test("a fetch after a reconnect still returns the conversation once, not the attached notices", async () => {
+    const sessionPath = join(workDir, "alpha.jsonl");
+    writeFileSync(sessionPath, `${JSON.stringify({ type: "session", id: "alpha" })}\n`);
+    const transport = new FakeTransport({
+      sessions: [session({ durableSessionId: "durable-1", sessionPath })],
+      transcripts: new Map([
+        [
+          "/work/other/session.jsonl",
+          entriesOf([
+            extensionsEntry("notice-1", "2026-11-05T00:00:08.000Z", "anthropic", "claude-sonnet-4"),
+            extensionsEntry("notice-2", "2026-11-05T00:00:09.000Z", "opencode-go", "deepseek-v4.1-flash"),
+          ]),
+        ],
+        [sessionPath, messageEntries()],
+      ]),
+    });
+    transport.attachedPath = sessionPath;
+    setSessionReadTransport(transport);
+
+    const first = await bodyOf(
+      await handleSessionMessages(get("/api/session/durable-1/message"), url("/api/session/durable-1/message")),
+    );
+    expect((first.data as Array<Record<string, unknown>>).map((message) => message.id)).toEqual(["e1", "e2", "e4"]);
+
+    transport.attachedPath = "/work/other/session.jsonl";
+    transport.sessionId = "rpc-stale";
+    const again = await bodyOf(
+      await handleSessionMessages(get("/api/session/durable-1/message"), url("/api/session/durable-1/message")),
+    );
+    const data = again.data as Array<Record<string, unknown>>;
+    expect(data.map((message) => message.id)).toEqual(["e1", "e2", "e4"]);
+    expect(data.filter((message) => message.type === "assistant")).toHaveLength(1);
+    expect(new Set(data.map((message) => message.id)).size).toBe(data.length);
   });
 });
 
