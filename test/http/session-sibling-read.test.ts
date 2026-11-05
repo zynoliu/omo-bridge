@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { eventBus, type BridgeEvent } from "../../src/http/events";
@@ -8,12 +8,13 @@ import { createRuntime, type BridgeRuntime } from "../../src/runtime";
 import { FakeSenpiHost } from "../senpi/fake-host";
 
 // The streaming client holds exactly one routing id, and the pinned RpcClient drops every frame
-// tagged with another one. A read of a session the transport is not attached to therefore has to
-// happen without moving that attachment, or the running turn goes silent mid-stream.
+// tagged with another one. A read of a sibling session during a run therefore must not attach:
+// it is projected from the sibling's own transcript, or refused when there is none.
 
 const PASSWORD = "sibling-password";
 const SESSION_ID = "durable-a";
 const SIBLING_ID = "durable-b";
+const PATHLESS_ID = "durable-c";
 const ALPHA_ANSWER = "ALPHA TRANSCRIPT";
 const BETA_ANSWER = "BETA ANSWER";
 const COLLECT_TIMEOUT_MS = 2_000;
@@ -65,6 +66,10 @@ function noticeEntry(id: string): Record<string, unknown> {
   };
 }
 
+function writeTranscript(path: string, entries: readonly Record<string, unknown>[]): void {
+  writeFileSync(path, entries.map((entry) => `${JSON.stringify(entry)}\n`).join(""), "utf8");
+}
+
 function runtimeEnv(): Record<string, string> {
   return {
     PATH: process.env.PATH ?? "",
@@ -81,8 +86,12 @@ function auth(): Record<string, string> {
   return { authorization: `Basic ${Buffer.from(`${BASIC_USERNAME}:${PASSWORD}`, "utf8").toString("base64")}` };
 }
 
+async function messageResponse(sessionID: string): Promise<Response> {
+  return fetch(`${base}/api/session/${sessionID}/message?limit=20&order=desc`, { headers: auth() });
+}
+
 async function messagesOf(sessionID: string): Promise<Array<Record<string, unknown>>> {
-  const response = await fetch(`${base}/api/session/${sessionID}/message?limit=20&order=desc`, { headers: auth() });
+  const response = await messageResponse(sessionID);
   expect(response.status).toBe(200);
   const body = (await response.json()) as { data: Array<Record<string, unknown>> };
   return body.data;
@@ -99,8 +108,8 @@ function userText(items: Array<Record<string, unknown>>): string | undefined {
 }
 
 /**
- * Collect `count` events of the listed types, bounded: a stream the read has silenced ends with a
- * partial (or empty) list instead of hanging the test, so the failure names the missing frames.
+ * Collect `count` events of the listed types, bounded: a silenced stream ends with a partial (or
+ * empty) list instead of hanging the test, so the failure names the missing frames.
  */
 async function collectEvents(types: string[], count: number): Promise<BridgeEvent[]> {
   const subscription = eventBus.subscribe({ types });
@@ -126,24 +135,60 @@ function deltaOf(event: BridgeEvent): unknown {
   return (event.data as Record<string, unknown>).delta;
 }
 
+function openedPathsOnStreamingConnection(): unknown[] {
+  return (host.connections[0]?.frames ?? [])
+    .filter((frame) => frame.type === "open_session")
+    .map((frame) => frame.sessionPath);
+}
+
+async function promptAlpha(): Promise<void> {
+  const response = await fetch(`${base}/api/session/${SESSION_ID}/prompt`, {
+    method: "POST",
+    headers: { ...auth(), "content-type": "application/json" },
+    body: JSON.stringify({ delivery: "queue", parts: [{ type: "text", text: "run the turn" }] }),
+  });
+  expect(response.status).toBe(200);
+}
+
+const usage = { input: 1, output: 1, reasoning: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 2, cost: { total: 0 } };
+
+function emitRunStart(): void {
+  host.emit({ type: "agent_start", sessionId: "rpc-a" });
+  host.emit({
+    type: "message_start",
+    sessionId: "rpc-a",
+    message: { role: "assistant", id: "msg_a", provider: "anthropic", model: "claude-sonnet-4", content: [] },
+  });
+}
+
+function emitRunEnd(): void {
+  host.emit({ type: "message_end", sessionId: "rpc-a", message: { role: "assistant", id: "msg_a" } });
+  host.emit({ type: "agent_end", sessionId: "rpc-a", messages: [], willRetry: false });
+}
+
 beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), "omo-bridge-sibling-"));
   alphaPath = join(root, "alpha.jsonl");
   betaPath = join(root, "beta.jsonl");
+  const alpha = [
+    userEntry("alpha-user", "2026-11-05T00:00:00.000Z", "alpha question"),
+    assistantEntry("alpha-assistant", "2026-11-05T00:00:01.000Z", ALPHA_ANSWER),
+  ];
+  const beta = [
+    userEntry("beta-user", "2026-11-05T00:00:00.000Z", "beta question"),
+    assistantEntry("beta-assistant", "2026-11-05T00:00:01.000Z", BETA_ANSWER),
+  ];
+  writeTranscript(alphaPath, alpha);
+  writeTranscript(betaPath, beta);
   host = FakeSenpiHost.start({
     sessions: [
       { sessionId: "rpc-a", durableSessionId: SESSION_ID, sessionPath: alphaPath, cwd: root, status: "open", attachments: 1 },
       { sessionId: "rpc-b", durableSessionId: SIBLING_ID, sessionPath: betaPath, cwd: root, status: "open", attachments: 1 },
+      { sessionId: "rpc-c", durableSessionId: PATHLESS_ID, cwd: root, status: "open", attachments: 1 },
     ],
     transcripts: {
-      [alphaPath]: [
-        userEntry("alpha-user", "2026-11-05T00:00:00.000Z", "alpha question"),
-        assistantEntry("alpha-assistant", "2026-11-05T00:00:01.000Z", ALPHA_ANSWER),
-      ],
-      [betaPath]: [
-        userEntry("beta-user", "2026-11-05T00:00:00.000Z", "beta question"),
-        assistantEntry("beta-assistant", "2026-11-05T00:00:01.000Z", BETA_ANSWER),
-      ],
+      [alphaPath]: alpha,
+      [betaPath]: beta,
       [join(root, "state", "model-catalog.jsonl")]: [noticeEntry("notice-catalog")],
     },
   });
@@ -159,26 +204,11 @@ afterEach(async () => {
 
 describe("a read of a sibling session during a running turn", () => {
   test("leaves the running session's deltas and execution event intact", async () => {
-    const prompt = await fetch(`${base}/api/session/${SESSION_ID}/prompt`, {
-      method: "POST",
-      headers: { ...auth(), "content-type": "application/json" },
-      body: JSON.stringify({ delivery: "queue", parts: [{ type: "text", text: "run the turn" }] }),
-    });
-    expect(prompt.status).toBe(200);
-
+    await promptAlpha();
     const deltas = collectEvents(["session.text.delta"], 2);
     const execution = collectEvents(["session.execution.started", "session.execution.succeeded"], 2);
 
-    host.emit({
-      type: "agent_start",
-      sessionId: "rpc-a",
-    });
-    host.emit({
-      type: "message_start",
-      sessionId: "rpc-a",
-      message: { role: "assistant", id: "msg_a", provider: "anthropic", model: "claude-sonnet-4", content: [] },
-    });
-    const usage = { input: 1, output: 1, reasoning: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 2, cost: { total: 0 } };
+    emitRunStart();
     host.emit({
       type: "message_update",
       sessionId: "rpc-a",
@@ -190,6 +220,7 @@ describe("a read of a sibling session during a running turn", () => {
     expect(assistantText(sibling)).toBe(BETA_ANSWER);
     expect(userText(sibling)).toBe("beta question");
     expect(sibling.some((message) => message.text === "alpha question")).toBe(false);
+    expect(openedPathsOnStreamingConnection()).not.toContain(betaPath);
 
     host.emit({
       type: "message_update",
@@ -197,8 +228,7 @@ describe("a read of a sibling session during a running turn", () => {
       usage,
       assistantMessageEvent: { type: "text_delta", delta: "SECOND", contentIndex: 0 },
     });
-    host.emit({ type: "message_end", sessionId: "rpc-a", message: { role: "assistant", id: "msg_a" } });
-    host.emit({ type: "agent_end", sessionId: "rpc-a", messages: [], willRetry: false });
+    emitRunEnd();
 
     const streamed = await deltas;
     const terminal = await execution;
@@ -213,15 +243,27 @@ describe("a read of a sibling session during a running turn", () => {
       expect((event.data as Record<string, unknown>).sessionID).toBe(SESSION_ID);
     }
 
-    // The streaming connection never left rpc-a: only the reader opened the sibling transcript.
-    const streamingConnection = host.connections[0];
-    expect(streamingConnection).toBeDefined();
-    const openedPaths = (streamingConnection?.frames ?? [])
-      .filter((frame) => frame.type === "open_session")
-      .map((frame) => frame.sessionPath);
-    expect(openedPaths).not.toContain(betaPath);
-    expect(openedPaths).toContain(alphaPath);
-
+    expect(openedPathsOnStreamingConnection()).toContain(alphaPath);
     expect(assistantText(await messagesOf(SESSION_ID))).toBe(ALPHA_ANSWER);
+
+    // With the run over, the transport may attach the sibling again instead of projecting it.
+    expect(assistantText(await messagesOf(SIBLING_ID))).toBe(BETA_ANSWER);
+    expect(openedPathsOnStreamingConnection()).toContain(betaPath);
+  });
+
+  test("refuses a sibling with no transcript path instead of attaching it mid-run", async () => {
+    await promptAlpha();
+    emitRunStart();
+
+    const refused = await messageResponse(PATHLESS_ID);
+    expect(refused.status).toBe(409);
+    const body = (await refused.json()) as Record<string, unknown>;
+    expect(body._tag).toBe("ConflictError");
+
+    const sibling = await messageResponse(SIBLING_ID);
+    expect(sibling.status).toBe(200);
+    expect(openedPathsOnStreamingConnection()).not.toContain(betaPath);
+
+    emitRunEnd();
   });
 });

@@ -66,6 +66,7 @@ function createFakeTransport(): {
 
   const transport = {
     sessionId: "rpc-1" as string | undefined,
+    streaming: false,
     async connect(): Promise<void> {
       connects += 1;
       if (gate !== undefined) await gate;
@@ -357,6 +358,7 @@ describe("start", () => {
     });
 
     const url = `http://127.0.0.1:${started.runtime.server.port}`;
+    expect(started.transport?.streaming).toBe(false);
     const inbox = await fetch(`${url}/api/session/durable-1/inbox`, { headers: basicAuth() });
     expect(inbox.status).toBe(200);
     const body = (await inbox.json()) as { data: Array<Record<string, unknown>> };

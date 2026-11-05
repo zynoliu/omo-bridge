@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
 import { basename } from "node:path";
-import { emptySessionUsage, sessionKeyOf, type SessionUsage } from "../../model/session-map";
+import { emptySessionUsage, readTranscriptEntries, sessionKeyOf, type SessionUsage } from "../../model/session-map";
 import type { SenpiEntriesResult, SenpiMessages, SenpiTransport } from "../../senpi/transport";
 import { mediaUriFor, wantsMediaRefs } from "./media";
 import { getSessionManagementStore } from "./session-write";
@@ -27,12 +27,10 @@ export type SessionReadTransport = Pick<
   "listSessions" | "getState" | "getEntries" | "getMessages" | "openSession"
 > & {
   readonly sessionId?: string | undefined;
+  /** True while the attached session has a run in flight; a sibling read may not attach then. */
+  readonly streaming: boolean;
   waitForIdle?: (timeout?: number) => Promise<void>;
-  readSessionFor?: (target: { sessionId: string; sessionPath?: string }) => Promise<SessionReadHandle | undefined>;
 };
-
-/** What a transcript read needs: the attached transport, or a scoped connection bound to the row. */
-export type SessionReadHandle = Pick<SenpiTransport, "getEntries" | "getMessages">;
 
 let transport: SessionReadTransport | undefined;
 
@@ -339,34 +337,44 @@ async function requireMappedSession(
 }
 
 // Entries and messages are read from the connection's attached session, not from an id in the
-// request. A transport that can hand out a reader per session does that, so a sibling read never
-// moves the streaming client's attachment. Only a transport without readers (the test fakes) still
-// attaches in place, and the write paths keep re-attaching the session they are about to change.
-async function attachSession(caller: SessionReadTransport, row: SenpiEntriesRow): Promise<void> {
-  if (row.sessionPath === undefined) return;
-  if (caller.sessionId !== undefined && caller.sessionId === row.sessionId) return;
-  await caller.openSession({ sessionPath: row.sessionPath, retainOnDisconnect: true });
+// request, so a read must never move that attachment while a run is in flight: the pinned client
+// holds one routing id and drops every frame tagged with another, which silences the running turn.
+// A sibling read during a run is therefore projected from the session's own transcript, and only an
+// idle transport re-attaches the requested session before reading it.
+function conflictFor(row: SenpiEntriesRow, message: string): HandlerProblem {
+  return new HandlerProblem(409, "ConflictError", `session ${sessionIdOf(row)}: ${message}`, {
+    sessionID: sessionIdOf(row),
+  });
 }
 
-async function readHandleFor(caller: SessionReadTransport, row: SenpiEntriesRow): Promise<SessionReadHandle> {
-  const readSessionFor = caller.readSessionFor;
-  if (readSessionFor === undefined) {
-    await attachSession(caller, row);
-    return caller;
+function entryOf(record: Record<string, unknown>): SessionEntry | undefined {
+  return record.type === "message" || record.type === "model_change" ? (record as unknown as SessionEntry) : undefined;
+}
+
+function projectedMessages(row: SenpiEntriesRow, mediaRefs: boolean): PublicSessionMessage[] {
+  if (row.sessionPath === undefined) throw conflictFor(row, "the host lists no transcript path to read");
+  const records = readTranscriptEntries(row.sessionPath);
+  if (records === undefined) throw conflictFor(row, "its transcript is not readable while another session runs");
+  try {
+    const entries = records.map(entryOf).filter((entry): entry is SessionEntry => entry !== undefined);
+    return mapEntries(entries, mediaRefs);
+  } catch (error) {
+    throw conflictFor(row, `its transcript could not be projected (${messageOf(error)})`);
   }
-  if (row.sessionPath === undefined && caller.sessionId !== row.sessionId) {
-    throw new HandlerProblem(
-      409,
-      "ConflictError",
-      `session ${sessionIdOf(row)} cannot be read: it is not attached and the host lists no path to open`,
-      { sessionID: sessionIdOf(row) },
-    );
-  }
-  const reader = await readSessionFor.call(caller, {
-    sessionId: row.sessionId,
-    ...(row.sessionPath === undefined ? {} : { sessionPath: row.sessionPath }),
-  });
-  return reader ?? caller;
+}
+
+async function readMessagesFor(
+  caller: SessionReadTransport,
+  row: SenpiEntriesRow,
+  mediaRefs: boolean,
+): Promise<PublicSessionMessage[]> {
+  if (caller.sessionId !== undefined && caller.sessionId === row.sessionId) return readMessages(caller, mediaRefs);
+  if (caller.streaming) return projectedMessages(row, mediaRefs);
+  if (row.sessionPath === undefined) throw conflictFor(row, "it is not attached and the host lists no path to open");
+  await caller.openSession({ sessionPath: row.sessionPath, retainOnDisconnect: true });
+  const messages = await readMessages(caller, mediaRefs);
+  if (caller.sessionId !== row.sessionId) throw conflictFor(row, "the attachment moved while it was being read");
+  return messages;
 }
 
 function timestampMillis(value: unknown): number {
@@ -500,7 +508,7 @@ function mapEntries(entries: SessionEntry[], mediaRefs: boolean): PublicSessionM
 
 // Entries carry durable ids; a host that refuses the unpaged read falls back to projected messages,
 // whose ids are positional and stable only while the transcript stays append-only.
-async function readMessages(caller: SessionReadHandle, mediaRefs: boolean): Promise<PublicSessionMessage[]> {
+async function readMessages(caller: SessionReadTransport, mediaRefs: boolean): Promise<PublicSessionMessage[]> {
   let entries: SessionEntry[] | undefined;
   try {
     entries = (await caller.getEntries()).entries;
@@ -603,10 +611,9 @@ export async function handleSessionMessages(request: Request, url: URL): Promise
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const { row } = await requireMappedSession(caller, sessionID);
-    const handle = await readHandleFor(caller, row);
     const limit = readLimit(url, DEFAULT_PAGE_LIMIT, MAX_MESSAGE_LIMIT);
     const offset = readCursor(url);
-    const messages = await readMessages(handle, wantsMediaRefs(request));
+    const messages = await readMessagesFor(caller, row, wantsMediaRefs(request));
     const { page, cursor } = paginate(messages, offset, limit);
     return jsonResponse(200, { data: page, cursor });
   });
@@ -618,8 +625,7 @@ export async function handleSessionMessageGet(request: Request, url: URL): Promi
     const sessionID = sessionIdFromPath(url);
     const messageID = messageIdFromPath(url);
     const { row } = await requireMappedSession(caller, sessionID);
-    const handle = await readHandleFor(caller, row);
-    const messages = await readMessages(handle, wantsMediaRefs(request));
+    const messages = await readMessagesFor(caller, row, wantsMediaRefs(request));
     const message = messages.find((candidate) => candidate.id === messageID);
     if (message === undefined) throw messageNotFound(sessionID, messageID);
     return jsonResponse(200, { data: message });

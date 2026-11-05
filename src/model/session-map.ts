@@ -465,6 +465,14 @@ function readJsonl(file: string): { entries: Record<string, unknown>[]; skipped:
   return { entries, skipped };
 }
 
+/**
+ * The session's own JSONL ledger as the host wrote it, for a read that must not touch the host.
+ * Undefined when the file cannot be read; malformed lines are skipped like every other reader here.
+ */
+export function readTranscriptEntries(sessionPath: string): Record<string, unknown>[] | undefined {
+  return readJsonl(sessionPath)?.entries;
+}
+
 function textOfContent(content: unknown): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";

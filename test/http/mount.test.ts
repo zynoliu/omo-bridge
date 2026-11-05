@@ -44,6 +44,7 @@ const MODEL: SenpiModelInfo = { provider: "anthropic", id: "claude-sonnet-4", co
 
 class FakeSenpi {
   readonly sessionId = ROUTING_ID;
+  readonly streaming = false;
   readonly responses: Array<Record<string, unknown>> = [];
   readonly selectedModels: Array<{ provider: string; id: string }> = [];
   rows: SenpiSessionSummary[];

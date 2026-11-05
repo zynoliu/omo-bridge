@@ -51,6 +51,7 @@ interface FakeOptions {
 
 class FakeTransport implements SessionReadTransport {
   sessionId = "rpc-1";
+  streaming = false;
   readonly sessions: SenpiSessionSummary[];
   readonly entries: Entries;
   readonly transcripts: Map<string, Entries> | undefined;

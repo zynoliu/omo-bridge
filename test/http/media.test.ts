@@ -42,6 +42,7 @@ const IMAGE_HASH = createHash("sha256").update(RAW_IMAGE).digest("hex");
 
 class FakeTransport implements SessionReadTransport {
   readonly sessionId = ROUTING_ID;
+  readonly streaming = false;
 
   async listSessions(): Promise<SenpiSessionSummary[]> {
     return [

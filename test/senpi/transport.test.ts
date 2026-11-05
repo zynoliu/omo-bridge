@@ -105,6 +105,46 @@ describe("client declaration", () => {
   });
 });
 
+describe("run boundary", () => {
+  test("streaming follows the attached session's agent_start and agent_end", async () => {
+    const host = FakeSenpiHost.start();
+    const transport = new SenpiTransport({ socketPath: host.socketPath, keyRoot: host.dir });
+    try {
+      await transport.connect();
+      const opened = await transport.openSession({ cwd: host.dir });
+      expect(transport.streaming).toBe(false);
+
+      const started = new Promise<void>((resolve) => {
+        const off = transport.onEvent((event) => {
+          if (event.type !== "agent_start") return;
+          off();
+          resolve();
+        });
+      });
+      host.emit({ type: "agent_start", sessionId: opened.sessionId });
+      await started;
+      expect(transport.streaming).toBe(true);
+
+      const ended = new Promise<void>((resolve) => {
+        const off = transport.onEvent((event) => {
+          if (event.type !== "agent_end") return;
+          off();
+          resolve();
+        });
+      });
+      host.emit({ type: "agent_end", sessionId: opened.sessionId });
+      await ended;
+      expect(transport.streaming).toBe(false);
+
+      await transport.prompt("start another turn");
+      expect(transport.streaming).toBe(true);
+    } finally {
+      await transport.dispose();
+      host.stop();
+    }
+  });
+});
+
 describe("queue and idle facade", () => {
   test("exposes the four methods at runtime", () => {
     const transport = new SenpiTransport({ socketPath: join(repoRoot, "x.sock"), keyRoot: repoRoot });
