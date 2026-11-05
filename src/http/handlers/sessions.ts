@@ -572,6 +572,19 @@ export async function handleSessionMessages(request: Request, url: URL): Promise
   });
 }
 
+// `session.export` is `{data: {info: PublicSessionInfo, messages: PublicSessionMessage[]}}`. The bridge
+// already projects both halves for session.get and message.list, so the export composes them instead
+// of leaving a TUI slash command (/export) on an unmounted route.
+export async function handleSessionExport(request: Request, url: URL): Promise<Response> {
+  return respond(url, async () => {
+    const caller = requireTransport();
+    const sessionID = sessionIdFromPath(url);
+    const { mapped, row } = await requireMappedSession(caller, sessionID);
+    const messages = await readMessagesFor(caller, row, wantsMediaRefs(request));
+    return jsonResponse(200, { data: { info: mapped.info, messages } });
+  });
+}
+
 export async function handleSessionMessageGet(request: Request, url: URL): Promise<Response> {
   return respond(url, async () => {
     const caller = requireTransport();

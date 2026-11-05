@@ -301,14 +301,14 @@ describe("PATCH /api/session/:sessionID", () => {
     expect(body.sessionID).toBe("nope");
   });
 
-  test("a transport that cannot rename answers 501 rather than a fake 204", async () => {
+  test("a transport that cannot rename answers 400 rather than a fake 204", async () => {
     setSessionManagementTransport({ listSessions: async () => transport.rows });
     const response = await handleSessionUpdate(
       request("PATCH", `/api/session/${SESSION_ID}`, { title: "Nope" }),
       url(`/api/session/${SESSION_ID}`),
     );
     const body = await jsonBody(response);
-    expect(response.status).toBe(501);
+    expect(response.status).toBe(400);
     expect(body._tag).toBe("InvalidRequestError");
     expect(map.get(SESSION_ID)?.name).toBe("alpha");
   });
@@ -377,23 +377,27 @@ describe("POST /api/session/:sessionID/move", () => {
 });
 
 describe("POST /api/session/:sessionID/compact", () => {
-  test("drives the transport and answers 204", async () => {
+  test("drives the transport and answers the compaction receipt", async () => {
     const response = await handleSessionCompact(
       request("POST", `/api/session/${SESSION_ID}/compact`),
       url(`/api/session/${SESSION_ID}/compact`),
     );
-    expect(response.status).toBe(204);
-    expect(response.body).toBeNull();
+    expect(response.status).toBe(200);
+    const body = await jsonBody(response);
+    const compaction = body.data as Record<string, unknown>;
+    expect(compaction.type).toBe("compaction");
+    expect(compaction.sessionID).toBe(SESSION_ID);
+    expect(typeof compaction.id).toBe("string");
     expect(transport.compactions).toHaveLength(1);
   });
 
-  test("a transport without compact answers 501", async () => {
+  test("a transport without compact answers 400", async () => {
     setSessionManagementTransport({ listSessions: async () => transport.rows });
     const response = await handleSessionCompact(
       request("POST", `/api/session/${SESSION_ID}/compact`),
       url(`/api/session/${SESSION_ID}/compact`),
     );
-    expect(response.status).toBe(501);
+    expect(response.status).toBe(400);
     expect((await jsonBody(response))._tag).toBe("InvalidRequestError");
   });
 });
@@ -434,14 +438,14 @@ describe("POST /api/session/:sessionID/fork", () => {
     expect(body._tag).toBe("ConflictError");
   });
 
-  test("a transport without fork answers 501", async () => {
+  test("a transport without fork answers 400", async () => {
     setSessionManagementTransport({ listSessions: async () => transport.rows });
     const response = await handleSessionFork(
       request("POST", `/api/session/${SESSION_ID}/fork`, { before: "entry-1" }),
       url(`/api/session/${SESSION_ID}/fork`),
     );
     const body = await jsonBody(response);
-    expect(response.status).toBe(501);
+    expect(response.status).toBe(400);
     expect(body._tag).toBe("InvalidRequestError");
   });
 });

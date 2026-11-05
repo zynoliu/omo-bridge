@@ -35,10 +35,20 @@ function errorResponse(
 }
 
 function matchPath(pattern: string[], segments: string[]): Record<string, string> | null {
-  if (pattern.length !== segments.length) return null;
+  // A trailing `*` captures the remaining segments under `params["*"]`, joined with `/`. The fs.read
+  // endpoint declares its path as `/api/fs/read/*` and the fork's client encodes the file path into
+  // that tail, so a fixed segment count would leave the route unmounted.
+  const wildcard = pattern.at(-1) === "*";
+  if (wildcard ? segments.length < pattern.length - 1 : pattern.length !== segments.length) return null;
   const params: Record<string, string> = {};
   for (let index = 0; index < pattern.length; index += 1) {
     const expected = pattern[index]!;
+    if (expected === "*") {
+      const tail = segments.slice(index).filter((segment) => segment.length > 0);
+      if (tail.length === 0) return null;
+      params["*"] = tail.map(decodePathSegment).join("/");
+      return params;
+    }
     const actual = segments[index]!;
     if (expected.startsWith(":")) {
       if (actual.length === 0) return null;

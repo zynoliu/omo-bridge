@@ -438,7 +438,11 @@ describe("mounted session management routes", () => {
     expect(moved.status).toBe(204);
 
     const compacted = await send("POST", `/api/session/${SESSION_ID}/compact`, {});
-    expect(compacted.status).toBe(204);
+    expect(compacted.status).toBe(200);
+    const compaction = (await json(compacted)).data as Record<string, unknown>;
+    expect(compaction.type).toBe("compaction");
+    expect(compaction.sessionID).toBe(SESSION_ID);
+    expect(typeof compaction.id).toBe("string");
 
     const staged = await send("POST", `/api/session/${SESSION_ID}/revert/stage`, { messageID: "msg_1" });
     expect(staged.status).toBe(200);
@@ -568,15 +572,15 @@ describe("mounted degradation routes", () => {
   const cases: Array<{ method: string; path: string; status: number; tag?: string }> = [
     { method: "GET", path: "/api/worktree?projectID=x", status: 200 },
     { method: "POST", path: "/api/worktree/refresh", status: 204 },
-    { method: "POST", path: "/api/worktree", status: 409, tag: "WorktreeError" },
+    { method: "POST", path: "/api/worktree", status: 400, tag: "WorktreeError" },
     { method: "GET", path: `/api/experimental/session/${SESSION_ID}/terminal`, status: 200 },
-    { method: "POST", path: `/api/experimental/session/${SESSION_ID}/terminal`, status: 409, tag: "ServiceUnavailableError" },
+    { method: "POST", path: `/api/experimental/session/${SESSION_ID}/terminal`, status: 400, tag: "InvalidRequestError" },
     { method: "GET", path: "/api/experimental/persistent-pty/pty_1/snapshot", status: 404, tag: "PtyNotFoundError" },
     { method: "GET", path: "/api/experimental/persistent-pty/x/connect", status: 404, tag: "PtyNotFoundError" },
     { method: "POST", path: "/api/experimental/persistent-pty/pty_1/connect-token", status: 404, tag: "PtyNotFoundError" },
     { method: "GET", path: "/api/experimental/migration/v1", status: 200 },
-    { method: "POST", path: "/api/integration/int_1/connect/key", status: 409, tag: "IntegrationNotFoundError" },
-    { method: "POST", path: "/api/integration/int_1/connect/external", status: 409, tag: "IntegrationNotFoundError" },
+    { method: "POST", path: "/api/integration/int_1/connect/key", status: 404, tag: "IntegrationNotFoundError" },
+    { method: "POST", path: "/api/integration/int_1/connect/external", status: 404, tag: "IntegrationNotFoundError" },
     { method: "POST", path: "/api/integration/int_1/connect/oauth", status: 404, tag: "IntegrationAttemptNotFoundError" },
     { method: "GET", path: "/api/integration/int_1/connect/oauth/att_1", status: 404, tag: "IntegrationAttemptNotFoundError" },
     { method: "POST", path: "/api/integration/int_1/connect/oauth/att_1/complete", status: 404, tag: "IntegrationAttemptNotFoundError" },
@@ -584,10 +588,10 @@ describe("mounted degradation routes", () => {
     { method: "POST", path: "/api/integration/int_1/connect/command", status: 404, tag: "IntegrationAttemptNotFoundError" },
     { method: "GET", path: "/api/integration/int_1/connect/command/att_1", status: 404, tag: "IntegrationAttemptNotFoundError" },
     { method: "DELETE", path: "/api/integration/int_1/connect/command/att_1", status: 404, tag: "IntegrationAttemptNotFoundError" },
-    { method: "POST", path: "/api/credential/cred_1/activate", status: 409, tag: "InvalidRequestError" },
-    { method: "PATCH", path: "/api/credential/cred_1", status: 409, tag: "InvalidRequestError" },
-    { method: "DELETE", path: "/api/credential/cred_1", status: 409, tag: "InvalidRequestError" },
-    { method: "POST", path: "/api/pair", status: 409, tag: "InvalidRequestError" },
+    { method: "POST", path: "/api/credential/cred_1/activate", status: 400, tag: "InvalidRequestError" },
+    { method: "PATCH", path: "/api/credential/cred_1", status: 400, tag: "InvalidRequestError" },
+    { method: "DELETE", path: "/api/credential/cred_1", status: 400, tag: "InvalidRequestError" },
+    { method: "POST", path: "/api/pair", status: 400, tag: "InvalidRequestError" },
     { method: "GET", path: "/api/experimental/usage/limits?location%5Bdirectory%5D=$WORKDIR", status: 200 },
     { method: "POST", path: "/api/experimental/mcp/demo/connect", status: 204 },
     { method: "POST", path: "/api/experimental/mcp/demo/disconnect", status: 204 },

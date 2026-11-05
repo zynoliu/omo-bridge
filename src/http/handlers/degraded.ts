@@ -83,7 +83,49 @@ export async function handleWorktreeRefresh(_request: Request, _url: URL): Promi
 }
 
 export async function handleWorktreeCreate(_request: Request, _url: URL): Promise<Response> {
-  return errorResponse(409, "WorktreeError", "worktrees are not supported by the omo-native engine");
+  // `WorktreeError` is declared at 400; 409 is not in this endpoint's declaredStatuses.
+  return errorResponse(400, "WorktreeError", "worktrees are not supported by the omo-native engine");
+}
+
+export async function handleWorktreeRemove(_request: Request, _url: URL): Promise<Response> {
+  // DELETE /api/worktree declares WorktreeError at 400 and NoContent at 204. Removing a worktree
+  // the bridge never created cannot succeed; the declared error keeps the TUI's failure toast.
+  return errorResponse(400, "WorktreeError", "worktrees are not supported by the omo-native engine");
+}
+
+export async function handlePluginUpdate(_request: Request, _url: URL): Promise<Response> {
+  // No server plugin is loaded, so there is no package target to update; the write is a no-op.
+  return noContent();
+}
+
+export async function handleSessionStats(_request: Request, _url: URL): Promise<Response> {
+  // SessionStats.Info aggregates per-day steps, tool reliability and per-model usage. senpi keeps
+  // no such daily ledger, and zeros would claim the user ran nothing. The endpoint declares
+  // InvalidRequestError at 400, which is what the TUI renders as "Could not load stats".
+  return errorResponse(400, "InvalidRequestError", "session statistics are not available from this bridge", {
+    field: "stats",
+    kind: "unsupported",
+  });
+}
+
+export async function handleSessionGenerate(_request: Request, _url: URL): Promise<Response> {
+  // `session.generate` runs a transient model call outside the conversation; the bridge has no
+  // such host command. Inherited 400 keeps it out of the 5xx band and inside declaredStatuses.
+  return errorResponse(400, "InvalidRequestError", "transient session generation is not supported by this bridge", {
+    field: "generate",
+    kind: "unsupported",
+  });
+}
+
+export async function handleRpcCall(_request: Request, url: URL): Promise<Response> {
+  const segments = pathSegments(url);
+  const at = segments.indexOf("rpc");
+  const rpcID = at >= 0 ? (segments[at + 1] ?? "") : "";
+  const method = at >= 0 ? (segments[at + 2] ?? "") : "";
+  // No plugin RPC is registered on this bridge; `RpcError` is declared at 400.
+  return errorResponse(400, "RpcError", `no plugin RPC ${rpcID}.${method} is registered on this bridge`, {
+    type: "rpc.not_found",
+  });
 }
 
 export async function handlePersistentPtyList(_request: Request, _url: URL): Promise<Response> {
@@ -92,9 +134,11 @@ export async function handlePersistentPtyList(_request: Request, _url: URL): Pro
 }
 
 export async function handlePersistentPtyCreate(_request: Request, _url: URL): Promise<Response> {
-  // ServiceUnavailableError is declared by this endpoint; 409 keeps it out of the 5xx band.
-  return errorResponse(409, "ServiceUnavailableError", "persistent terminals are not supported by the omo-native engine", {
-    service: "senpi",
+  // This endpoint declares InvalidRequestError at 400 and ServiceUnavailableError at 503. The 400
+  // keeps a permanent capability gap out of the 5xx band while staying inside declaredStatuses.
+  return errorResponse(400, "InvalidRequestError", "persistent terminals are not supported by the omo-native engine", {
+    field: "terminal",
+    kind: "unsupported",
   });
 }
 
@@ -123,7 +167,8 @@ export async function handleMigrationV1Status(_request: Request, _url: URL): Pro
 
 function integrationNotFound(url: URL): Response {
   const integrationID = segmentAfter(url, "integration");
-  return errorResponse(409, "IntegrationNotFoundError", `integration ${integrationID} is not available`, {
+  // `IntegrationNotFoundError` is declared at 404; 409 is not in these endpoints' declaredStatuses.
+  return errorResponse(404, "IntegrationNotFoundError", `integration ${integrationID} is not available`, {
     integrationID,
   });
 }
@@ -176,7 +221,8 @@ export async function handleIntegrationCommandCancel(_request: Request, url: URL
 }
 
 function credentialUnsupported(): Response {
-  return errorResponse(409, "InvalidRequestError", "integration credentials are not supported by the omo-native engine", {
+  // credential.* declares InvalidRequestError at 400; 409 is not a declared status there.
+  return errorResponse(400, "InvalidRequestError", "integration credentials are not supported by the omo-native engine", {
     kind: "unsupported",
   });
 }
@@ -194,7 +240,8 @@ export async function handleCredentialRemove(_request: Request, _url: URL): Prom
 }
 
 export async function handleServerPair(_request: Request, _url: URL): Promise<Response> {
-  return errorResponse(409, "InvalidRequestError", "device pairing is not supported by the omo-native engine", {
+  // server.pair declares 400/401; 409 is not a declared status for it.
+  return errorResponse(400, "InvalidRequestError", "device pairing is not supported by the omo-native engine", {
     kind: "unsupported",
   });
 }

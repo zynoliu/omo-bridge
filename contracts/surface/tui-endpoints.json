@@ -1,0 +1,2295 @@
+{
+  "fork": "my-tui/opencode",
+  "endpoints": [
+    {
+      "chain": "agent.list",
+      "method": "GET",
+      "path": "/api/agent",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "agent.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2111",
+        "packages/tui/src/component/dialog-agent.tsx:11",
+        "packages/tui/src/component/prompt/autocomplete.tsx:425",
+        "packages/tui/src/component/prompt/index.tsx:1553",
+        "packages/tui/src/context/local.tsx:60",
+        "packages/tui/src/context/local.tsx:63",
+        "packages/tui/src/mini/catalog.shared.ts:79"
+      ]
+    },
+    {
+      "chain": "command.list",
+      "method": "GET",
+      "path": "/api/command",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "command.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2112",
+        "packages/tui/src/component/prompt/autocomplete.tsx:503",
+        "packages/tui/src/component/prompt/index.tsx:1158",
+        "packages/tui/src/mini/catalog.shared.ts:88"
+      ]
+    },
+    {
+      "chain": "config.get",
+      "method": "GET",
+      "path": "/api/config",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "config.get",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2115",
+        "packages/tui/src/app.tsx:218"
+      ]
+    },
+    {
+      "chain": "credential.activate",
+      "method": "POST",
+      "path": "/api/credential/:credentialID/activate",
+      "params": [
+        "credentialID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-integration.tsx:232"
+      ]
+    },
+    {
+      "chain": "credential.remove",
+      "method": "DELETE",
+      "path": "/api/credential/:credentialID",
+      "params": [
+        "credentialID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-integration.tsx:271"
+      ]
+    },
+    {
+      "chain": "credential.update",
+      "method": "PATCH",
+      "path": "/api/credential/:credentialID",
+      "params": [
+        "credentialID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-integration.tsx:254"
+      ]
+    },
+    {
+      "chain": "event.subscribe",
+      "method": "GET",
+      "path": "/api/event",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": true,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/connection.ts:97",
+        "packages/tui/src/mini/stream-v2.transport.ts:1504"
+      ]
+    },
+    {
+      "chain": "experimental.mcp.connect",
+      "method": "POST",
+      "path": "/api/experimental/mcp/:server/connect",
+      "params": [
+        "server"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-mcp.tsx:124"
+      ]
+    },
+    {
+      "chain": "experimental.mcp.disconnect",
+      "method": "POST",
+      "path": "/api/experimental/mcp/:server/disconnect",
+      "params": [
+        "server"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-mcp.tsx:124"
+      ]
+    },
+    {
+      "chain": "experimental.media.get",
+      "method": "GET",
+      "path": "/api/experimental/media/:hash",
+      "params": [
+        "hash"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": true,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/util/media.ts:27"
+      ]
+    },
+    {
+      "chain": "experimental.migration.v1.status",
+      "method": "GET",
+      "path": "/api/experimental/migration/v1",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "migration.status",
+      "callSites": [
+        "packages/tui/src/component/migration-overlay.tsx:22"
+      ]
+    },
+    {
+      "chain": "experimental.persistentPty.connectToken",
+      "method": "POST",
+      "path": "/api/experimental/persistent-pty/:ptyID/connect-token",
+      "params": [
+        "ptyID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        403,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/pty.ts:65"
+      ]
+    },
+    {
+      "chain": "experimental.persistentPty.create",
+      "method": "POST",
+      "path": "/api/experimental/session/:sessionID/terminal",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/context/session-terminals.tsx:104"
+      ]
+    },
+    {
+      "chain": "experimental.persistentPty.list",
+      "method": "GET",
+      "path": "/api/experimental/session/:sessionID/terminal",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "persistentPty.list",
+      "callSites": [
+        "packages/tui/src/context/session-terminals.tsx:37"
+      ]
+    },
+    {
+      "chain": "experimental.persistentPty.snapshot",
+      "method": "GET",
+      "path": "/api/experimental/persistent-pty/:ptyID/snapshot",
+      "params": [
+        "ptyID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/terminal-pane.tsx:182"
+      ]
+    },
+    {
+      "chain": "experimental.session.export",
+      "method": "GET",
+      "path": "/api/experimental/session/:sessionID/export",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        500
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/routes/session/index.tsx:1335",
+        "packages/tui/src/routes/session/index.tsx:1361"
+      ]
+    },
+    {
+      "chain": "experimental.session.log",
+      "method": "GET",
+      "path": "/api/experimental/session/:sessionID/log",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": true,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/devtools-bar.tsx:165"
+      ]
+    },
+    {
+      "chain": "experimental.session.stats",
+      "method": "GET",
+      "path": "/api/experimental/session/stats",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/feature-plugins/system/stats.tsx:143"
+      ]
+    },
+    {
+      "chain": "experimental.session.wait",
+      "method": "POST",
+      "path": "/api/experimental/session/:sessionID/wait",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/mini/stream-v2.transport.ts:914",
+        "packages/tui/src/routes/session/index.tsx:1138"
+      ]
+    },
+    {
+      "chain": "experimental.usage.limits",
+      "method": "GET",
+      "path": "/api/experimental/usage/limits",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "usage.limits",
+      "callSites": [
+        "packages/client/src/solid/data.ts:1486"
+      ]
+    },
+    {
+      "chain": "file.find",
+      "method": "GET",
+      "path": "/api/fs/find",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "fs.find",
+      "callSites": [
+        "packages/tui/src/component/prompt/autocomplete.tsx:378",
+        "packages/tui/src/mini/runtime.ts:234"
+      ]
+    },
+    {
+      "chain": "file.list",
+      "method": "GET",
+      "path": "/api/fs/list",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "fs.list",
+      "callSites": [
+        "packages/tui/src/app.tsx:228"
+      ]
+    },
+    {
+      "chain": "file.read",
+      "method": "GET",
+      "path": "/api/fs/read/:path",
+      "params": [
+        "path"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": true,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/feature-plugins/system/diff-viewer.tsx:206"
+      ]
+    },
+    {
+      "chain": "form.list",
+      "method": "GET",
+      "path": "/api/form",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "form.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:1972",
+        "packages/client/src/solid/data.ts:1988",
+        "packages/tui/src/component/devtools-bar.tsx:195",
+        "packages/tui/src/component/session-nav.tsx:307",
+        "packages/tui/src/context/session-tabs.tsx:167",
+        "packages/tui/src/mini/stream-v2.subagent.ts:544",
+        "packages/tui/src/mini/stream-v2.transport.ts:978",
+        "packages/tui/src/mini/stream-v2.transport.ts:980",
+        "packages/tui/src/routes/home.tsx:38",
+        "packages/tui/src/routes/session/form.tsx:216",
+        "packages/tui/src/routes/session/index.tsx:215",
+        "packages/tui/src/routes/session/index.tsx:218"
+      ]
+    },
+    {
+      "chain": "integration.command.cancel",
+      "method": "DELETE",
+      "path": "/api/integration/:integrationID/connect/command/:attemptID",
+      "params": [
+        "integrationID",
+        "attemptID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-integration.tsx:431",
+        "packages/tui/src/component/dialog-integration.tsx:513"
+      ]
+    },
+    {
+      "chain": "integration.command.connect",
+      "method": "POST",
+      "path": "/api/integration/:integrationID/connect/command",
+      "params": [
+        "integrationID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-integration.tsx:423"
+      ]
+    },
+    {
+      "chain": "integration.command.status",
+      "method": "GET",
+      "path": "/api/integration/:integrationID/connect/command/:attemptID",
+      "params": [
+        "integrationID",
+        "attemptID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-integration.tsx:478"
+      ]
+    },
+    {
+      "chain": "integration.connect.external",
+      "method": "POST",
+      "path": "/api/integration/:integrationID/connect/external",
+      "params": [
+        "integrationID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-integration.tsx:372"
+      ]
+    },
+    {
+      "chain": "integration.connect.key",
+      "method": "POST",
+      "path": "/api/integration/:integrationID/connect/key",
+      "params": [
+        "integrationID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-integration.tsx:568"
+      ]
+    },
+    {
+      "chain": "integration.list",
+      "method": "GET",
+      "path": "/api/integration",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "integration.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2117",
+        "packages/tui/src/component/dialog-go-upsell.tsx:222",
+        "packages/tui/src/component/dialog-go-upsell.tsx:234",
+        "packages/tui/src/component/dialog-integration.tsx:109",
+        "packages/tui/src/component/dialog-integration.tsx:190",
+        "packages/tui/src/component/use-connected.tsx:7",
+        "packages/tui/src/feature-plugins/sidebar/footer.tsx:16"
+      ]
+    },
+    {
+      "chain": "integration.oauth.cancel",
+      "method": "DELETE",
+      "path": "/api/integration/:integrationID/connect/oauth/:attemptID",
+      "params": [
+        "integrationID",
+        "attemptID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-go-upsell.tsx:336",
+        "packages/tui/src/component/dialog-go-upsell.tsx:377",
+        "packages/tui/src/component/dialog-integration.tsx:729",
+        "packages/tui/src/component/dialog-integration.tsx:766"
+      ]
+    },
+    {
+      "chain": "integration.oauth.complete",
+      "method": "POST",
+      "path": "/api/integration/:integrationID/connect/oauth/:attemptID/complete",
+      "params": [
+        "integrationID",
+        "attemptID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-integration.tsx:780"
+      ]
+    },
+    {
+      "chain": "integration.oauth.connect",
+      "method": "POST",
+      "path": "/api/integration/:integrationID/connect/oauth",
+      "params": [
+        "integrationID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-go-upsell.tsx:332",
+        "packages/tui/src/component/dialog-integration.tsx:617"
+      ]
+    },
+    {
+      "chain": "integration.oauth.status",
+      "method": "GET",
+      "path": "/api/integration/:integrationID/connect/oauth/:attemptID",
+      "params": [
+        "integrationID",
+        "attemptID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-go-upsell.tsx:285",
+        "packages/tui/src/component/dialog-integration.tsx:698"
+      ]
+    },
+    {
+      "chain": "location.get",
+      "method": "GET",
+      "path": "/api/location",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "location.get",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2065",
+        "packages/client/src/solid/data.ts:733",
+        "packages/tui/src/app.tsx:230",
+        "packages/tui/src/component/dialog-workspaces.tsx:69",
+        "packages/tui/src/component/prompt/index.tsx:290",
+        "packages/tui/src/component/prompt/move.tsx:121"
+      ]
+    },
+    {
+      "chain": "location.reload",
+      "method": "POST",
+      "path": "/api/location/reload",
+      "params": [],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        503
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/app.tsx:1112"
+      ]
+    },
+    {
+      "chain": "mcp.list",
+      "method": "GET",
+      "path": "/api/mcp",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "mcp.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2119"
+      ]
+    },
+    {
+      "chain": "mcp.resource.catalog",
+      "method": "GET",
+      "path": "/api/mcp/resource",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "mcp.resourceCatalog",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2121"
+      ]
+    },
+    {
+      "chain": "message.list",
+      "method": "GET",
+      "path": "/api/session/:sessionID/message",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        500
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "session.messages",
+      "callSites": [
+        "packages/client/src/promise/media.ts:33",
+        "packages/client/src/solid/data.ts:1823",
+        "packages/client/src/solid/data.ts:1890",
+        "packages/tui/src/feature-plugins/prompt/footer.tsx:42",
+        "packages/tui/src/feature-plugins/sidebar/context.tsx:12",
+        "packages/tui/src/feature-plugins/sidebar/todo.tsx:11",
+        "packages/tui/src/mini/session.shared.ts:80",
+        "packages/tui/src/mini/stream-v2.subagent.ts:409",
+        "packages/tui/src/mini/stream-v2.transport.ts:904",
+        "packages/tui/src/routes/session/dialog-fork.tsx:63",
+        "packages/tui/src/routes/session/dialog-timeline.tsx:17",
+        "packages/tui/src/routes/session/index.tsx:1230",
+        "packages/tui/src/routes/session/index.tsx:178",
+        "packages/tui/src/routes/session/index.tsx:2026",
+        "packages/tui/src/routes/session/index.tsx:446",
+        "packages/tui/src/routes/session/rows.ts:136",
+        "packages/tui/src/routes/session/rows.ts:167",
+        "packages/tui/src/routes/session/rows.ts:61"
+      ]
+    },
+    {
+      "chain": "model.default",
+      "method": "GET",
+      "path": "/api/model/default",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/mini/runtime.ts:657",
+        "packages/tui/src/mini/stream-v2.transport.ts:464"
+      ]
+    },
+    {
+      "chain": "model.list",
+      "method": "GET",
+      "path": "/api/model",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "model.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2125",
+        "packages/tui/src/component/dialog-go-upsell.tsx:244",
+        "packages/tui/src/component/dialog-integration.tsx:1274",
+        "packages/tui/src/component/dialog-model-free.tsx:27",
+        "packages/tui/src/component/dialog-model.tsx:98",
+        "packages/tui/src/component/usage.tsx:49",
+        "packages/tui/src/context/local.tsx:44",
+        "packages/tui/src/feature-plugins/prompt/footer.tsx:43",
+        "packages/tui/src/feature-plugins/sidebar/context.tsx:17",
+        "packages/tui/src/mini/catalog.shared.ts:108",
+        "packages/tui/src/routes/session/index.tsx:262",
+        "packages/tui/src/routes/session/index.tsx:3301"
+      ]
+    },
+    {
+      "chain": "permission.list",
+      "method": "GET",
+      "path": "/api/session/:sessionID/permission",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "permission.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:1938",
+        "packages/tui/src/component/devtools-bar.tsx:194",
+        "packages/tui/src/component/session-nav.tsx:304",
+        "packages/tui/src/context/session-tabs.tsx:165",
+        "packages/tui/src/mini/stream-v2.subagent.ts:536",
+        "packages/tui/src/mini/stream-v2.transport.ts:977",
+        "packages/tui/src/routes/session/index.tsx:210",
+        "packages/tui/src/routes/session/index.tsx:2797",
+        "packages/tui/src/routes/session/rows.ts:108"
+      ]
+    },
+    {
+      "chain": "permission.reply",
+      "method": "POST",
+      "path": "/api/session/:sessionID/permission/:requestID/reply",
+      "params": [
+        "sessionID",
+        "requestID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/data.ts:1947",
+        "packages/tui/src/component/session-nav.tsx:304",
+        "packages/tui/src/mini/runtime.ts:273",
+        "packages/tui/src/routes/session/index.tsx:274",
+        "packages/tui/src/routes/session/permission.tsx:137"
+      ]
+    },
+    {
+      "chain": "permission.saved.list",
+      "method": "GET",
+      "path": "/api/permission/saved",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/data.ts:2030"
+      ]
+    },
+    {
+      "chain": "plugin.check",
+      "method": "POST",
+      "path": "/api/plugin/check",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/feature-plugins/system/plugins.tsx:168"
+      ]
+    },
+    {
+      "chain": "plugin.list",
+      "method": "GET",
+      "path": "/api/plugin",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "plugin.list",
+      "callSites": [
+        "packages/tui/src/feature-plugins/system/plugins.tsx:36",
+        "packages/tui/src/plugin/context.tsx:540"
+      ]
+    },
+    {
+      "chain": "plugin.update",
+      "method": "POST",
+      "path": "/api/plugin/update",
+      "params": [],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/feature-plugins/system/plugins.tsx:146"
+      ]
+    },
+    {
+      "chain": "project.list",
+      "method": "GET",
+      "path": "/api/project",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "project.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2017",
+        "packages/tui/src/component/dialog-open.tsx:239",
+        "packages/tui/src/component/session-nav.tsx:256"
+      ]
+    },
+    {
+      "chain": "provider.list",
+      "method": "GET",
+      "path": "/api/provider",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/data.ts:2126",
+        "packages/tui/src/component/dialog-integration.tsx:1275",
+        "packages/tui/src/component/dialog-model.tsx:96",
+        "packages/tui/src/component/usage.tsx:36",
+        "packages/tui/src/context/local.tsx:45",
+        "packages/tui/src/mini/catalog.shared.ts:107"
+      ]
+    },
+    {
+      "chain": "reference.list",
+      "method": "GET",
+      "path": "/api/reference",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "reference.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2127",
+        "packages/tui/src/component/prompt/autocomplete.tsx:293",
+        "packages/tui/src/mini/catalog.shared.ts:97"
+      ]
+    },
+    {
+      "chain": "rpc.call",
+      "method": "POST",
+      "path": "/api/rpc/:rpcID/:method",
+      "params": [
+        "rpcID",
+        "method"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        500
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/promise/rpc.ts:102",
+        "packages/tui/src/feature-plugins/prompt/goal.tsx:14"
+      ]
+    },
+    {
+      "chain": "server.info",
+      "method": "GET",
+      "path": "/api/info",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "server.info",
+      "callSites": [
+        "packages/tui/src/component/devtools-bar.tsx:57",
+        "packages/tui/src/component/dialog-pair.tsx:22",
+        "packages/tui/src/context/session-terminals.tsx:69"
+      ]
+    },
+    {
+      "chain": "server.pair",
+      "method": "POST",
+      "path": "/api/pair",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-pair.tsx:22"
+      ]
+    },
+    {
+      "chain": "session.active",
+      "method": "GET",
+      "path": "/api/session/active",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "session.active",
+      "callSites": [
+        "packages/client/src/solid/data.ts:710",
+        "packages/tui/src/component/dialog-open.tsx:180",
+        "packages/tui/src/mini/stream-v2.transport.ts:987"
+      ]
+    },
+    {
+      "chain": "session.background",
+      "method": "POST",
+      "path": "/api/session/:sessionID/background",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/prompt/index.tsx:544",
+        "packages/tui/src/mini/runtime.ts:392",
+        "packages/tui/src/routes/session/index.tsx:1395"
+      ]
+    },
+    {
+      "chain": "session.command",
+      "method": "POST",
+      "path": "/api/session/:sessionID/command",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        500
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/prompt/index.tsx:1325",
+        "packages/tui/src/feature-plugins/prompt/goal.tsx:111",
+        "packages/tui/src/mini/stream-v2.transport.ts:1772"
+      ]
+    },
+    {
+      "chain": "session.compact",
+      "method": "POST",
+      "path": "/api/session/:sessionID/compact",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        409
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/data.ts:1714",
+        "packages/tui/src/mini/runtime.ts:927",
+        "packages/tui/src/routes/session/index.tsx:1104"
+      ]
+    },
+    {
+      "chain": "session.create",
+      "method": "POST",
+      "path": "/api/session",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "session.create",
+      "callSites": [
+        "packages/client/src/solid/data.ts:1676",
+        "packages/tui/src/component/prompt/index.tsx:1239"
+      ]
+    },
+    {
+      "chain": "session.diff",
+      "method": "GET",
+      "path": "/api/session/:sessionID/diff",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        500
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "session.diff",
+      "callSites": [
+        "packages/tui/src/feature-plugins/system/diff-viewer.tsx:151"
+      ]
+    },
+    {
+      "chain": "session.environment",
+      "method": "PUT",
+      "path": "/api/session/:sessionID/environment",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/app.tsx:537",
+        "packages/tui/src/component/prompt/index.tsx:1255"
+      ]
+    },
+    {
+      "chain": "session.fork",
+      "method": "POST",
+      "path": "/api/session/:sessionID/fork",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "session.fork",
+      "callSites": [
+        "packages/tui/src/app.tsx:710",
+        "packages/tui/src/app.tsx:723",
+        "packages/tui/src/routes/session/dialog-fork.tsx:33"
+      ]
+    },
+    {
+      "chain": "session.form.cancel",
+      "method": "DELETE",
+      "path": "/api/session/:sessionID/form/:formID",
+      "params": [
+        "sessionID",
+        "formID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        409
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/data.ts:2002",
+        "packages/tui/src/component/session-nav.tsx:307",
+        "packages/tui/src/mini/runtime.ts:287",
+        "packages/tui/src/routes/session/form.tsx:470"
+      ]
+    },
+    {
+      "chain": "session.form.list",
+      "method": "GET",
+      "path": "/api/session/:sessionID/form",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "form.session.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:1988",
+        "packages/tui/src/component/devtools-bar.tsx:195",
+        "packages/tui/src/component/session-nav.tsx:307",
+        "packages/tui/src/context/session-tabs.tsx:167",
+        "packages/tui/src/mini/stream-v2.subagent.ts:544",
+        "packages/tui/src/mini/stream-v2.transport.ts:978",
+        "packages/tui/src/routes/home.tsx:38",
+        "packages/tui/src/routes/session/form.tsx:216",
+        "packages/tui/src/routes/session/index.tsx:215",
+        "packages/tui/src/routes/session/index.tsx:218"
+      ]
+    },
+    {
+      "chain": "session.form.reply",
+      "method": "POST",
+      "path": "/api/session/:sessionID/form/:formID/reply",
+      "params": [
+        "sessionID",
+        "formID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        409
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/data.ts:1999",
+        "packages/tui/src/mini/runtime.ts:278",
+        "packages/tui/src/routes/session/form.tsx:272"
+      ]
+    },
+    {
+      "chain": "session.generate",
+      "method": "POST",
+      "path": "/api/session/:sessionID/generate",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/feature-plugins/prompt/btw.tsx:68"
+      ]
+    },
+    {
+      "chain": "session.get",
+      "method": "GET",
+      "path": "/api/session/:sessionID",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "session.get",
+      "callSites": [
+        "packages/client/src/solid/data.ts:1788",
+        "packages/tui/src/app.tsx:533",
+        "packages/tui/src/app.tsx:640",
+        "packages/tui/src/app.tsx:786",
+        "packages/tui/src/app.tsx:812",
+        "packages/tui/src/component/devtools-bar.tsx:149",
+        "packages/tui/src/component/dialog-open.tsx:147",
+        "packages/tui/src/component/dialog-open.tsx:192",
+        "packages/tui/src/component/dialog-session-list.tsx:48",
+        "packages/tui/src/component/prompt/index.tsx:1218",
+        "packages/tui/src/component/prompt/index.tsx:1251",
+        "packages/tui/src/component/prompt/index.tsx:1260",
+        "packages/tui/src/component/prompt/index.tsx:1285",
+        "packages/tui/src/component/prompt/index.tsx:1550",
+        "packages/tui/src/component/prompt/index.tsx:1636",
+        "packages/tui/src/component/prompt/index.tsx:1992",
+        "packages/tui/src/component/prompt/index.tsx:261",
+        "packages/tui/src/component/prompt/index.tsx:279",
+        "packages/tui/src/component/prompt/move.tsx:128",
+        "packages/tui/src/component/prompt/move.tsx:131",
+        "packages/tui/src/component/session-frame.tsx:108",
+        "packages/tui/src/component/session-nav.tsx:107",
+        "packages/tui/src/component/session-nav.tsx:119",
+        "packages/tui/src/component/session-nav.tsx:129",
+        "packages/tui/src/component/session-nav.tsx:271",
+        "packages/tui/src/component/session-nav.tsx:294",
+        "packages/tui/src/component/session-nav.tsx:362",
+        "packages/tui/src/component/session-nav.tsx:442",
+        "packages/tui/src/component/session-tabs.tsx:1248",
+        "packages/tui/src/component/session-tabs.tsx:1572",
+        "packages/tui/src/component/session-tabs.tsx:582",
+        "packages/tui/src/component/session-tabs.tsx:744",
+        "packages/tui/src/context/client-mcp.tsx:39",
+        "packages/tui/src/context/client-mcp.tsx:40",
+        "packages/tui/src/context/client-mcp.tsx:53",
+        "packages/tui/src/context/local.tsx:257",
+        "packages/tui/src/context/local.tsx:269",
+        "packages/tui/src/context/local.tsx:296",
+        "packages/tui/src/context/local.tsx:329",
+        "packages/tui/src/context/local.tsx:95",
+        "packages/tui/src/context/session-tabs.tsx:120",
+        "packages/tui/src/context/session-tabs.tsx:124",
+        "packages/tui/src/context/session-tabs.tsx:161",
+        "packages/tui/src/context/session-tabs.tsx:241",
+        "packages/tui/src/context/session-tabs.tsx:297",
+        "packages/tui/src/context/session-tabs.tsx:387",
+        "packages/tui/src/context/session-tabs.tsx:433",
+        "packages/tui/src/context/session-terminals.tsx:103",
+        "packages/tui/src/feature-plugins/prompt/footer.tsx:39",
+        "packages/tui/src/feature-plugins/prompt/goal.tsx:19",
+        "packages/tui/src/feature-plugins/sidebar/context.tsx:13",
+        "packages/tui/src/feature-plugins/sidebar/footer.tsx:14",
+        "packages/tui/src/feature-plugins/sidebar/footer.tsx:78",
+        "packages/tui/src/feature-plugins/sidebar/mcp.tsx:8",
+        "packages/tui/src/feature-plugins/sidebar/todo.tsx:12",
+        "packages/tui/src/feature-plugins/system/diff-viewer.tsx:111",
+        "packages/tui/src/feature-plugins/system/notifications.ts:11",
+        "packages/tui/src/feature-plugins/system/notifications.ts:29",
+        "packages/tui/src/feature-plugins/system/notifications.ts:53",
+        "packages/tui/src/feature-plugins/system/notifications.ts:74",
+        "packages/tui/src/mini/session.shared.ts:81",
+        "packages/tui/src/mini/stream-v2.subagent.ts:588",
+        "packages/tui/src/mini/stream-v2.subagent.ts:617",
+        "packages/tui/src/mini/stream-v2.transport.ts:459",
+        "packages/tui/src/plugin/api.tsx:128",
+        "packages/tui/src/routes/session/composer/subagents-tab.tsx:36",
+        "packages/tui/src/routes/session/index.tsx:177",
+        "packages/tui/src/routes/session/index.tsx:2373",
+        "packages/tui/src/routes/session/index.tsx:3012",
+        "packages/tui/src/routes/session/index.tsx:349",
+        "packages/tui/src/routes/session/location-missing.tsx:28",
+        "packages/tui/src/routes/session/permission.tsx:120",
+        "packages/tui/src/routes/session/rows.ts:56",
+        "packages/tui/src/routes/session/sidebar.tsx:17"
+      ]
+    },
+    {
+      "chain": "session.inbox.cancel",
+      "method": "DELETE",
+      "path": "/api/session/:sessionID/inbox/:inboxID",
+      "params": [
+        "sessionID",
+        "inboxID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/mini/runtime.ts:398",
+        "packages/tui/src/routes/session/index.tsx:768"
+      ]
+    },
+    {
+      "chain": "session.inbox.list",
+      "method": "GET",
+      "path": "/api/session/:sessionID/inbox",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "session.inbox.list",
+      "callSites": [
+        "packages/client/src/promise/media.ts:45",
+        "packages/client/src/solid/data.ts:1596",
+        "packages/tui/src/mini/stream-v2.subagent.ts:410",
+        "packages/tui/src/mini/stream-v2.transport.ts:976"
+      ]
+    },
+    {
+      "chain": "session.inbox.update",
+      "method": "PATCH",
+      "path": "/api/session/:sessionID/inbox/:inboxID",
+      "params": [
+        "sessionID",
+        "inboxID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        409
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/mini/runtime.ts:401",
+        "packages/tui/src/routes/session/index.tsx:765",
+        "packages/tui/src/routes/session/index.tsx:767"
+      ]
+    },
+    {
+      "chain": "session.interrupt",
+      "method": "POST",
+      "path": "/api/session/:sessionID/interrupt",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/prompt/index.tsx:524",
+        "packages/tui/src/component/session-nav.tsx:300",
+        "packages/tui/src/mini/runtime.ts:382",
+        "packages/tui/src/mini/runtime.ts:405",
+        "packages/tui/src/mini/stream-v2.transport.ts:1636",
+        "packages/tui/src/mini/stream-v2.transport.ts:1882",
+        "packages/tui/src/routes/session/composer/subagents-tab.tsx:192",
+        "packages/tui/src/routes/session/index.tsx:1137"
+      ]
+    },
+    {
+      "chain": "session.list",
+      "method": "GET",
+      "path": "/api/session",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "session.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:570",
+        "packages/client/src/solid/retention.ts:34",
+        "packages/tui/src/app.tsx:695",
+        "packages/tui/src/app.tsx:769",
+        "packages/tui/src/component/dialog-open.tsx:163",
+        "packages/tui/src/component/dialog-open.tsx:64",
+        "packages/tui/src/component/dialog-session-list.tsx:63",
+        "packages/tui/src/component/dialog-session-list.tsx:91",
+        "packages/tui/src/component/dialog-workspaces.tsx:141",
+        "packages/tui/src/component/session-nav.tsx:242",
+        "packages/tui/src/component/session-nav.tsx:74",
+        "packages/tui/src/context/local.tsx:551",
+        "packages/tui/src/mini/stream-v2.subagent.ts:1050",
+        "packages/tui/src/routes/session/composer/subagents-tab.tsx:45"
+      ]
+    },
+    {
+      "chain": "session.message.get",
+      "method": "GET",
+      "path": "/api/session/:sessionID/message/:messageID",
+      "params": [
+        "sessionID",
+        "messageID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "session.message.get",
+      "callSites": [
+        "packages/client/src/promise/media.ts:40",
+        "packages/client/src/solid/data.ts:795",
+        "packages/tui/src/mini/stream-v2.subagent.ts:472",
+        "packages/tui/src/mini/stream-v2.transport.ts:956",
+        "packages/tui/src/routes/session/dialog-fork.tsx:24",
+        "packages/tui/src/routes/session/dialog-message.tsx:22",
+        "packages/tui/src/routes/session/index.tsx:1556",
+        "packages/tui/src/routes/session/index.tsx:565",
+        "packages/tui/src/routes/session/index.tsx:892",
+        "packages/tui/src/routes/session/permission.tsx:125",
+        "packages/tui/src/routes/session/rows.ts:197",
+        "packages/tui/src/routes/session/rows.ts:242"
+      ]
+    },
+    {
+      "chain": "session.move",
+      "method": "POST",
+      "path": "/api/session/:sessionID/move",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-workspaces.tsx:318",
+        "packages/tui/src/component/prompt/index.tsx:303",
+        "packages/tui/src/routes/session/location-missing.tsx:51"
+      ]
+    },
+    {
+      "chain": "session.prompt",
+      "method": "POST",
+      "path": "/api/session/:sessionID/prompt",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        409
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/data.ts:1774",
+        "packages/tui/src/component/prompt/index.tsx:1366",
+        "packages/tui/src/mini/stream-v2.transport.ts:1757"
+      ]
+    },
+    {
+      "chain": "session.remove",
+      "method": "DELETE",
+      "path": "/api/session/:sessionID",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-session-list.tsx:269",
+        "packages/tui/src/component/session-nav.tsx:338"
+      ]
+    },
+    {
+      "chain": "session.revert.clear",
+      "method": "DELETE",
+      "path": "/api/session/:sessionID/revert",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        409,
+        500
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/routes/session/index.tsx:1154",
+        "packages/tui/src/routes/session/index.tsx:2277"
+      ]
+    },
+    {
+      "chain": "session.revert.commit",
+      "method": "POST",
+      "path": "/api/session/:sessionID/revert/commit",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        409
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/prompt/index.tsx:1346"
+      ]
+    },
+    {
+      "chain": "session.revert.stage",
+      "method": "POST",
+      "path": "/api/session/:sessionID/revert/stage",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        409,
+        500
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/routes/session/dialog-message.tsx:45",
+        "packages/tui/src/routes/session/index.tsx:1139"
+      ]
+    },
+    {
+      "chain": "session.shell",
+      "method": "POST",
+      "path": "/api/session/:sessionID/shell",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/prompt/index.tsx:1315",
+        "packages/tui/src/mini/stream-v2.transport.ts:1602"
+      ]
+    },
+    {
+      "chain": "session.switchAgent",
+      "method": "POST",
+      "path": "/api/session/:sessionID/agent",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/prompt/index.tsx:1288",
+        "packages/tui/src/mini/stream-v2.transport.ts:1817",
+        "packages/tui/src/mini/stream-v2.transport.ts:1852"
+      ]
+    },
+    {
+      "chain": "session.switchModel",
+      "method": "POST",
+      "path": "/api/session/:sessionID/model",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/data.ts:1713",
+        "packages/tui/src/component/prompt/index.tsx:1294",
+        "packages/tui/src/mini/stream-v2.transport.ts:1822",
+        "packages/tui/src/mini/stream-v2.transport.ts:1857"
+      ]
+    },
+    {
+      "chain": "session.synthetic",
+      "method": "POST",
+      "path": "/api/session/:sessionID/synthetic",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        409
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/prompt/index.tsx:1352"
+      ]
+    },
+    {
+      "chain": "session.update",
+      "method": "PATCH",
+      "path": "/api/session/:sessionID",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-session-rename.tsx:20",
+        "packages/tui/src/component/session-nav.tsx:313",
+        "packages/tui/src/component/session-nav.tsx:324",
+        "packages/tui/src/context/data.tsx:40",
+        "packages/tui/src/routes/session/index.tsx:1064"
+      ]
+    },
+    {
+      "chain": "session.view",
+      "method": "POST",
+      "path": "/api/session/:sessionID/view",
+      "params": [
+        "sessionID"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/context/session-tabs.tsx:245"
+      ]
+    },
+    {
+      "chain": "shell.get",
+      "method": "GET",
+      "path": "/api/shell/:id",
+      "params": [
+        "id"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "shell.get",
+      "callSites": [
+        "packages/tui/src/component/dialog-shell-output.tsx:41",
+        "packages/tui/src/routes/session/index.tsx:3012",
+        "packages/tui/src/routes/session/index.tsx:3017"
+      ]
+    },
+    {
+      "chain": "shell.list",
+      "method": "GET",
+      "path": "/api/shell",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "shell.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:1488",
+        "packages/tui/src/feature-plugins/prompt/footer.tsx:32"
+      ]
+    },
+    {
+      "chain": "shell.output",
+      "method": "GET",
+      "path": "/api/shell/:id/output",
+      "params": [
+        "id"
+      ],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "shell.output",
+      "callSites": [
+        "packages/tui/src/component/dialog-shell-output.tsx:46",
+        "packages/tui/src/component/dialog-shell-output.tsx:51",
+        "packages/tui/src/routes/session/index.tsx:3038"
+      ]
+    },
+    {
+      "chain": "shell.remove",
+      "method": "DELETE",
+      "path": "/api/shell/:id",
+      "params": [
+        "id"
+      ],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/routes/session/composer/shell-tab.tsx:104"
+      ]
+    },
+    {
+      "chain": "skill.list",
+      "method": "GET",
+      "path": "/api/skill",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "skill.list",
+      "callSites": [
+        "packages/client/src/solid/data.ts:2139",
+        "packages/tui/src/component/dialog-skill.tsx:26",
+        "packages/tui/src/component/dialog-skill.tsx:29",
+        "packages/tui/src/component/prompt/autocomplete.tsx:445"
+      ]
+    },
+    {
+      "chain": "vcs.base",
+      "method": "GET",
+      "path": "/api/vcs/base",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "vcs.base",
+      "callSites": [
+        "packages/tui/src/feature-plugins/system/diff-viewer.tsx:127"
+      ]
+    },
+    {
+      "chain": "vcs.branch.list",
+      "method": "GET",
+      "path": "/api/vcs/branch",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/feature-plugins/system/diff-viewer.tsx:268"
+      ]
+    },
+    {
+      "chain": "vcs.diff",
+      "method": "GET",
+      "path": "/api/vcs/diff",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "vcs.diff",
+      "callSites": [
+        "packages/tui/src/feature-plugins/system/diff-viewer.tsx:163"
+      ]
+    },
+    {
+      "chain": "vcs.get",
+      "method": "GET",
+      "path": "/api/vcs",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "vcs.get",
+      "callSites": [
+        "packages/client/src/solid/data.ts:1485"
+      ]
+    },
+    {
+      "chain": "vcs.status",
+      "method": "GET",
+      "path": "/api/vcs/status",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-workspaces.tsx:257"
+      ]
+    },
+    {
+      "chain": "websearch.providers",
+      "method": "GET",
+      "path": "/api/websearch/provider",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404,
+        503
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/client/src/solid/data.ts:2134"
+      ]
+    },
+    {
+      "chain": "worktree.create",
+      "method": "POST",
+      "path": "/api/worktree",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-open.tsx:463",
+        "packages/tui/src/component/prompt/move.tsx:41",
+        "packages/tui/src/routes/session/location-missing.tsx:40"
+      ]
+    },
+    {
+      "chain": "worktree.list",
+      "method": "GET",
+      "path": "/api/worktree",
+      "params": [],
+      "successStatus": 200,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": false,
+      "binary": false,
+      "sse": false,
+      "schema": "worktree.list",
+      "callSites": [
+        "packages/tui/src/component/dialog-open.tsx:122",
+        "packages/tui/src/component/dialog-workspaces.tsx:83"
+      ]
+    },
+    {
+      "chain": "worktree.refresh",
+      "method": "POST",
+      "path": "/api/worktree/refresh",
+      "params": [],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-open.tsx:133",
+        "packages/tui/src/component/dialog-workspaces.tsx:107"
+      ]
+    },
+    {
+      "chain": "worktree.remove",
+      "method": "DELETE",
+      "path": "/api/worktree",
+      "params": [],
+      "successStatus": 204,
+      "declaredStatuses": [
+        400,
+        401,
+        404
+      ],
+      "empty": true,
+      "binary": false,
+      "sse": false,
+      "schema": null,
+      "callSites": [
+        "packages/tui/src/component/dialog-workspaces.tsx:244",
+        "packages/tui/src/component/dialog-workspaces.tsx:270"
+      ]
+    }
+  ]
+}

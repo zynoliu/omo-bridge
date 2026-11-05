@@ -91,7 +91,7 @@ describe("worktree degradation", () => {
 
   test("create answers the declared WorktreeError instead of pretending to create one", async () => {
     const response = await call(handleWorktreeCreate, "POST", "/api/worktree");
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(400);
     const body = await tagged(response);
     expect(body._tag).toBe("WorktreeError");
     expect(body.message).toBe("worktrees are not supported by the omo-native engine");
@@ -108,12 +108,12 @@ describe("persistent terminal degradation", () => {
     expect("location" in body).toBe(false);
   });
 
-  test("create answers the declared ServiceUnavailableError without a 5xx", async () => {
+  test("create answers the declared InvalidRequestError without a 5xx", async () => {
     const response = await call(handlePersistentPtyCreate, "POST", "/api/experimental/session/ses-1/terminal");
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(400);
     const body = await tagged(response);
-    expect(body._tag).toBe("ServiceUnavailableError");
-    expect(body.service).toBe("senpi");
+    expect(body._tag).toBe("InvalidRequestError");
+    expect(body.kind).toBe("unsupported");
   });
 
   test("snapshot answers PtyNotFoundError carrying the requested ptyID", async () => {
@@ -170,7 +170,7 @@ describe("integration degradation", () => {
       "POST",
       `/api/integration/${INTEGRATION_ID}/connect/key`,
     );
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(404);
     const body = await tagged(response);
     expect(body._tag).toBe("IntegrationNotFoundError");
     expect(body.integrationID).toBe(INTEGRATION_ID);
@@ -182,7 +182,7 @@ describe("integration degradation", () => {
       "POST",
       `/api/integration/${INTEGRATION_ID}/connect/external`,
     );
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(404);
     expect((await tagged(response))._tag).toBe("IntegrationNotFoundError");
   });
 
@@ -277,7 +277,7 @@ describe("credential degradation", () => {
   for (const [name, handler, method] of cases) {
     test(`${name} answers InvalidRequestError instead of a no-op 204`, async () => {
       const response = await handler(requestOf(method, "/api/credential/cred-1"), urlOf("/api/credential/cred-1"));
-      expect(response.status).toBe(409);
+      expect(response.status).toBe(400);
       const body = await tagged(response);
       expect(body._tag).toBe("InvalidRequestError");
       expect(body.message).toContain("not supported");
@@ -288,7 +288,7 @@ describe("credential degradation", () => {
 describe("server pairing degradation", () => {
   test("pair answers InvalidRequestError instead of a pairing code", async () => {
     const response = await call(handleServerPair, "POST", "/api/pair");
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(400);
     const body = await tagged(response);
     expect(body._tag).toBe("InvalidRequestError");
     expect(body).not.toHaveProperty("code");

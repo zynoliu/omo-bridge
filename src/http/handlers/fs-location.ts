@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { readdirSync, realpathSync, statSync, type Dirent } from "node:fs";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { readFileSync, readdirSync, realpathSync, statSync, type Dirent } from "node:fs";
+import { extname, isAbsolute, join, relative, resolve } from "node:path";
 import { gitRead } from "../../git";
 
 const JSON_CONTENT_TYPE = "application/json";
@@ -323,6 +323,132 @@ export async function handleVcsGet(_request: Request, url: URL): Promise<Respons
 
 export async function handleVcsBase(_request: Request, url: URL): Promise<Response> {
   return jsonResponse(200, { location: locationInfo(requestedDirectory(url, false)), data: null });
+}
+
+// `fs.read` declares `/api/fs/read/*` with a `LocationQuery`; the fork's client puts the file path in
+// that wildcard tail (`packages/client/src/promise/generated/client.ts`, `encodePath(input.path)`).
+const CONTENT_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".pdf": "application/pdf",
+};
+
+/** The read is confined to the requested location, matching the endpoint's documented containment. */
+export async function handleFsRead(_request: Request, url: URL): Promise<Response> {
+  const directory = requestedDirectory(url, false);
+  // The router's wildcard captures the tail, but handlers are registered as (request, url); the
+  // prefix is fixed, so the file path is everything after it.
+  const prefix = "/api/fs/read/";
+  const encoded = url.pathname.startsWith(prefix) ? url.pathname.slice(prefix.length) : "";
+  const raw = encoded
+    .split("/")
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join("/")
+    .trim();
+  if (raw.length === 0) {
+    return errorResponse(400, "InvalidRequestError", "a file path is required");
+  }
+  const target = isAbsolute(raw) ? resolve(raw) : resolve(directory, raw);
+  const inside = relative(directory, target);
+  if (inside.startsWith("..") || isAbsolute(inside)) {
+    return errorResponse(400, "InvalidRequestError", `path escapes the requested location: ${raw}`);
+  }
+  try {
+    if (!statSync(target).isFile()) {
+      return errorResponse(400, "InvalidRequestError", `not a file: ${raw}`);
+    }
+    // A symlink inside the location can still point outside it; confine the real file too.
+    const real = realpathSync(target);
+    const realInside = relative(realpathSync(directory), real);
+    if (realInside.startsWith("..") || isAbsolute(realInside)) {
+      return errorResponse(400, "InvalidRequestError", `path escapes the requested location: ${raw}`);
+    }
+    const bytes = readFileSync(real);
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        "content-type": CONTENT_TYPES[extname(target).toLowerCase()] ?? "application/octet-stream",
+        "content-length": String(bytes.byteLength),
+      },
+    });
+  } catch {
+    return errorResponse(404, "FileNotFoundError", `file not found: ${raw}`);
+  }
+}
+
+// `vcs.status` rows are `Vcs.FileStatus`: `{file, additions, deletions, status}`.
+function statusFromPorcelain(code: string): "added" | "deleted" | "modified" {
+  if (code === "??" || code.includes("A")) return "added";
+  if (code.includes("D")) return "deleted";
+  return "modified";
+}
+
+async function numstat(directory: string, cached: boolean): Promise<Map<string, { additions: number; deletions: number }>> {
+  const args = ["diff", "--numstat", ...(cached ? ["--cached"] : [])];
+  const output = await gitRead(directory, args);
+  const counts = new Map<string, { additions: number; deletions: number }>();
+  if (output === null) return counts;
+  for (const line of output.split("\n")) {
+    const [added, deleted, ...file] = line.split("\t");
+    if (added === undefined || deleted === undefined || file.length === 0) continue;
+    const path = file.join("\t");
+    // A binary file reports `-` for both counts; zero is the honest count there.
+    counts.set(path, {
+      additions: added === "-" ? 0 : Number(added),
+      deletions: deleted === "-" ? 0 : Number(deleted),
+    });
+  }
+  return counts;
+}
+
+export async function handleVcsStatus(_request: Request, url: URL): Promise<Response> {
+  const directory = requestedDirectory(url, false);
+  const output = await gitRead(directory, ["status", "--porcelain=v1"]);
+  if (output === null) {
+    return jsonResponse(200, { location: locationInfo(directory), data: [] });
+  }
+  const [unstaged, staged] = await Promise.all([numstat(directory, false), numstat(directory, true)]);
+  const data: Array<{ file: string; additions: number; deletions: number; status: string }> = [];
+  for (const line of output.split("\n")) {
+    if (line.length < 4) continue;
+    const code = line.slice(0, 2);
+    const path = line.slice(3).split(" -> ").at(-1)!;
+    const counts = unstaged.get(path) ?? staged.get(path) ?? { additions: 0, deletions: 0 };
+    data.push({ file: path, additions: counts.additions, deletions: counts.deletions, status: statusFromPorcelain(code) });
+  }
+  return jsonResponse(200, { location: locationInfo(directory), data });
+}
+
+export async function handleVcsBranch(_request: Request, url: URL): Promise<Response> {
+  const directory = requestedDirectory(url, false);
+  const output = await gitRead(directory, ["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"]);
+  const search = url.searchParams.get("search")?.toLowerCase() ?? "";
+  const rawLimit = url.searchParams.get("limit");
+  const limit = rawLimit === null ? 100 : Number(rawLimit);
+  if (!Number.isInteger(limit) || limit <= 0) {
+    return errorResponse(400, "InvalidRequestError", "limit must be a positive integer");
+  }
+  const branches = (output ?? "")
+    .split("\n")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0 && !name.endsWith("/HEAD"))
+    .filter((name) => search.length === 0 || name.toLowerCase().includes(search));
+  return jsonResponse(200, { location: locationInfo(directory), data: [...new Set(branches)].slice(0, limit) });
+}
+
+export async function handleLocationReload(_request: Request, _url: URL): Promise<Response> {
+  // The bridge watches no location service state, so a reload has nothing to reconcile.
+  return new Response(null, { status: 204 });
 }
 
 export async function handleVcsDiff(_request: Request, url: URL): Promise<Response> {
