@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { assertErrorEnvelope, validateResponse } from "../../src/contract/validate";
 import {
@@ -39,6 +41,7 @@ const MODELS: SenpiModelInfo[] = [
 
 class FakeCatalogTransport {
   models: SenpiModelInfo[] = [];
+  agentDir: string | undefined;
   readonly setModelCalls: Array<{ provider: string; id: string }> = [];
   failure: Error | undefined;
 
@@ -206,6 +209,115 @@ describe("handleProviderList", () => {
     setCatalogTransport(new FakeCatalogTransport());
     const body = (await (await handleProviderList(get("/api/provider"), urlOf("/api/provider"))).json()) as Envelope<unknown>;
     expect(body.data).toEqual([]);
+  });
+});
+
+describe("handleIntegrationList", () => {
+  let agentDir: string;
+
+  function store(file: string, value: unknown): void {
+    writeFileSync(join(agentDir, file), JSON.stringify(value));
+  }
+
+  function transportWith(models: SenpiModelInfo[], dir: string | undefined): FakeCatalogTransport {
+    return Object.assign(new FakeCatalogTransport(), { models, agentDir: dir });
+  }
+
+  const integrations = (body: Envelope<unknown>): Array<Record<string, unknown>> =>
+    body.data as Array<Record<string, unknown>>;
+
+  beforeEach(() => {
+    agentDir = mkdtempSync(join(tmpdir(), "omo-bridge-cred-"));
+  });
+
+  afterEach(() => {
+    rmSync(agentDir, { recursive: true, force: true });
+  });
+
+  test("reports the provider the host serves and the store holds a credential for", async () => {
+    store("auth.json", { anthropic: { type: "api_key", key: "sk-ant-test-DO-NOT-LEAK" } });
+    setCatalogTransport(transportWith(MODELS, agentDir));
+    const response = await handleIntegrationList(
+      get("/api/integration"),
+      urlOf("/api/integration", { "location[directory]": WORK_DIR }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Envelope<unknown>;
+    expect(integrations(body)).toEqual([
+      {
+        id: "anthropic",
+        name: "anthropic",
+        methods: [],
+        connections: [{ type: "credential", id: "cred_anthropic", label: "API key", method: "key" }],
+      },
+    ]);
+    expect(validateResponse("integration.list", body)).toEqual({ ok: true });
+    // Only presence is read from the credential store: no stored key may reach the response.
+    expect(JSON.stringify(body)).not.toContain("DO-NOT-LEAK");
+  });
+
+  test("keeps a provider out of the list when the store holds no credential for it", async () => {
+    store("auth.json", { anthropic: { type: "api_key", key: "sk-ant-test" } });
+    setCatalogTransport(transportWith(MODELS, agentDir));
+    const body = (await (
+      await handleIntegrationList(get("/api/integration"), urlOf("/api/integration"))
+    ).json()) as Envelope<unknown>;
+
+    // MODELS also names openai; only the provider with a stored credential is connected.
+    expect(integrations(body).map((row) => row.id)).toEqual(["anthropic"]);
+  });
+
+  test("reports nothing when the host serves no models even if a credential exists", async () => {
+    store("auth.json", { anthropic: { type: "api_key", key: "sk-ant-test" } });
+    setCatalogTransport(transportWith([], agentDir));
+    const response = await handleIntegrationList(get("/api/integration"), urlOf("/api/integration"));
+    const body = (await response.json()) as Envelope<unknown>;
+
+    expect(response.status).toBe(200);
+    expect(integrations(body)).toEqual([]);
+    expect(validateResponse("integration.list", body)).toEqual({ ok: true });
+  });
+
+  test("reports nothing when the store has an entry without key material", async () => {
+    store("auth.json", { anthropic: { type: "api_key" } });
+    setCatalogTransport(transportWith([MODELS[0]!], agentDir));
+    const body = (await (
+      await handleIntegrationList(get("/api/integration"), urlOf("/api/integration"))
+    ).json()) as Envelope<unknown>;
+
+    expect(integrations(body)).toEqual([]);
+  });
+
+  test("reads a pooled credential whose flat fields are empty through its account slot", async () => {
+    store("auth.json", {
+      anthropic: { type: "api_key", accounts: [{ name: "default", key: "sk-ant-pooled" }] },
+    });
+    setCatalogTransport(transportWith([MODELS[0]!], agentDir));
+    const body = (await (
+      await handleIntegrationList(get("/api/integration"), urlOf("/api/integration"))
+    ).json()) as Envelope<unknown>;
+
+    expect(integrations(body)[0]!.connections).toEqual([
+      { type: "credential", id: "cred_anthropic", label: "API key", method: "key" },
+    ]);
+  });
+
+  test("names an oauth credential as such and reports nothing without a credential store", async () => {
+    store("auth.json", { anthropic: { type: "oauth", access: "at-test", refresh: "rt-test" } });
+    setCatalogTransport(transportWith([MODELS[0]!], agentDir));
+    const oauth = (await (
+      await handleIntegrationList(get("/api/integration"), urlOf("/api/integration"))
+    ).json()) as Envelope<unknown>;
+    expect(integrations(oauth)[0]!.connections).toEqual([
+      { type: "credential", id: "cred_anthropic", label: "OAuth", method: "oauth" },
+    ]);
+
+    setCatalogTransport(transportWith([MODELS[0]!], undefined));
+    const noStore = (await (
+      await handleIntegrationList(get("/api/integration"), urlOf("/api/integration"))
+    ).json()) as Envelope<unknown>;
+    expect(integrations(noStore)).toEqual([]);
   });
 });
 

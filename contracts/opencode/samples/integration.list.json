@@ -7,5 +7,19 @@
       "canonical": "/Users/zyno/project"
     }
   },
-  "data": []
+  "data": [
+    {
+      "id": "anthropic",
+      "name": "anthropic",
+      "methods": [],
+      "connections": [
+        {
+          "type": "credential",
+          "id": "cred_anthropic",
+          "label": "API key",
+          "method": "key"
+        }
+      ]
+    }
+  ]
 }

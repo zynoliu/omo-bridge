@@ -122,6 +122,14 @@ export class SenpiTransport {
     return this.capabilities;
   }
 
+  /**
+   * The agent directory this transport's host signs in with: the same root RPC authentication uses.
+   * Readers of host-side provider state (the integration list) must not guess a different one.
+   */
+  get agentDir(): string {
+    return this.keyRoot;
+  }
+
   async connect(): Promise<SenpiConnectResult> {
     if (this.connectedResult) return this.connectedResult;
     if (this.disposed) {
