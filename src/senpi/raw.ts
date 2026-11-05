@@ -1,5 +1,6 @@
 import type { RpcClient, RpcCommand, RpcResponse } from "@code-yeongyu/senpi";
 import { SenpiTransportError, mapSenpiError } from "./errors";
+import { assertPrivateSocketExists } from "./socket-path";
 
 export const SENPI_PACKAGE_ROOT_URL = new URL(import.meta.resolve("@code-yeongyu/senpi"));
 // `AttachClient` is not a root export and the package `exports` map blocks `./dist/*`, so the only
@@ -92,6 +93,7 @@ export class RawChannel {
         "OMO_BRIDGE_SENPI_SOCKET is not set; the bridge only talks to a private senpi socket",
       );
     }
+    assertPrivateSocketExists(socketPath);
     const [AttachClient, auth] = await Promise.all([loadAttachClient(), loadRpcAuthModule()]);
     const client = new AttachClient(
       (record) => {
