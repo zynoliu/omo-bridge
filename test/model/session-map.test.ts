@@ -214,6 +214,7 @@ describe("flush", () => {
     const record = second.get("durable-1");
     expect(record?.name).toBe("Kept");
     expect(record?.archived).toBe(true);
+    expect(record?.archivedAt).toBeDefined();
   });
 });
 
@@ -299,7 +300,25 @@ describe("project identity", () => {
     expect(info.title).toBe("Bridge");
     expect(info.location).toEqual({ directory: join(root, "project") });
     expect(info.projectID).toBe(projectFor(join(root, "project")).id);
+    expect(Number.isInteger(info.time.created)).toBe(true);
+    expect(Number.isInteger(info.time.updated)).toBe(true);
+    expect(info.time.created).toBeGreaterThan(0);
+    expect(info.time).not.toHaveProperty("archived");
     expect(validateResponse("session.publicInfo", info)).toEqual({ ok: true });
+  });
+
+  test("archived records carry time.archived in epoch millis", () => {
+    const map = openMap();
+    map.upsert(row({ durableSessionId: "durable-1", cwd: join(root, "project") }));
+    map.archive("durable-1");
+
+    const info = toPublicSessionInfo(map.get("durable-1")!);
+    expect(Number.isInteger(info.time.archived)).toBe(true);
+    expect(info.time.archived).toBeGreaterThan(0);
+    expect(validateResponse("session.publicInfo", info)).toEqual({ ok: true });
+
+    map.archive("durable-1", false);
+    expect(toPublicSessionInfo(map.get("durable-1")!).time.archived).toBeUndefined();
   });
 
   test("falls back to the directory name as the title", () => {

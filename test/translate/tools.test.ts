@@ -150,6 +150,43 @@ describe("tool projector", () => {
     expect(projector.stats.ignored).toBe(0);
   });
 
+  test("announces a call that is first discovered at execution time", () => {
+    const { emitted } = replay([
+      startFrame("msg_exec_1"),
+      {
+        type: "tool_execution_start",
+        toolCallId: "call_exec_1",
+        toolName: "bash",
+        args: { command: "echo TOOLCARD34" },
+      },
+      {
+        type: "tool_execution_end",
+        toolCallId: "call_exec_1",
+        toolName: "bash",
+        result: { content: [{ type: "text", text: "TOOLCARD34" }] },
+        isError: false,
+      },
+    ]);
+    expect(emitted.map((event) => event.type)).toEqual([
+      "session.tool.input.started",
+      "session.tool.input.ended",
+      "session.tool.called",
+      "session.tool.success",
+    ]);
+    expect(emitted[0]?.data).toEqual({
+      sessionID: SESSION_ID,
+      assistantMessageID: "msg_exec_1",
+      id: "call_exec_1",
+      name: "bash",
+    });
+    expect(emitted[1]?.data).toEqual({
+      sessionID: SESSION_ID,
+      assistantMessageID: "msg_exec_1",
+      id: "call_exec_1",
+      text: JSON.stringify({ command: "echo TOOLCARD34" }),
+    });
+  });
+
   test("forwards the cumulative progress snapshot unchanged", () => {
     const { emitted } = replay(toolsFrames);
     const progress = emitted.filter((event) => event.type === "session.tool.progress").map((event) => event.data.metadata);

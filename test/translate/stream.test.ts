@@ -58,6 +58,7 @@ describe("stream projector", () => {
         data: {
           sessionID: SESSION_ID,
           assistantMessageID: "msg_stream_1",
+          agent: "build",
           model: { id: "claude-sonnet-4", providerID: "anthropic" },
           started: START,
         },

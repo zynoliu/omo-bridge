@@ -130,22 +130,22 @@
       "type": "object",
       "properties": {
         "created": {
-          "type": "string"
+          "type": "number"
         },
         "updated": {
-          "type": "string"
+          "type": "number"
         },
         "busy": {
-          "type": "string"
+          "type": "number"
         },
         "idle": {
-          "type": "string"
+          "type": "number"
         },
         "viewed": {
-          "type": "string"
+          "type": "number"
         },
         "archived": {
-          "type": "string"
+          "type": "number"
         }
       },
       "required": [

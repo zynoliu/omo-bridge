@@ -2,7 +2,7 @@
 // message/part shape the session read handlers serve. Only shapes opencode consumes are emitted;
 // senpi-only roles and unknown entry types are dropped and counted, never thrown.
 
-const DEFAULT_AGENT = "build";
+export const DEFAULT_AGENT = "build";
 const TITLE_MAX_LENGTH = 120;
 
 export type PublicMessagePart =

@@ -363,11 +363,13 @@ function rowOf(record: SessionRecord, rows: SenpiSessionSummary[]): SenpiSession
  * because it carries the bridge-side state; a session the map has not seen yet is adopted from the
  * host listing. A tombstoned key answers 404 instead of being re-adopted.
  */
-async function resolveTarget(sessionID: string): Promise<SessionTarget> {
+async function resolveTarget(
+  sessionID: string,
+  caller: SessionManagementTransport | undefined = transport,
+): Promise<SessionTarget> {
   const map = requireStore();
   if (deletedKeys.has(sessionID)) throw sessionNotFound(sessionID);
 
-  const caller = transport;
   const rows = caller?.listSessions === undefined ? [] : await caller.listSessions();
 
   const direct = map.get(sessionID);
@@ -409,6 +411,20 @@ async function ensureAttached(caller: SessionManagementTransport, row: SenpiSess
     throw unsupportedCapability("the bridge cannot re-attach the target session", "sessionID");
   }
   await caller.openSession({ sessionPath: row.sessionPath, retainOnDisconnect: true });
+}
+
+/**
+ * Makes a session the transport's open session before a write scoped to it. senpi's `setModel`
+ * applies to whichever session the connection holds, so switching the model of another session
+ * would otherwise change the wrong transcript while answering 204.
+ */
+export async function attachSessionTarget(
+  caller: SessionManagementTransport,
+  sessionID: string,
+): Promise<string> {
+  const target = await resolveTarget(sessionID, caller);
+  if (target.row !== undefined) await ensureAttached(caller, target.row);
+  return target.key;
 }
 
 function publish(type: string, data: Record<string, unknown>): void {

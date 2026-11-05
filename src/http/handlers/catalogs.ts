@@ -3,6 +3,8 @@ import { isAbsolute, resolve } from "node:path";
 import { validateResponse } from "../../contract/validate";
 import type { SenpiModelInfo, SenpiTransport } from "../../senpi/transport";
 import { locationInfo, type LocationPublicInfo } from "./fs-location";
+import { listSavedPermissions } from "./permission";
+import { attachSessionTarget, getSessionManagementTransport } from "./session-write";
 
 // Catalog endpoints answer the TUI's startup reads (model, provider, agent, command, skill, ...).
 // Like the session handlers they take (request, url) and read the transport from a module-level seam,
@@ -40,6 +42,35 @@ export type CatalogModel = {
 };
 
 export type CatalogProvider = { id: string; name: string };
+
+/** One row of GET /api/agent: the TUI decodes it as `Agent.Info` (`packages/schema/src/agent.ts`). */
+export type CatalogAgent = {
+  id: string;
+  name: string;
+  request: { settings: Record<string, unknown>; headers: Record<string, string>; body: Record<string, unknown> };
+  description: string;
+  mode: "subagent" | "primary" | "all";
+  hidden: boolean;
+  permissions: Array<{ action: string; resource: string; effect: "allow" | "deny" | "ask" }>;
+};
+
+// The TUI cannot submit a prompt while `local.agent.current()` is null, so the bridge always serves
+// one primary agent. senpi has no agent registry; this row is the projection the next turn's prompt
+// options use, and it is a constant so repeated reads agree.
+const DEFAULT_AGENT: CatalogAgent = {
+  id: "build",
+  name: "Build",
+  request: { settings: {}, headers: {}, body: {} },
+  description: "Default agent for bridge sessions",
+  mode: "primary",
+  hidden: false,
+  permissions: [
+    { action: "*", resource: "*", effect: "allow" },
+    { action: "read", resource: "*.env", effect: "ask" },
+    { action: "read", resource: "*.env.*", effect: "ask" },
+    { action: "read", resource: "*.env.example", effect: "allow" },
+  ],
+};
 
 let transport: CatalogTransport | undefined;
 
@@ -236,7 +267,8 @@ export async function handleProviderList(_request: Request, url: URL): Promise<R
 
 export async function handleAgentList(_request: Request, url: URL): Promise<Response> {
   return respond(async () => {
-    return jsonResponse(200, { location: locationFor(url), data: [] });
+    // A fresh array per read keeps callers from mutating the shared row, while the id and order stay stable.
+    return jsonResponse(200, { location: locationFor(url), data: [{ ...DEFAULT_AGENT }] });
   });
 }
 
@@ -276,29 +308,39 @@ export async function handleWebsearchProviders(_request: Request, url: URL): Pro
 }
 
 export async function handlePermissionSavedList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(async () => {
+    // Saved rules are real bridge state: an "always" reply records them in permission.ts.
+    const sessionID = url.searchParams.get("sessionID")?.trim();
+    const data = listSavedPermissions(sessionID === undefined || sessionID.length === 0 ? undefined : sessionID);
+    return jsonResponse(200, { location: locationFor(url), data });
+  });
 }
 
-export async function handleFormList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
-}
+// Pending forms live in form.ts; re-exported so the catalog surface keeps its single import site.
+export { handleFormList } from "./form";
 
+// `Model.Ref` (`packages/schema/src/model.ts`) names the provider `providerID`; senpi's own frames call
+// it `provider`. Accept both spellings so the TUI's switchModel payload reaches `setModel` unchanged.
 function modelSelection(body: unknown): { provider: string; id: string } {
   const record = asRecord(body);
   if (record === undefined) throw invalidRequest("model selection must be an object", "model");
   const nested = asRecord(record.model);
   const source = nested ?? record;
-  const provider = asTrimmed(source.provider);
-  const id = asTrimmed(source.id);
-  if (provider === undefined) throw invalidRequest("model.provider is required", "provider");
+  const provider = asTrimmed(source.providerID) ?? asTrimmed(source.provider);
+  const id = asTrimmed(source.id) ?? asTrimmed(source.modelID);
+  if (provider === undefined) throw invalidRequest("model.providerID is required", "providerID");
   if (id === undefined) throw invalidRequest("model.id is required", "id");
   return { provider, id };
 }
 
-export async function handleSessionSwitchModel(request: Request, _url: URL): Promise<Response> {
+export async function handleSessionSwitchModel(request: Request, url: URL): Promise<Response> {
   return respond(async () => {
     const caller = requireTransport();
     const selection = modelSelection(await readJsonBody(request));
+    // setModel applies to the transport's open session; a switch for any other session must attach
+    // it first or the selection lands in the wrong transcript.
+    const management = getSessionManagementTransport();
+    if (management !== undefined) await attachSessionTarget(management, sessionIdFromPath(url));
     // The selected-model event is emitted by the event pipeline from senpi's own state change.
     await caller.setModel(selection.provider, selection.id);
     return noContent();

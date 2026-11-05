@@ -61,6 +61,8 @@ export interface SessionRecord {
   firstSeenAt: string;
   lastSeenAt: string;
   archived?: boolean;
+  /** When archive was set, ISO internal state; the public row converts it to epoch millis. */
+  archivedAt?: string;
   metadata?: Record<string, unknown>;
   permissions?: SessionPermission[];
 }
@@ -102,13 +104,14 @@ export interface SessionMapOptions {
 }
 
 /** The opencode `PublicSessionInfo` shape the read handlers serialize (kept in sync with
- * `src/http/handlers/sessions.ts` without importing across the module boundary). */
+ * `src/http/handlers/sessions.ts` without importing across the module boundary). `time` values are
+ * epoch millis: `Session.Info.time` decodes from numbers, and ISO strings render as NaNy in the TUI. */
 export type PublicSessionInfo = {
   id: string;
   projectID: string;
   cost: number;
   tokens: { input: number; output: number; reasoning: number; cache: { read: number; write: number } };
-  time: { created: string; updated: string };
+  time: { created: number; updated: number; archived?: number };
   title: string;
   location: { directory: string };
 };
@@ -154,6 +157,12 @@ function earlierOf(left: string, right: string): string {
   return left <= right ? left : right;
 }
 
+/** Internal state keeps ISO text; every value that leaves through `toPublicSessionInfo` is millis. */
+function epochMillisOf(timestamp: string): number {
+  const parsed = Date.parse(timestamp);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 /**
  * The persisted key: durable id first, session file path second. Rows with neither are ephemeral
  * (an in-memory session without a file) and only live in this process's map.
@@ -164,6 +173,11 @@ function durableKeyOf(row: SessionListRow): string {
   const path = asNonEmptyString(row.sessionPath);
   if (path !== undefined) return path;
   return `${EPHEMERAL_KEY_PREFIX}${row.sessionId}`;
+}
+
+/** The map key a listing row is filed under; read handlers use it to resolve bridge-side state. */
+export function sessionKeyOf(row: SessionListRow): string {
+  return durableKeyOf(row);
 }
 
 function isEphemeral(key: string): boolean {
@@ -189,12 +203,15 @@ export function projectFor(directory: string): ProjectRef {
 }
 
 export function toPublicSessionInfo(record: SessionRecord): PublicSessionInfo {
+  const created = epochMillisOf(record.firstSeenAt);
+  const updated = epochMillisOf(record.lastSeenAt);
+  const archived = record.archived === true ? epochMillisOf(record.archivedAt ?? record.lastSeenAt) : undefined;
   return {
     id: record.key,
     projectID: record.projectID,
     cost: 0,
     tokens: { ...EMPTY_TOKENS, cache: { ...EMPTY_TOKENS.cache } },
-    time: { created: record.firstSeenAt, updated: record.lastSeenAt },
+    time: { created, updated, ...(archived === undefined ? {} : { archived }) },
     title: record.name ?? basename(record.cwd),
     location: { directory: record.cwd },
   };
@@ -261,6 +278,7 @@ function parseRecord(value: unknown): SessionRecord | undefined {
   const sessionPath = asNonEmptyString(record.sessionPath);
   const name = asString(record.name);
   const archived = typeof record.archived === "boolean" ? record.archived : undefined;
+  const archivedAt = toIso(record.archivedAt);
   const metadata = asRecord(record.metadata);
   let permissions: SessionPermission[] | undefined;
   if (record.permissions !== undefined) {
@@ -282,6 +300,7 @@ function parseRecord(value: unknown): SessionRecord | undefined {
     firstSeenAt,
     lastSeenAt,
     ...(archived === undefined ? {} : { archived }),
+    ...(archivedAt === undefined ? {} : { archivedAt }),
     ...(metadata === undefined ? {} : { metadata }),
     ...(permissions === undefined ? {} : { permissions }),
   };
@@ -459,6 +478,7 @@ export class SessionMap {
       firstSeenAt: existing === undefined ? observed : earlierOf(existing.firstSeenAt, observed),
       lastSeenAt: existing === undefined ? observed : laterOf(existing.lastSeenAt, observed),
       ...(existing?.archived === undefined ? {} : { archived: existing.archived }),
+      ...(existing?.archivedAt === undefined ? {} : { archivedAt: existing.archivedAt }),
       ...(existing?.metadata === undefined ? {} : { metadata: { ...existing.metadata } }),
       ...(existing?.permissions === undefined
         ? {}
@@ -485,9 +505,13 @@ export class SessionMap {
     const record = this.records.get(key);
     if (record === undefined) return undefined;
     if (archived) {
+      if (record.archived !== true || record.archivedAt === undefined) {
+        record.archivedAt = new Date().toISOString();
+      }
       record.archived = true;
     } else {
       delete record.archived;
+      delete record.archivedAt;
     }
     return cloneRecord(record);
   }
@@ -552,6 +576,7 @@ export class SessionMap {
         firstSeenAt: existing === undefined ? headerCreated : earlierOf(existing.firstSeenAt, headerCreated),
         lastSeenAt: existing === undefined ? updated : laterOf(existing.lastSeenAt, updated),
         ...(existing?.archived === undefined ? {} : { archived: existing.archived }),
+        ...(existing?.archivedAt === undefined ? {} : { archivedAt: existing.archivedAt }),
         ...(existing?.metadata === undefined ? {} : { metadata: { ...existing.metadata } }),
         ...(existing?.permissions === undefined
           ? {}
