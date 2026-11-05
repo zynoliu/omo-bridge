@@ -3,6 +3,7 @@ import { isAbsolute, resolve } from "node:path";
 import { validateResponse } from "../../contract/validate";
 import type { SenpiModelInfo, SenpiTransport } from "../../senpi/transport";
 import { locationInfo, type LocationPublicInfo } from "./fs-location";
+import { listSavedPermissions } from "./permission";
 
 // Catalog endpoints answer the TUI's startup reads (model, provider, agent, command, skill, ...).
 // Like the session handlers they take (request, url) and read the transport from a module-level seam,
@@ -276,12 +277,16 @@ export async function handleWebsearchProviders(_request: Request, url: URL): Pro
 }
 
 export async function handlePermissionSavedList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(async () => {
+    // Saved rules are real bridge state: an "always" reply records them in permission.ts.
+    const sessionID = url.searchParams.get("sessionID")?.trim();
+    const data = listSavedPermissions(sessionID === undefined || sessionID.length === 0 ? undefined : sessionID);
+    return jsonResponse(200, { location: locationFor(url), data });
+  });
 }
 
-export async function handleFormList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
-}
+// Pending forms live in form.ts; re-exported so the catalog surface keeps its single import site.
+export { handleFormList } from "./form";
 
 function modelSelection(body: unknown): { provider: string; id: string } {
   const record = asRecord(body);
