@@ -44,8 +44,10 @@ export type LocationPublicInfo = {
 
 export type FileDiff = {
   file: string;
+  patch: string;
   additions: number;
   deletions: number;
+  status: "added" | "deleted" | "modified";
 };
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -198,20 +200,56 @@ function readLimit(url: URL): number | null {
   return Math.min(value, MAX_FIND_RESULTS);
 }
 
-function readCount(raw: string | undefined): number {
-  const value = Number.parseInt(raw ?? "", 10);
-  return Number.isInteger(value) && value >= 0 ? value : 0;
+// `FileDiff.Info` (`packages/schema/src/file-diff.ts`) requires the patch text and a status, and the
+// TUI renders both (`packages/tui/src/feature-plugins/system/diff-viewer.tsx:67-74`). `git diff
+// --numstat` cannot supply either, so the diff is parsed from the unified patch instead.
+function diffFile(header: string): string {
+  const marker = header.lastIndexOf(" b/");
+  return marker < 0 ? header.slice("diff --git a/".length) : header.slice(marker + " b/".length);
 }
 
-function parseNumstat(output: string): FileDiff[] {
+function parseUnifiedDiff(output: string): FileDiff[] {
   const diffs: FileDiff[] = [];
+  let current: FileDiff | undefined;
+  let patch: string[] = [];
+  let inHunks = false;
+
+  const flush = (): void => {
+    if (current !== undefined) {
+      current.patch = patch.join("\n");
+      diffs.push(current);
+    }
+    current = undefined;
+    patch = [];
+    inHunks = false;
+  };
+
   for (const line of output.split("\n")) {
-    if (line.trim().length === 0) continue;
-    const parts = line.split("\t");
-    if (parts.length < 3) continue;
-    const file = parts.slice(2).join("\t");
-    diffs.push({ file, additions: readCount(parts[0]), deletions: readCount(parts[1]) });
+    if (line.startsWith("diff --git ")) {
+      flush();
+      current = { file: diffFile(line), patch: "", additions: 0, deletions: 0, status: "modified" };
+      continue;
+    }
+    if (current === undefined) continue;
+    if (line.startsWith("new file mode")) {
+      current.status = "added";
+      continue;
+    }
+    if (line.startsWith("deleted file mode")) {
+      current.status = "deleted";
+      continue;
+    }
+    if (line.startsWith("@@")) {
+      inHunks = true;
+      patch.push(line);
+      continue;
+    }
+    if (!inHunks) continue;
+    patch.push(line);
+    if (line.startsWith("+")) current.additions += 1;
+    else if (line.startsWith("-")) current.deletions += 1;
   }
+  flush();
   return diffs;
 }
 
@@ -284,9 +322,9 @@ export async function handleVcsBase(_request: Request, url: URL): Promise<Respon
 
 export async function handleVcsDiff(_request: Request, url: URL): Promise<Response> {
   const directory = requestedDirectory(url, false);
-  const output = await gitRead(directory, ["diff", "--numstat"]);
+  const output = await gitRead(directory, ["diff", "--no-color"]);
   return jsonResponse(200, {
     location: locationInfo(directory),
-    data: output === null ? [] : parseNumstat(output),
+    data: output === null ? [] : parseUnifiedDiff(output),
   });
 }
