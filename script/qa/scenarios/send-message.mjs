@@ -13,6 +13,15 @@ function paneLines(frame) {
     .filter((line) => line.length > 0);
 }
 
+function paneHasUserMessage(frame, text) {
+  const lines = frame.split("\n");
+  const index = lines.findIndex((line) => line.includes("┃") && line.includes(text));
+  if (index < 0) return false;
+  // The composer sits at the bottom; a submitted message renders above it inside the pane.
+  const composer = lines.findIndex((line) => line.includes("╹"));
+  return composer < 0 || index < composer;
+}
+
 function addedLines(before, after) {
   const known = new Set(paneLines(before));
   return paneLines(after).filter((line) => !known.has(line));
@@ -48,10 +57,11 @@ export default {
         (text) => text.includes("Build ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
         60_000,
       );
-      let opened = false;
-      if (process.env.QA_OPEN_SESSION !== "0" && (await tui.text()).includes("Search sessions")) {
-        await tui.press("Enter");
-        opened = await tui.waitFor((text) => text.includes("Build ·") || text.includes("ctrl+p commands"), 20_000);
+      // The launcher opens a session before starting the app, so the composer is already live: this
+      // mirrors the user's literal flow (launch, type, Enter) with no extra keystroke.
+      const opened = (await tui.text()).includes("┃");
+      if (process.env.QA_OPEN_SESSION === "0") {
+        opened;
       }
       const beforeText = await tui.text();
       const frameBefore = await ctx.writeFile("frame-before.txt", beforeText);
@@ -82,6 +92,27 @@ export default {
       await Bun.sleep(800);
       await tui.press("Enter");
       const sentAt = Date.now();
+
+      let submitted = false;
+      const submitDeadline = Date.now() + 15_000;
+      while (Date.now() < submitDeadline) {
+        if (paneHasUserMessage(await tui.text(), "你好")) {
+          submitted = true;
+          break;
+        }
+        await Bun.sleep(500);
+      }
+      if (!submitted && process.env.QA_OPEN_SESSION !== "0") {
+        await tui.press("Enter");
+        const retryDeadline = Date.now() + 10_000;
+        while (Date.now() < retryDeadline) {
+          if (paneHasUserMessage(await tui.text(), "你好")) {
+            submitted = true;
+            break;
+          }
+          await Bun.sleep(500);
+        }
+      }
 
       let frameAfter = await tui.text();
       const deadline = Date.now() + 90_000;
@@ -134,6 +165,7 @@ export default {
         checks,
         ready,
         opened,
+        submitted,
         openRequested: process.env.QA_OPEN_SESSION !== "0",
         fault: ctx.fault ?? null,
         sessionID,
