@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { BRIDGE_BASIC_USERNAME, resolveStateDir } from "./launcher";
@@ -74,8 +74,49 @@ async function readBridgeState(stateDir: string): Promise<BridgeStateFile> {
   return { url, password, pid: typeof record.pid === "number" ? record.pid : undefined };
 }
 
-export async function runTui(argv: readonly string[]): Promise<void> {
-  const stateDir = resolveStateDir(process.env);
+/**
+ * The TUI only submits from a session pane: its composer keymap layer is disabled on the home screen,
+ * so `omo-bridge tui` without a session starts an app where Enter does nothing at all.
+ */
+export function tuiArgs(argv: readonly string[], sessionID: string | undefined): string[] {
+  if (sessionID === undefined || argv.includes("--session")) return [...argv];
+  return [...argv, "--session", sessionID];
+}
+
+type SessionListBody = { data?: Array<{ id?: unknown }> };
+
+export type EnsureTuiSessionOptions = {
+  readonly url: string;
+  readonly password: string;
+  readonly cwd: string;
+  fetch?: typeof fetch;
+};
+
+/** Reuses the session the TUI opened last, or creates one, so the app lands with a live session. */
+export async function ensureTuiSession(options: EnsureTuiSessionOptions): Promise<string> {
+  const call = options.fetch ?? fetch;
+  const auth = `Basic ${Buffer.from(`${BRIDGE_BASIC_USERNAME}:${options.password}`, "utf8").toString("base64")}`;
+  const listed = await call(`${options.url}/api/session?limit=1`, { headers: { authorization: auth } });
+  if (!listed.ok) {
+    throw new TuiLaunchError(`the bridge refused to list sessions: ${listed.status}`);
+  }
+  const list = (await listed.json()) as SessionListBody;
+  const existing = Array.isArray(list.data) ? list.data[0]?.id : undefined;
+  if (typeof existing === "string" && existing.length > 0) return existing;
+  const id = `ses_tui_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  const created = await call(`${options.url}/api/session`, {
+    method: "POST",
+    headers: { authorization: auth, "content-type": "application/json" },
+    body: JSON.stringify({ id, title: "tui", location: { directory: options.cwd } }),
+  });
+  if (!created.ok) {
+    throw new TuiLaunchError(`the bridge refused to create a session: ${created.status}`);
+  }
+  const body = (await created.json()) as { data?: { id?: unknown } };
+  return typeof body.data?.id === "string" && body.data.id.length > 0 ? body.data.id : id;
+}
+
+export async function runTui(argv: readonly string[]): Promise<void> {  const stateDir = resolveStateDir(process.env);
   const state = await readBridgeState(stateDir);
   const dir = tuiDirFrom();
   if (!existsSync(dir)) {
@@ -85,6 +126,9 @@ export async function runTui(argv: readonly string[]): Promise<void> {
   }
   const channel = channelForStateDir(stateDir);
   const bun = tuiBunFrom();
+  const sessionID = argv.includes("--session")
+    ? undefined
+    : await ensureTuiSession({ url: state.url, password: state.password, cwd: process.cwd() });
   // Any child the TUI spawns resolves `bun` from PATH; the OmO runtime wrapper cannot dlopen the
   // fork's ad-hoc-signed libopentui, so the TUI's own bun has to come first.
   const bunDir = dirname(bun);
@@ -92,7 +136,7 @@ export async function runTui(argv: readonly string[]): Promise<void> {
     .split(":")
     .filter((entry) => entry.length > 0 && entry !== bunDir)
     .join(":");
-  const child = Bun.spawn([bun, "run", "dev", "--server", state.url, ...argv], {
+  const child = Bun.spawn([bun, "run", "dev", "--server", state.url, ...tuiArgs(argv, sessionID)], {
     cwd: dir,
     env: {
       ...process.env,
