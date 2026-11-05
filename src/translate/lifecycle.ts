@@ -265,11 +265,14 @@ export function createLifecycleProjector(
     const result = asRecord(record.result);
     const resultUsage = readUsage(result?.usage);
     const compactionModel = modelRef(record.model) ?? modelRef(result?.model) ?? model;
+    // native is a provider record (Session.Message.Native), never a flag: forward a real record
+    // and omit the optional field otherwise, or the TUI schema decode rejects the event.
+    const native = asRecord(record.native) ?? asRecord(result?.native);
     emit("session.compaction.ended", {
       sessionID: ctx.sessionID,
       reason,
       ...(compactionModel === undefined ? {} : { model: compactionModel }),
-      native: true,
+      ...(native === undefined ? {} : { native }),
       text: asString(result?.summary) ?? asString(record.text) ?? "",
       cost: resultUsage?.cost ?? numberOrZero(record.cost),
       tokens: resultUsage?.tokens ?? emptyTokens(),

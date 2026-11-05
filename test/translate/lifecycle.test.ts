@@ -17,6 +17,16 @@ function replay(frames: unknown[]) {
   return { emitted, projector };
 }
 
+// The TUI decodes native as Session.Message.Native (Record<string, unknown>); a boolean or
+// any other non-record value makes session.compaction.ended unreadable.
+function assertNativeRecord(data: Record<string, unknown>): void {
+  if (!("native" in data)) return;
+  const native = data.native;
+  if (typeof native !== "object" || native === null || Array.isArray(native)) {
+    throw new Error(`native must be an object record, got ${JSON.stringify(native)}`);
+  }
+}
+
 const agentStart = { type: "agent_start", runId: "run_1" };
 
 function agentEnd(extra: Record<string, unknown> = {}): Record<string, unknown> {
@@ -173,11 +183,12 @@ describe("lifecycle projector", () => {
       sessionID: SESSION_ID,
       reason: "auto",
       model: { id: "claude-sonnet-4", providerID: "anthropic" },
-      native: true,
       text: "Summary of conversation...",
       cost: 0.03,
       tokens: { input: 32000, output: 1200, reasoning: 0, cache: { read: 0, write: 0 } },
     });
+    expect("native" in (emitted[1]?.data ?? {})).toBe(false);
+    assertNativeRecord(emitted[1]?.data ?? {});
   });
 
   test("lifecycle keeps a manual compaction manual", () => {
@@ -194,11 +205,47 @@ describe("lifecycle projector", () => {
     expect(emitted[1]?.data).toMatchObject({
       sessionID: SESSION_ID,
       reason: "manual",
-      native: true,
       text: "Short summary",
       cost: 0,
       tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
     });
+    expect("native" in (emitted[1]?.data ?? {})).toBe(false);
+  });
+
+  test("lifecycle omits a non-record native and forwards a real one", () => {
+    const { emitted: withBoolean } = replay([
+      { type: "compaction_end", reason: "manual", native: true, result: { summary: "x" } },
+    ]);
+    const booleanData = withBoolean[0]?.data ?? {};
+    expect(booleanData.reason).toBe("manual");
+    expect("native" in booleanData).toBe(false);
+    assertNativeRecord(booleanData);
+
+    const { emitted: withString } = replay([
+      { type: "compaction_end", reason: "manual", native: "provider", result: { summary: "x" } },
+    ]);
+    expect("native" in (withString[0]?.data ?? {})).toBe(false);
+
+    const providerNative = { messages: [{ role: "user", content: "kept" }] };
+    const { emitted: withRecord } = replay([
+      { type: "compaction_end", reason: "auto", native: providerNative, result: { summary: "x" } },
+    ]);
+    const recordData = withRecord[0]?.data ?? {};
+    expect(recordData.native).toEqual(providerNative);
+    assertNativeRecord(recordData);
+
+    const { emitted: fromResult } = replay([
+      { type: "compaction_end", reason: "auto", result: { summary: "x", native: providerNative } },
+    ]);
+    expect(fromResult[0]?.data.native).toEqual(providerNative);
+  });
+
+  test("lifecycle native assertion rejects boolean and string values", () => {
+    for (const bad of [true, false, "provider", null, [1]]) {
+      expect(() => assertNativeRecord({ native: bad })).toThrow("native must be an object record");
+    }
+    expect(() => assertNativeRecord({})).not.toThrow();
+    expect(() => assertNativeRecord({ native: { messages: [] } })).not.toThrow();
   });
 
   test("lifecycle emits step.streamed on turn_start inside a run", () => {
