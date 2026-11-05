@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { BRIDGE_BASIC_USERNAME, resolveStateDir } from "./launcher";
 
 // The TUI keys its persisted tabs by channel (`<XDG_STATE_HOME>/opencode/<channel>/tui`), so two
@@ -28,9 +28,22 @@ export function tuiDirFrom(env: NodeJS.ProcessEnv = process.env): string {
   return DEFAULT_TUI_DIR;
 }
 
+const OMO_RUNTIME_MARKERS = ["/Applications/OmO.app/", "/.omo/binary-runtime/", "/.omo/agent/bundled-bun/"];
+
+/** The OmO runtime bundles a `bun` that cannot dlopen the fork's libopentui, so it is never the TUI's. */
+export function isOmoRuntimeBun(path: string): boolean {
+  return OMO_RUNTIME_MARKERS.some((marker) => path.includes(marker));
+}
+
 export function tuiBunFrom(env: NodeJS.ProcessEnv = process.env): string {
   const configured = env.OMO_BRIDGE_TUI_BUN?.trim();
   if (configured !== undefined && configured.length > 0) return configured;
+  for (const entry of (env.PATH ?? "").split(":")) {
+    if (entry.length === 0) continue;
+    const candidate = join(entry, "bun");
+    if (isOmoRuntimeBun(candidate)) continue;
+    if (existsSync(candidate)) return candidate;
+  }
   return process.execPath;
 }
 
