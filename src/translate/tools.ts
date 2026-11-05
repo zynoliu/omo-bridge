@@ -230,7 +230,8 @@ export function createToolProjector(ctx: TranslateContext, sink: EventSink = () 
         sessionID: ctx.sessionID,
         assistantMessageID: messageID,
         id,
-        error: firstText(content) ?? "tool failed",
+        // The TUI's `SessionError.Error` requires an object; a bare string renders as no error at all.
+        error: { type: "tool_error", message: firstText(content) ?? "tool failed" },
         ...(content.length === 0 ? {} : { content }),
         executed: true,
       });

@@ -43,6 +43,14 @@ function isToolFrame(frame: Record<string, unknown>): boolean {
   return typeof kind === "string" && kind.startsWith("toolcall_");
 }
 
+// Stands in for the TUI's `SessionError.Error` (`packages/schema/src/session-error.ts`): the error
+// carried by `session.tool.failed` must be an object, never a plain string.
+function isStructuredError(value: unknown): value is { type: string; message: string } {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.type === "string" && typeof record.message === "string";
+}
+
 function replay(frames: unknown[]) {
   const emitted: OpenCodeEvent[] = [];
   let sequence = 0;
@@ -172,13 +180,40 @@ describe("tool projector", () => {
       sessionID: SESSION_ID,
       assistantMessageID: "msg_tools_1",
       id: "call_edit_1",
-      error: "permission denied",
+      error: { type: "tool_error", message: "permission denied" },
       content: [{ type: "text", text: "permission denied" }],
       executed: true,
     });
+    expect(isStructuredError(failed?.data.error)).toBe(true);
     expect(emitted.some((event) => event.type === "session.tool.success" && event.data.id === "call_edit_1")).toBe(
       false,
     );
+  });
+
+  test("fails a plain-string error against the structured error shape", () => {
+    const { emitted } = replay(toolsFrames);
+    const failed = emitted.find((event) => event.type === "session.tool.failed");
+    expect(isStructuredError(failed?.data.error)).toBe(true);
+    // A string error is what this used to emit; the shape check must reject it.
+    expect(isStructuredError("permission denied")).toBe(false);
+    expect(isStructuredError({ type: "tool_error" })).toBe(false);
+    expect(isStructuredError({ message: "permission denied" })).toBe(false);
+  });
+
+  test("messages the failure with the first text block, or a fallback when there is none", () => {
+    const failure = (content: unknown[]) => {
+      const { emitted } = replay([
+        startFrame("msg_fail_1"),
+        { type: "tool_execution_end", toolCallId: "call_fail_1", result: { content, details: {} }, isError: true },
+      ]);
+      return emitted.find((event) => event.type === "session.tool.failed")?.data.error;
+    };
+
+    expect(failure([{ type: "text", text: "first" }, { type: "text", text: "second" }])).toEqual({
+      type: "tool_error",
+      message: "first",
+    });
+    expect(failure([{ type: "image", data: "x" }])).toEqual({ type: "tool_error", message: "tool failed" });
   });
 
   test("exposes pending tool calls from input start until execution end", () => {
