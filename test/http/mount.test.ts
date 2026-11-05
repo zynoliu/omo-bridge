@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveConfig } from "../../src/config";
+import { validateResponse } from "../../src/contract/validate";
 import { createEventBus, type BridgeEvent, type EventBus, type EventSubscription } from "../../src/http/events";
 import { setCatalogTransport } from "../../src/http/handlers/catalogs";
 import {
@@ -507,6 +508,7 @@ describe("mounted catalog routes", () => {
       "/api/integration",
       "/api/websearch/provider",
       "/api/permission/saved",
+      "/api/plugin",
     ]) {
       const response = await get(`${path}?${location}`);
       expect(response.status).toBe(200);
@@ -521,6 +523,27 @@ describe("mounted catalog routes", () => {
 
     const switchedAgent = await send("POST", `/api/session/${SESSION_ID}/agent`, { agent: "omo" });
     expect(switchedAgent.status).toBe(204);
+  });
+});
+
+describe("mounted location and plugin routes", () => {
+  const location = () => `location%5Bdirectory%5D=${encodeURIComponent(workdir)}`;
+
+  test("GET /api/location answers a bare Location.PublicInfo, not a location envelope", async () => {
+    const response = await get(`/api/location?${location()}`);
+    expect(response.status).toBe(200);
+    const body = await json(response);
+    expect(body.directory).toBe(workdir);
+    expect(body).not.toHaveProperty("location");
+    expect(validateResponse("location.get", body)).toEqual({ ok: true });
+  });
+
+  test("GET /api/plugin answers the empty location envelope the TUI reads", async () => {
+    const response = await get(`/api/plugin?${location()}`);
+    expect(response.status).toBe(200);
+    const body = await json(response);
+    expect(body.data).toEqual([]);
+    expect(validateResponse("plugin.list", body)).toEqual({ ok: true });
   });
 });
 

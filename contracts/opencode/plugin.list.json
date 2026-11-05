@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/plugin.list",
+  "title": "plugin.list",
+  "description": "Derived from packages/schema/src/plugin.ts:51 - success body of GET /api/plugin (empty: senpi has no plugin registry).",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "builtin"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "package"
+                  },
+                  "target": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "outdated": {
+                    "const": true
+                  },
+                  "updating": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "type",
+                  "target"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "local"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "path"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "sdk"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              }
+            ]
+          },
+          "features": {
+            "type": "object",
+            "properties": {
+              "server": {
+                "const": true
+              },
+              "tui": {
+                "const": true
+              },
+              "rpc": {
+                "const": true
+              },
+              "gui": {
+                "const": true
+              }
+            }
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "active"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "failed"
+                  },
+                  "error": {
+                    "type": "string"
+                  },
+                  "ref": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "error"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "features",
+          "state"
+        ]
+      }
+    }
+  }
+}

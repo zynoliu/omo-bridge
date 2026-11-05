@@ -275,8 +275,13 @@ export async function handleFsFind(_request: Request, url: URL): Promise<Respons
   return jsonResponse(200, { location: locationInfo(directory), data: findEntries(directory, query, limit) });
 }
 
+// `location.get` declares `success: Location.PublicInfo` with no `Location.response(...)` wrapper
+// (`packages/protocol/src/groups/location.ts:36`), and the client reads the body as the location
+// itself: `setDefaultLocation({ directory: location.directory })`
+// (`packages/client/src/solid/data.ts:2065-2071`). Wrapping it as `{location}` made that directory
+// undefined and crashed the prompt's location memo. Unlike fs.list/vcs.get, this body is bare.
 export async function handleLocationGet(_request: Request, url: URL): Promise<Response> {
-  return jsonResponse(200, { location: locationInfo(requestedDirectory(url, false)) });
+  return jsonResponse(200, locationInfo(requestedDirectory(url, false)));
 }
 
 export async function handleProjectList(_request: Request, _url: URL): Promise<Response> {

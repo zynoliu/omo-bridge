@@ -258,6 +258,14 @@ export const ENDPOINTS: Endpoint[] = [
     wrap: "locationDataArray",
     note: "success body of GET /api/integration",
   },
+  {
+    id: "plugin.list",
+    kind: "decl",
+    file: "packages/schema/src/plugin.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/plugin (empty: senpi has no plugin registry)",
+  },
 
   // --- filesystem, location, project, vcs, config ---------------------------------------------
   {
@@ -281,8 +289,10 @@ export const ENDPOINTS: Endpoint[] = [
     kind: "decl",
     file: "packages/schema/src/location.ts",
     name: "PublicInfo",
-    wrap: "locationOnly",
-    note: "success body of GET /api/location",
+    // `location.get` declares `success: Location.PublicInfo` with no `Location.response(...)`
+    // wrapper (`packages/protocol/src/groups/location.ts:36`), so the body is the location itself.
+    // Its siblings fs.list/vcs.get do use the envelope; wrapping this one is what crashed the TUI.
+    note: "success body of GET /api/location (a bare Location.PublicInfo, no location envelope)",
   },
   {
     id: "project.list",

@@ -13,7 +13,7 @@ which source, at which revision, and by which rule.
 
 Coverage now follows the route table in `src/http/routes/index.ts`: every route family the bridge
 serves has at least one pinned schema, and every schema has a sample. The registry currently holds
-79 endpoints: 43 response bodies and 36 event frames.
+80 endpoints: 44 response bodies and 36 event frames.
 
 ### Response schemas
 
@@ -46,6 +46,7 @@ serves has at least one pinned schema, and every schema has a sample. The regist
 | `mcp.list` | `packages/schema/src/mcp.ts:91` | success body of GET /api/mcp |
 | `mcp.resourceCatalog` | `packages/schema/src/mcp.ts:120` | success body of GET /api/mcp/resource |
 | `integration.list` | `packages/schema/src/integration.ts:74` | success body of GET /api/integration |
+| `plugin.list` | `packages/schema/src/plugin.ts:51` | success body of GET /api/plugin (empty: senpi has no plugin registry) |
 | `fs.list` | `packages/schema/src/filesystem.ts:18` | success body of GET /api/fs/list |
 | `fs.find` | `packages/schema/src/filesystem.ts:18` | success body of GET /api/fs/find |
 | `location.publicInfo` | `packages/schema/src/location.ts:29` | success body of GET /api/location |

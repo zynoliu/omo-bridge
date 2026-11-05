@@ -145,6 +145,18 @@ describe("opencode contracts", () => {
     expect(validateResponse("project.list", sample).ok).toBe(false);
   });
 
+  // The TUI reads `location.directory` straight off the GET /api/location body
+  // (`packages/client/src/solid/data.ts:2065`), and the bridge used to answer `{location: {...}}`.
+  // This is the control that would have caught it: the wrapped body must not validate.
+  test("negative control: a location.get body wrapped in a location envelope is rejected", () => {
+    const bare = structuredClone(sampleOf("location.get")) as Record<string, unknown>;
+    expect(bare).toHaveProperty("directory");
+    expect(validateResponse("location.get", bare)).toEqual({ ok: true });
+    const result = validateResponse("location.get", { location: bare });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.join("\n")).toContain("must have required property 'directory'");
+  });
+
   test("error envelope carries _tag and message", () => {
     expect(() => assertErrorEnvelope({ _tag: "SessionNotFoundError", message: "missing" })).not.toThrow();
   });

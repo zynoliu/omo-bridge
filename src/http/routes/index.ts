@@ -7,6 +7,7 @@ import {
   handleMcpResourceCatalog,
   handleModelList,
   handlePermissionSavedList,
+  handlePluginList,
   handleProviderList,
   handleReferenceList,
   handleSessionSwitchAgent,
@@ -180,6 +181,7 @@ export const catalogRoutes: Route[] = [
   route("GET", "/api/mcp", handleMcpList),
   route("GET", "/api/mcp/resource", handleMcpResourceCatalog),
   route("GET", "/api/integration", handleIntegrationList),
+  route("GET", "/api/plugin", handlePluginList),
   route("GET", "/api/websearch/provider", handleWebsearchProviders),
   route("GET", "/api/permission/saved", handlePermissionSavedList),
 ];

@@ -100,7 +100,8 @@ the TUI degrades visibly instead of breaking. The endpoint-by-endpoint ledger, i
 and error tag for each path, is in `DEGRADATIONS.md`.
 
 In short, it does not provide worktrees, persistent terminals, provider integrations or credentials,
-device pairing, OpenCode Console usage, or an MCP server registry. Saved permission rules are
+device pairing, OpenCode Console usage, an MCP server registry, or a server plugin registry. Saved
+permission rules are
 recorded, but their update and delete routes are not mounted. V1 migration answers `completed` because
 the bridge starts from an empty state directory. For the exact gaps and the TUI behaviour behind each
 one, read `DEGRADATIONS.md`.
