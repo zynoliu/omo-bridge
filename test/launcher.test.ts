@@ -53,12 +53,14 @@ function deferred<T>(): Deferred<T> {
 function createFakeTransport(): {
   transport: SenpiTransport;
   opened: Array<Record<string, unknown> | undefined>;
+  aborts: Array<Record<string, unknown> | undefined>;
   connectCalls: () => number;
   setConnectGate: (gate: Promise<void>) => void;
   emitDisconnect: (error: unknown) => void;
 } {
   const disconnectListeners = new Set<(error: unknown) => void>();
   const opened: Array<Record<string, unknown> | undefined> = [];
+  const aborts: Array<Record<string, unknown> | undefined> = [];
   let gate: Promise<void> | undefined;
   let connects = 0;
 
@@ -101,12 +103,29 @@ function createFakeTransport(): {
       return {};
     },
     async setSessionName(): Promise<void> {},
+    async abort(options?: Record<string, unknown>): Promise<unknown> {
+      aborts.push(options);
+      return { stopped: true };
+    },
+    async getPendingInputs(): Promise<unknown> {
+      return {
+        inputs: [
+          {
+            clientMessageId: "msg_launcher_1",
+            text: "queued through the proxy",
+            requestedMode: "steer",
+            state: "queued",
+          },
+        ],
+      };
+    },
     raw: { request: async (): Promise<unknown> => ({}) },
   };
 
   return {
     transport: transport as unknown as SenpiTransport,
     opened,
+    aborts,
     connectCalls: () => connects,
     setConnectGate: (next: Promise<void>) => {
       gate = next;
@@ -324,6 +343,37 @@ describe("model catalog probe", () => {
 });
 
 describe("start", () => {
+  test("the installed proxy serves the inbox family instead of the 503 fallback", async () => {
+    const stateDir = tempStateDir();
+    const { runCommand } = ensureRunCommand(stateDir);
+    const fake = createFakeTransport();
+
+    const started = await launch({
+      env: baseEnv(stateDir),
+      deps: {
+        runCommand,
+        createRuntime: async (env) => fakeRuntime(fake.transport, env),
+      },
+    });
+
+    const url = `http://127.0.0.1:${started.runtime.server.port}`;
+    const inbox = await fetch(`${url}/api/session/durable-1/inbox`, { headers: basicAuth() });
+    expect(inbox.status).toBe(200);
+    const body = (await inbox.json()) as { data: Array<Record<string, unknown>> };
+    expect(body.data.map((item) => [item.id, item.text, item.delivery])).toEqual([
+      ["msg_launcher_1", "queued through the proxy", "steer"],
+    ]);
+
+    const interrupted = await fetch(`${url}/api/session/durable-1/interrupt`, {
+      method: "POST",
+      headers: { ...basicAuth(), "content-type": "application/json" },
+      body: "{}",
+    });
+    expect(interrupted.status).toBe(200);
+    expect(await interrupted.json()).toEqual({ interrupted: true });
+    expect(fake.aborts).toEqual([{ intent: "stop" }]);
+  });
+
   test("a stale bridge.json from a dead pid is replaced with this process's record", async () => {
     const stateDir = tempStateDir();
     const stateFile = join(stateDir, BRIDGE_STATE_FILE);
