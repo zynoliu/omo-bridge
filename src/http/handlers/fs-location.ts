@@ -22,6 +22,21 @@ export type ProjectInfo = {
   canonical: string;
 };
 
+export type ProjectTime = {
+  created: number;
+  updated: number;
+  active: number;
+  archived?: number;
+};
+
+/** One row of GET /api/project: the TUI decodes it as `Project.Info` (`packages/schema/src/project.ts`). */
+export type PublicProject = {
+  id: string;
+  canonical: string;
+  time: ProjectTime;
+  sandboxes: string[];
+};
+
 export type LocationPublicInfo = {
   directory: string;
   project: ProjectInfo;
@@ -61,6 +76,32 @@ export function locationInfo(directory: string): LocationPublicInfo {
   return {
     directory,
     project: { id: projectIdFor(canonical), directory, canonical },
+  };
+}
+
+// Project.Time values are epoch millis, so read them from the directory itself instead of inventing
+// one shared clock value per response. A filesystem without birth times falls back to its mtime.
+function projectTimeOf(canonical: string): ProjectTime {
+  const fallback = Date.now();
+  let stats;
+  try {
+    stats = statSync(canonical);
+  } catch {
+    return { created: fallback, updated: fallback, active: fallback };
+  }
+  const updated = Math.max(0, Math.trunc(stats.mtimeMs));
+  const born = Math.max(0, Math.trunc(stats.birthtimeMs));
+  const active = updated === 0 ? fallback : updated;
+  return { created: born === 0 ? active : born, updated: active, active };
+}
+
+export function publicProject(directory: string): PublicProject {
+  const info = locationInfo(directory);
+  return {
+    id: info.project.id,
+    canonical: info.project.canonical,
+    time: projectTimeOf(info.project.canonical),
+    sandboxes: [],
   };
 }
 
@@ -201,20 +242,39 @@ export async function handleLocationGet(_request: Request, url: URL): Promise<Re
 }
 
 export async function handleProjectList(_request: Request, _url: URL): Promise<Response> {
-  return jsonResponse(200, [locationInfo(process.cwd()).project]);
+  return jsonResponse(200, [publicProject(process.cwd())]);
 }
 
 export async function handleConfigGet(_request: Request, _url: URL): Promise<Response> {
   return jsonResponse(200, []);
 }
 
+async function repoDefaultBranch(directory: string): Promise<string | undefined> {
+  const remote = (await gitRead(directory, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]))?.trim();
+  if (remote !== undefined && remote.length > 0) {
+    return remote.startsWith("origin/") ? remote.slice("origin/".length) : remote;
+  }
+  const configured = (await gitRead(directory, ["config", "--get", "init.defaultBranch"]))?.trim();
+  return configured !== undefined && configured.length > 0 ? configured : undefined;
+}
+
+// Vcs.Info.branch is a required struct, never null: an empty object is the valid "no branch" value.
+async function vcsBranch(directory: string): Promise<{ current?: string; default?: string }> {
+  // symbolic-ref reports a branch name in an unborn repository, where rev-parse only answers HEAD.
+  const symbolic = (await gitRead(directory, ["symbolic-ref", "--short", "HEAD"]))?.trim();
+  const branch =
+    symbolic !== undefined && symbolic.length > 0
+      ? symbolic
+      : (await gitRead(directory, ["rev-parse", "--abbrev-ref", "HEAD"]))?.trim();
+  if (branch === undefined || branch.length === 0 || branch === "HEAD") return {};
+  return { current: branch, default: (await repoDefaultBranch(directory)) ?? branch };
+}
+
 export async function handleVcsGet(_request: Request, url: URL): Promise<Response> {
   const directory = requestedDirectory(url, false);
-  const output = await gitRead(directory, ["rev-parse", "--abbrev-ref", "HEAD"]);
-  const branch = output?.trim();
   return jsonResponse(200, {
     location: locationInfo(directory),
-    data: { branch: branch !== undefined && branch.length > 0 ? branch : null },
+    data: { branch: await vcsBranch(directory) },
   });
 }
 

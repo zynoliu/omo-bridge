@@ -208,9 +208,35 @@ describe("handleProviderList", () => {
   });
 });
 
+describe("handleAgentList", () => {
+  test("serves one primary agent the TUI can select without a transport", async () => {
+    const response = await handleAgentList(get("/api/agent"), urlOf("/api/agent", { "location[directory]": WORK_DIR }));
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Envelope<Array<Record<string, unknown>>>;
+    expect(validateResponse("location.publicInfo", body.location)).toEqual({ ok: true });
+    expect(body.data).toHaveLength(1);
+
+    const agent = body.data[0]!;
+    expect(agent).toMatchObject({ id: "build", name: "Build", mode: "primary", hidden: false });
+    expect(agent.request).toEqual({ settings: {}, headers: {}, body: {} });
+    expect(agent.permissions).toEqual([
+      { action: "*", resource: "*", effect: "allow" },
+      { action: "read", resource: "*.env", effect: "ask" },
+      { action: "read", resource: "*.env.*", effect: "ask" },
+      { action: "read", resource: "*.env.example", effect: "allow" },
+    ]);
+  });
+
+  test("keeps the agent id and order stable across reads", async () => {
+    const first = (await (await handleAgentList(get("/api/agent"), urlOf("/api/agent"))).json()) as Envelope<unknown[]>;
+    const second = (await (await handleAgentList(get("/api/agent"), urlOf("/api/agent"))).json()) as Envelope<unknown[]>;
+    expect(first.data).toEqual(second.data);
+    expect((first.data[0] as { id: string }).id).toBe("build");
+  });
+});
+
 describe("empty catalogs", () => {
   const listHandlers: Array<[string, (request: Request, url: URL) => Promise<Response>]> = [
-    ["/api/agent", handleAgentList],
     ["/api/skill", handleSkillList],
     ["/api/reference", handleReferenceList],
     ["/api/mcp", handleMcpList],

@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
 import { basename } from "node:path";
+import { sessionKeyOf } from "../../model/session-map";
 import type { SenpiEntriesResult, SenpiMessages, SenpiTransport } from "../../senpi/transport";
 import { mediaUriFor, wantsMediaRefs } from "./media";
+import { getSessionManagementStore } from "./session-write";
 
 // Read-only session endpoints. Handlers take (request, url) and read ids from url.pathname, so the
 // transport is injected once with setSessionReadTransport() instead of arriving through a router.
@@ -45,7 +47,7 @@ export type PublicSessionInfo = {
   projectID: string;
   cost: number;
   tokens: { input: number; output: number; reasoning: number; cache: { read: number; write: number } };
-  time: { created: string; updated: string };
+  time: { created: number; updated: number; archived?: number };
   title: string;
   location: { directory: string };
 };
@@ -53,7 +55,7 @@ export type PublicSessionInfo = {
 export type PublicMessagePart =
   | { type: "text"; text: string }
   | { type: "reasoning"; text: string }
-  | { type: "tool"; id: string; name: string; state: PublicToolState; time: { created: string } };
+  | { type: "tool"; id: string; name: string; state: PublicToolState; time: { created: number } };
 
 export type PublicToolState =
   | { status: "running"; input: Record<string, unknown>; metadata: Record<string, unknown> }
@@ -71,7 +73,7 @@ export type PublicMessageFile =
 
 export type PublicSessionMessage = {
   id: string;
-  time: { created: string };
+  time: { created: number };
   type: string;
   text?: string;
   agent?: string;
@@ -239,19 +241,22 @@ function projectIdOf(cwd: string): string {
   return createHash("sha256").update(cwd, "utf8").digest("hex");
 }
 
-function sessionTimes(id: string, sessionPath: string | undefined): { created: string; updated: string } {
-  let created: string | undefined;
-  let updated: string | undefined;
+// Session.Info.time decodes from epoch millis; ISO strings reach the TUI as NaNy in every row.
+function sessionTimes(id: string, sessionPath: string | undefined): { created: number; updated: number } {
+  let created: number | undefined;
+  let updated: number | undefined;
   if (sessionPath !== undefined) {
     try {
       const stat = statSync(sessionPath);
-      created = stat.birthtime.toISOString();
-      updated = stat.mtime.toISOString();
+      const born = Math.max(0, Math.trunc(stat.birthtimeMs));
+      const modified = Math.max(0, Math.trunc(stat.mtimeMs));
+      created = born;
+      updated = modified;
     } catch {
     }
   }
   if (created === undefined || updated === undefined) {
-    const observedAt = new Date().toISOString();
+    const observedAt = Date.now();
     const previous = observed.get(id);
     created ??= previous?.created ?? observedAt;
     updated ??= previous?.updated ?? observedAt;
@@ -260,7 +265,7 @@ function sessionTimes(id: string, sessionPath: string | undefined): { created: s
   return { created, updated };
 }
 
-const observed = new Map<string, { created: string; updated: string }>();
+const observed = new Map<string, { created: number; updated: number }>();
 
 function sessionIdOf(row: SenpiEntriesRow): string {
   return row.durableSessionId ?? row.sessionPath ?? row.sessionId;
@@ -268,15 +273,26 @@ function sessionIdOf(row: SenpiEntriesRow): string {
 
 type SenpiEntriesRow = Awaited<ReturnType<SessionReadTransport["listSessions"]>>[number];
 
+/** Archive state is bridge-side (`SessionMap`); the transport listing itself never carries it. */
+function archivedAtOf(row: SenpiEntriesRow): number | undefined {
+  const store = getSessionManagementStore();
+  if (store === undefined) return undefined;
+  const record = store.get(sessionKeyOf(row));
+  if (record?.archived !== true) return undefined;
+  const parsed = Date.parse(record.archivedAt ?? record.lastSeenAt);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 function toMappedSession(row: SenpiEntriesRow): MappedSession {
   const id = sessionIdOf(row);
   const time = sessionTimes(id, row.sessionPath);
+  const archived = archivedAtOf(row);
   const info: PublicSessionInfo = {
     id,
     projectID: projectIdOf(row.cwd),
     cost: 0,
     tokens: { ...EMPTY_TOKENS, cache: { ...EMPTY_TOKENS.cache } },
-    time,
+    time: { ...time, ...(archived === undefined ? {} : { archived }) },
     title: row.name ?? basename(row.cwd),
     location: { directory: row.cwd },
   };
@@ -287,14 +303,15 @@ function matchesSession(mapped: MappedSession, row: SenpiEntriesRow, sessionID: 
   return mapped.id === sessionID || mapped.routeId === sessionID || row.durableSessionId === sessionID;
 }
 
-async function listMappedSessions(caller: SessionReadTransport): Promise<MappedSession[]> {
-  const rows = await caller.listSessions();
-  const mapped = rows.map(toMappedSession);
-  mapped.sort((left, right) => {
-    const byUpdated = right.info.time.updated.localeCompare(left.info.time.updated);
-    return byUpdated !== 0 ? byUpdated : left.id.localeCompare(right.id);
+function listMappedSessions(caller: SessionReadTransport): Promise<MappedSession[]> {
+  return caller.listSessions().then((rows) => {
+    const mapped = rows.map(toMappedSession);
+    mapped.sort((left, right) => {
+      const byUpdated = right.info.time.updated - left.info.time.updated;
+      return byUpdated !== 0 ? byUpdated : left.id.localeCompare(right.id);
+    });
+    return mapped;
   });
-  return mapped;
 }
 
 async function requireMappedSession(
@@ -309,13 +326,13 @@ async function requireMappedSession(
   throw sessionNotFound(sessionID);
 }
 
-function isoTimestamp(value: unknown): string {
+function timestampMillis(value: unknown): number {
   if (typeof value === "string") {
     const parsed = Date.parse(value);
-    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString();
+    if (!Number.isNaN(parsed)) return parsed;
   }
-  if (typeof value === "number" && Number.isFinite(value)) return new Date(value).toISOString();
-  return new Date(0).toISOString();
+  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  return 0;
 }
 
 function textOfUserContent(content: Extract<AgentMessage, { role: "user" }>["content"]): string {
@@ -365,7 +382,7 @@ function toolResultsById(entries: SessionEntry[]): Map<string, ToolResultMessage
 
 function mapAssistantContent(
   message: Extract<AgentMessage, { role: "assistant" }>,
-  createdAt: string,
+  createdAt: number,
   toolResults: Map<string, ToolResultMessage>,
 ): PublicMessagePart[] {
   const parts: PublicMessagePart[] = [];
@@ -404,7 +421,7 @@ function mapEntries(entries: SessionEntry[], mediaRefs: boolean): PublicSessionM
     if (entry.type === "model_change") {
       messages.push({
         id: entry.id,
-        time: { created: isoTimestamp(entry.timestamp) },
+        time: { created: timestampMillis(entry.timestamp) },
         type: "model-switched",
         model: { id: entry.modelId, providerID: entry.provider },
       });
@@ -412,7 +429,7 @@ function mapEntries(entries: SessionEntry[], mediaRefs: boolean): PublicSessionM
     }
     if (entry.type !== "message") continue;
     const message = entry.message;
-    const createdAt = isoTimestamp(entry.timestamp);
+    const createdAt = timestampMillis(entry.timestamp);
     if (message.role === "user") {
       const files = filesOfUserContent(message.content, mediaRefs);
       messages.push({
@@ -454,7 +471,7 @@ async function readMessages(caller: SessionReadTransport, mediaRefs: boolean): P
   for (const message of messages) if (message.role === "toolResult") toolResults.set(message.toolCallId, message);
   const mapped: PublicSessionMessage[] = [];
   messages.forEach((message, index) => {
-    const createdAt = isoTimestamp(message.timestamp);
+    const createdAt = timestampMillis(message.timestamp);
     const id = `message-${index}`;
     if (message.role === "user") {
       const files = filesOfUserContent(message.content, mediaRefs);
@@ -491,10 +508,21 @@ export async function handleSessionList(_request: Request, url: URL): Promise<Re
     const caller = requireTransport();
     const limit = readLimit(url, DEFAULT_PAGE_LIMIT);
     const offset = readCursor(url);
-    const sessions = await listMappedSessions(caller);
+    const archived = readArchived(url);
+    const sessions = (await listMappedSessions(caller)).filter((session) =>
+      archived === undefined ? true : (session.info.time.archived !== undefined) === archived,
+    );
     const { page, cursor } = paginate(sessions, offset, limit);
     return jsonResponse(200, { data: page.map((session) => session.info), cursor });
   });
+}
+
+/** `archived` is the TUI's list filter: absent means both, matching the endpoint's schema. */
+function readArchived(url: URL): boolean | undefined {
+  const raw = url.searchParams.get("archived");
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return undefined;
 }
 
 export async function handleSessionActive(_request: Request, url: URL): Promise<Response> {

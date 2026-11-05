@@ -8,7 +8,7 @@ import { deriveSchemas } from "../../scripts/contracts-extract";
 function assistant(content: unknown): Record<string, unknown> {
   return {
     id: "msg_assistant",
-    time: { created: "2026-11-05T04:00:00.000Z" },
+    time: { created: 1793851200000 },
     type: "assistant",
     agent: "build",
     model: { id: "deepseek-v4", providerID: "deepseek" },
@@ -34,7 +34,7 @@ describe("session.messages assistant content", () => {
             name: "read",
             executed: true,
             state: { status: "running", input: {}, metadata: {} },
-            time: { created: "2026-11-05T04:00:01.000Z" },
+            time: { created: 1793851201000 },
           },
         ]),
       ),

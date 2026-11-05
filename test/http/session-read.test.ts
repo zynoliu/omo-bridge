@@ -20,6 +20,8 @@ import {
   viewedAtFor,
   type SessionReadTransport,
 } from "../../src/http/handlers/sessions";
+import { sessionManagementStore, setSessionManagementStore } from "../../src/http/handlers/session-write";
+import { SessionMap } from "../../src/model/session-map";
 import type { SenpiEntriesResult, SenpiMessages, SenpiSessionState, SenpiSessionSummary } from "../../src/senpi/transport";
 
 type Entries = SenpiEntriesResult["entries"];
@@ -174,6 +176,7 @@ beforeEach(() => {
 
 afterEach(() => {
   setSessionReadTransport(undefined);
+  setSessionManagementStore(undefined);
   setSessionWaitTimeoutMs(SESSION_WAIT_TIMEOUT_MS);
   rmSync(workDir, { recursive: true, force: true });
 });
@@ -206,7 +209,10 @@ describe("GET /api/session", () => {
     expect(alpha.title).toBe("Alpha");
     expect(alpha.location).toEqual({ directory: "/work/alpha" });
     expect(alpha.projectID).toMatch(/^[0-9a-f]{64}$/);
-    const alphaTime = alpha.time as { created: string; updated: string };
+    const alphaTime = alpha.time as { created: number; updated: number };
+    expect(Number.isInteger(alphaTime.created)).toBe(true);
+    expect(Number.isInteger(alphaTime.updated)).toBe(true);
+    expect(alphaTime.created).toBeGreaterThan(0);
     expect(alphaTime.created <= alphaTime.updated).toBe(true);
 
     const beta = byId.get("rpc-2")!;
@@ -279,6 +285,43 @@ describe("GET /api/session", () => {
     const response = await handleSessionList(get("/api/session?cursor=nope"), url("/api/session?cursor=nope"));
     expect(response.status).toBe(400);
     expect((await bodyOf(response))._tag).toBe("InvalidCursorError");
+  });
+  test("serves epoch-millis time.archived and filters by the archived query", async () => {
+    const sessionPath = join(workDir, "archived.jsonl");
+    writeFileSync(sessionPath, `${JSON.stringify({ type: "session", id: "durable-archived" })}\n`);
+    const row = session({
+      sessionId: "rpc-archived",
+      durableSessionId: "durable-archived",
+      sessionPath,
+      cwd: "/work/archived",
+      name: "Archived",
+    });
+    const map = SessionMap.open({ stateDir: join(workDir, "state"), agentDir: join(workDir, "agent") });
+    map.upsert(row);
+    map.archive("durable-archived");
+    setSessionManagementStore(sessionManagementStore(map));
+    setSessionReadTransport(new FakeTransport({ sessions: [row] }));
+
+    const archivedBody = await bodyOf(
+      await handleSessionList(get("/api/session?archived=true"), url("/api/session?archived=true")),
+    );
+    const archivedRows = archivedBody.data as Array<Record<string, unknown>>;
+    expect(archivedRows).toHaveLength(1);
+    expect(validateResponse("session.publicInfo", archivedRows[0])).toEqual({ ok: true });
+    const time = archivedRows[0]!.time as { created: number; updated: number; archived?: number };
+    expect(Number.isInteger(time.created)).toBe(true);
+    expect(Number.isInteger(time.archived)).toBe(true);
+
+    const activeBody = await bodyOf(
+      await handleSessionList(get("/api/session?archived=false"), url("/api/session?archived=false")),
+    );
+    expect(activeBody.data).toEqual([]);
+
+    const single = await handleSessionGet(
+      get("/api/session/durable-archived"),
+      url("/api/session/durable-archived"),
+    );
+    expect((await bodyOf(single)).data).toMatchObject({ time: { archived: time.archived } });
   });
 });
 
@@ -376,7 +419,7 @@ describe("session messages", () => {
     const user = data[0]!;
     expect(user.type).toBe("user");
     expect(user.text).toBe("hello");
-    expect(user.time).toEqual({ created: "2026-11-05T00:00:00.000Z" });
+    expect(user.time).toEqual({ created: Date.parse("2026-11-05T00:00:00.000Z") });
 
     const assistant = data[1]!;
     expect(assistant.type).toBe("assistant");

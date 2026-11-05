@@ -108,12 +108,12 @@ describe("mounted fs/location handlers", () => {
     expect(data.map((entry) => entry.name)).toContain("alpha.txt");
   });
 
-  test("GET /api/vcs answers 200 for a directory outside a repository", async () => {
+  test("GET /api/vcs answers a valid empty branch for a directory outside a repository", async () => {
     const response = await get(`/api/vcs?location%5Bdirectory%5D=${encodeURIComponent(workdir)}`);
     expect(response.status).toBe(200);
     const body = await json(response);
     expect(body.location).toBeDefined();
-    expect(body.data).toEqual({ branch: null });
+    expect(body.data).toEqual({ branch: {} });
   });
 
   test("GET /api/fs/list without credentials is rejected before routing", async () => {

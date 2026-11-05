@@ -42,6 +42,35 @@ export type CatalogModel = {
 
 export type CatalogProvider = { id: string; name: string };
 
+/** One row of GET /api/agent: the TUI decodes it as `Agent.Info` (`packages/schema/src/agent.ts`). */
+export type CatalogAgent = {
+  id: string;
+  name: string;
+  request: { settings: Record<string, unknown>; headers: Record<string, string>; body: Record<string, unknown> };
+  description: string;
+  mode: "subagent" | "primary" | "all";
+  hidden: boolean;
+  permissions: Array<{ action: string; resource: string; effect: "allow" | "deny" | "ask" }>;
+};
+
+// The TUI cannot submit a prompt while `local.agent.current()` is null, so the bridge always serves
+// one primary agent. senpi has no agent registry; this row is the projection the next turn's prompt
+// options use, and it is a constant so repeated reads agree.
+const DEFAULT_AGENT: CatalogAgent = {
+  id: "build",
+  name: "Build",
+  request: { settings: {}, headers: {}, body: {} },
+  description: "Default agent for bridge sessions",
+  mode: "primary",
+  hidden: false,
+  permissions: [
+    { action: "*", resource: "*", effect: "allow" },
+    { action: "read", resource: "*.env", effect: "ask" },
+    { action: "read", resource: "*.env.*", effect: "ask" },
+    { action: "read", resource: "*.env.example", effect: "allow" },
+  ],
+};
+
 let transport: CatalogTransport | undefined;
 
 export function setCatalogTransport(next: CatalogTransport | undefined): void {
@@ -237,7 +266,8 @@ export async function handleProviderList(_request: Request, url: URL): Promise<R
 
 export async function handleAgentList(_request: Request, url: URL): Promise<Response> {
   return respond(async () => {
-    return jsonResponse(200, { location: locationFor(url), data: [] });
+    // A fresh array per read keeps callers from mutating the shared row, while the id and order stay stable.
+    return jsonResponse(200, { location: locationFor(url), data: [{ ...DEFAULT_AGENT }] });
   });
 }
 

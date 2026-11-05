@@ -319,7 +319,6 @@ describe("experimental MCP degradation", () => {
 
 describe("catalog-backed degradation families", () => {
   const lists: Array<[string, Handler]> = [
-    ["/api/agent", handleAgentList],
     ["/api/skill", handleSkillList],
     ["/api/reference", handleReferenceList],
     ["/api/websearch/provider", handleWebsearchProviders],

@@ -18,7 +18,7 @@ import {
   type FileDiff,
   type FileEntry,
   type LocationPublicInfo,
-  type ProjectInfo,
+  type PublicProject,
 } from "../../src/http/handlers/fs-location";
 
 let base: string;
@@ -206,14 +206,23 @@ describe("handleLocationGet", () => {
 });
 
 describe("handleProjectList", () => {
-  test("returns the single known project for the working directory", async () => {
+  test("returns the working directory project with epoch-millis time and sandboxes", async () => {
     const response = await handleProjectList(request("/api/project"), requestUrl("/api/project"));
     expect(response.status).toBe(200);
-    const body = (await response.json()) as ProjectInfo[];
-    expect(body).toEqual([
-      { id: projectId(process.cwd()), directory: process.cwd(), canonical: realpathSync(process.cwd()) },
-    ]);
-    expect(body[0]!.id).toMatch(/^[0-9a-f]{16}$/);
+    const body = (await response.json()) as PublicProject[];
+    expect(body).toHaveLength(1);
+
+    const project = body[0]!;
+    expect(project.id).toBe(projectId(process.cwd()));
+    expect(project.id).toMatch(/^[0-9a-f]{16}$/);
+    expect(project.canonical).toBe(realpathSync(process.cwd()));
+    expect(project.sandboxes).toEqual([]);
+    expect(Number.isInteger(project.time.created)).toBe(true);
+    expect(Number.isInteger(project.time.updated)).toBe(true);
+    expect(Number.isInteger(project.time.active)).toBe(true);
+    expect(project.time.created).toBeGreaterThan(0);
+    expect(project.time.active).toBe(project.time.updated);
+    expect(project.time).not.toHaveProperty("archived");
   });
 });
 
@@ -227,20 +236,23 @@ describe("handleConfigGet", () => {
 });
 
 describe("handleVcsGet", () => {
-  test("reports the current branch inside a repository", async () => {
+  test("reports the current and default branch inside a repository", async () => {
     const response = await handleVcsGet(request("/api/vcs"), requestUrl("/api/vcs", { "location[directory]": repo }));
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { location: LocationPublicInfo; data: { branch: string | null } };
+    const body = (await response.json()) as {
+      location: LocationPublicInfo;
+      data: { branch: { current?: string; default?: string } };
+    };
     expect(body.location.directory).toBe(repo);
-    expect(body.data).toEqual({ branch: "main" });
+    expect(body.data).toEqual({ branch: { current: "main", default: "main" } });
   });
 
-  test("returns branch null outside a repository", async () => {
+  test("returns a valid empty branch outside a repository instead of null", async () => {
     for (const directory of [plain, join(base, "missing"), tmpdir()]) {
       const response = await handleVcsGet(request("/api/vcs"), requestUrl("/api/vcs", { "location[directory]": directory }));
       expect(response.status).toBe(200);
-      const body = (await response.json()) as { data: { branch: string | null } };
-      expect(body.data.branch).toBeNull();
+      const body = (await response.json()) as { data: { branch: Record<string, string> } };
+      expect(body.data).toEqual({ branch: {} });
     }
   });
 });

@@ -176,7 +176,8 @@ const NAMESPACE_SCALARS: Record<string, JsonSchema> = {
 const IMPORTED_SCALARS: Record<string, JsonSchema> = {
   AbsolutePath: { type: "string" },
   RelativePath: { type: "string" },
-  DateTimeUtcFromMillis: { type: "string" },
+  // The wire value: the encode side of `Schema.Finite.pipe(decodeTo(DateTimeUtc))` is epoch millis.
+  DateTimeUtcFromMillis: { type: "number" },
   PositiveInt: { type: "integer", minimum: 1 },
   NonNegativeInt: { type: "integer", minimum: 0 },
 };
