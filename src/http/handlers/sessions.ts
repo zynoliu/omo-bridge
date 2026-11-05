@@ -11,6 +11,12 @@ const SSE_CONTENT_TYPE = "text/event-stream";
 const DEFAULT_PAGE_LIMIT = 50;
 const MAX_MESSAGE_LIMIT = 200;
 export const SESSION_WAIT_TIMEOUT_MS = 5_000;
+let sessionWaitTimeoutMs = SESSION_WAIT_TIMEOUT_MS;
+
+/** Overrides the wait deadline (ms). Tests inject a short deadline; production keeps the default. */
+export function setSessionWaitTimeoutMs(value: number): void {
+  sessionWaitTimeoutMs = value;
+}
 const DEFAULT_AGENT = "build"; // senpi has no agent selection; this is the projection
 // PublicSessionInfo requires cost/tokens; usage aggregates arrive with the event pipeline (todo 12).
 const EMPTY_TOKENS = { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } as const;
@@ -569,7 +575,8 @@ export async function handleSessionWait(_request: Request, url: URL): Promise<Re
     await requireMappedSession(caller, sessionID);
     const waitForIdle = caller.waitForIdle;
     if (typeof waitForIdle !== "function") return noContent();
-    await waitWithDeadline(waitForIdle.call(caller, SESSION_WAIT_TIMEOUT_MS), SESSION_WAIT_TIMEOUT_MS);
+    const deadlineMs = sessionWaitTimeoutMs;
+    await waitWithDeadline(waitForIdle.call(caller, deadlineMs), deadlineMs);
     return noContent();
   });
 }

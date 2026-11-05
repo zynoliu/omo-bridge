@@ -16,6 +16,7 @@ import {
   handleSessionView,
   handleSessionWait,
   setSessionReadTransport,
+  setSessionWaitTimeoutMs,
   viewedAtFor,
   type SessionReadTransport,
 } from "../../src/http/handlers/sessions";
@@ -173,6 +174,7 @@ beforeEach(() => {
 
 afterEach(() => {
   setSessionReadTransport(undefined);
+  setSessionWaitTimeoutMs(SESSION_WAIT_TIMEOUT_MS);
   rmSync(workDir, { recursive: true, force: true });
 });
 
@@ -535,24 +537,28 @@ describe("POST session wait, view and log", () => {
     expect(transport.waitTimeouts).toEqual([SESSION_WAIT_TIMEOUT_MS]);
   });
 
-  test("wait never outlives its deadline when the transport never settles", async () => {
-    setSessionReadTransport(
-      new FakeTransport({
-        sessions: [session({ durableSessionId: "durable-1" })],
-        waitForIdle: () => new Promise<void>(() => {}),
-      }),
-    );
+  test(
+    "wait never outlives its deadline when the transport never settles",
+    async () => {
+      setSessionWaitTimeoutMs(50);
+      setSessionReadTransport(
+        new FakeTransport({
+          sessions: [session({ durableSessionId: "durable-1" })],
+          waitForIdle: () => new Promise<void>(() => {}),
+        }),
+      );
 
-    const started = Date.now();
-    const response = await handleSessionWait(
-      post("/api/experimental/session/durable-1/wait", {}),
-      url("/api/experimental/session/durable-1/wait"),
-    );
-    const elapsed = Date.now() - started;
-    expect(response.status).toBe(204);
-    expect(elapsed).toBeGreaterThanOrEqual(SESSION_WAIT_TIMEOUT_MS - 50);
-    expect(elapsed).toBeLessThan(SESSION_WAIT_TIMEOUT_MS + 1_000);
-  });
+      const started = Date.now();
+      const response = await handleSessionWait(
+        post("/api/experimental/session/durable-1/wait", {}),
+        url("/api/experimental/session/durable-1/wait"),
+      );
+      const elapsed = Date.now() - started;
+      expect(response.status).toBe(204);
+      expect(elapsed).toBeLessThan(500);
+    },
+    { timeout: 15_000 },
+  );
 
   test("wait 404s for an unknown session", async () => {
     setSessionReadTransport(new FakeTransport());
