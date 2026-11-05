@@ -9,6 +9,7 @@ export type SenpiErrorCode =
   | "not_connected"
   | "no_session"
   | "attach_unavailable"
+  | "session_not_found"
   | "command_failed";
 
 export class SenpiTransportError extends Error {
@@ -33,9 +34,13 @@ const AUTH_CODES: ReadonlySet<string> = new Set([
 
 const UNREACHABLE_ERRNOS: ReadonlySet<string> = new Set(["ENOENT", "ECONNREFUSED", "ENOTSOCK"]);
 
+// The host's own refusal for a session it does not hold: `RpcSessionRegistryError` carries it as
+// `code`, an `RpcCommandError` carries the wire `error`/`errorCode` (`unknown_session`).
+const SESSION_NOT_FOUND_CODES: ReadonlySet<string> = new Set(["unknown_session"]);
+
 const GONE_ERRNOS: ReadonlySet<string> = new Set(["ECONNRESET", "EPIPE", "ECONNABORTED"]);
 
-function stringField(error: unknown, field: "code" | "name"): string | undefined {
+function stringField(error: unknown, field: "code" | "name" | "errorCode"): string | undefined {
   if (typeof error !== "object" || error === null) return undefined;
   const value = (error as Record<string, unknown>)[field];
   return typeof value === "string" ? value : undefined;
@@ -53,9 +58,19 @@ export function mapSenpiError(error: unknown): SenpiTransportError {
   const message = messageOf(error);
   const code = stringField(error, "code");
   const name = stringField(error, "name");
+  const errorCode = stringField(error, "errorCode");
 
   if (message.startsWith(STOP_REQUIRES_INTERACTIVE_CLIENT) || code === STOP_REQUIRES_INTERACTIVE_CLIENT) {
     return new SenpiTransportError(STOP_REQUIRES_INTERACTIVE_CLIENT, message, { cause: error });
+  }
+  // The wire message for a registry refusal is the code itself, so the exact match is the host's
+  // signal rather than prose inference.
+  if (
+    (code !== undefined && SESSION_NOT_FOUND_CODES.has(code)) ||
+    (errorCode !== undefined && SESSION_NOT_FOUND_CODES.has(errorCode)) ||
+    SESSION_NOT_FOUND_CODES.has(message)
+  ) {
+    return new SenpiTransportError("session_not_found", message, { cause: error });
   }
   if (isTransportGoneError(error) || name === "RpcTransportGoneError" || code === "rpc_transport_gone") {
     return new SenpiTransportError("transport_gone", message || "the senpi transport disconnected", { cause: error });

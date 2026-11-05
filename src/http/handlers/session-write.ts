@@ -11,6 +11,7 @@ import {
 } from "../../model/session-map";
 import type { SenpiSessionSummary } from "../../senpi/transport";
 import { eventBus } from "../events";
+import { HandlerProblem, jsonResponse, noContent, messageOf, respond } from "./problem";
 
 // Session management writes: rename, archive, delete, fork, move, compact, revert and the shell
 // environment. Handlers take (request, url) and read ids from url.pathname, so the senpi transport
@@ -20,7 +21,6 @@ import { eventBus } from "../events";
 // the attached host cannot perform answers the endpoint's declared error instead of a fake 204:
 // `InvalidRequestError` (501 for a missing capability, 400 for a revert the bridge cannot stage).
 
-const JSON_CONTENT_TYPE = "application/json";
 const MAX_DELETED_TOMBSTONES = 4096;
 const ENVIRONMENT_METADATA_KEY = "environment";
 
@@ -72,20 +72,6 @@ export type SessionManagementPatch = {
 };
 
 export type PublicSessionInfo = ReturnType<typeof toPublicSessionInfo>;
-
-class HandlerProblem extends Error {
-  readonly status: number;
-  readonly tag: string;
-  readonly fields: Record<string, unknown>;
-
-  constructor(status: number, tag: string, message: string, fields: Record<string, unknown> = {}) {
-    super(message);
-    this.name = "HandlerProblem";
-    this.status = status;
-    this.tag = tag;
-    this.fields = fields;
-  }
-}
 
 let transport: SessionManagementTransport | undefined;
 let store: SessionManagementStore | undefined;
@@ -186,34 +172,6 @@ function liveRecords(map: SessionMap): Map<string, SessionRecord> {
     );
   }
   return candidate as Map<string, SessionRecord>;
-}
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": JSON_CONTENT_TYPE },
-  });
-}
-
-function errorResponse(status: number, tag: string, message: string, fields: Record<string, unknown> = {}): Response {
-  return jsonResponse(status, { _tag: tag, message, ...fields });
-}
-
-function noContent(): Response {
-  return new Response(null, { status: 204 });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function respond(operation: () => Promise<Response>): Promise<Response> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof HandlerProblem) return errorResponse(error.status, error.tag, error.message, error.fields);
-    return errorResponse(503, "ServiceUnavailableError", messageOf(error), { service: "senpi" });
-  }
 }
 
 function requireTransport(): SessionManagementTransport {
@@ -427,12 +385,23 @@ export async function attachSessionTarget(
   return target.key;
 }
 
+/**
+ * Refuses a session the bridge does not know without moving the transport's attachment, so a
+ * session-scoped route that only records bridge-side state (an agent selection, a pending form)
+ * still agrees with the session routes that do resolve it.
+ */
+export async function requireKnownSession(sessionID: string): Promise<void> {
+  const caller = getSessionManagementTransport();
+  if (caller === undefined || store === undefined) return;
+  await resolveTarget(sessionID, caller);
+}
+
 function publish(type: string, data: Record<string, unknown>): void {
   eventBus.publish({ type, data });
 }
 
 export async function handleSessionUpdate(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request);
 
@@ -493,7 +462,7 @@ export async function handleSessionUpdate(request: Request, url: URL): Promise<R
 }
 
 export async function handleSessionRemove(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const target = await resolveTarget(sessionID);
     const map = requireStore();
@@ -523,7 +492,7 @@ export async function handleSessionRemove(_request: Request, url: URL): Promise<
 }
 
 export async function handleSessionMove(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request, { required: true });
     const location = asRecord(body.location);
@@ -546,7 +515,7 @@ export async function handleSessionMove(request: Request, url: URL): Promise<Res
 }
 
 export async function handleSessionCompact(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request);
     const customInstructions = body.customInstructions;
@@ -568,7 +537,7 @@ export async function handleSessionCompact(request: Request, url: URL): Promise<
 }
 
 export async function handleSessionFork(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request);
     const rawBefore = body.before;
@@ -619,7 +588,7 @@ export async function handleSessionFork(request: Request, url: URL): Promise<Res
 }
 
 export async function handleSessionRevertStage(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request, { required: true });
     const messageID = asNonEmptyString(body.messageID);
@@ -645,7 +614,7 @@ export async function handleSessionRevertStage(request: Request, url: URL): Prom
 }
 
 export async function handleSessionRevertClear(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const target = await resolveTarget(sessionID);
     const caller = requireTransport();
@@ -660,7 +629,7 @@ export async function handleSessionRevertClear(_request: Request, url: URL): Pro
 }
 
 export async function handleSessionRevertCommit(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const target = await resolveTarget(sessionID);
     const caller = requireTransport();
@@ -675,7 +644,7 @@ export async function handleSessionRevertCommit(_request: Request, url: URL): Pr
 }
 
 export async function handleSessionEnvironment(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request, { required: true });
     const variables = asRecord(body.variables);

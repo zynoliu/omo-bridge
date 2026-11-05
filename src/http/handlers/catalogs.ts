@@ -4,7 +4,8 @@ import { validateResponse } from "../../contract/validate";
 import type { SenpiModelInfo, SenpiTransport } from "../../senpi/transport";
 import { locationInfo, type LocationPublicInfo } from "./fs-location";
 import { listSavedPermissions } from "./permission";
-import { attachSessionTarget, getSessionManagementTransport } from "./session-write";
+import { HandlerProblem, jsonResponse, noContent, respond } from "./problem";
+import { attachSessionTarget, getSessionManagementTransport, requireKnownSession } from "./session-write";
 
 // Catalog endpoints answer the TUI's startup reads (model, provider, agent, command, skill, ...).
 // Like the session handlers they take (request, url) and read the transport from a module-level seam,
@@ -14,7 +15,6 @@ import { attachSessionTarget, getSessionManagementTransport } from "./session-wr
 // yet; those handlers answer an empty, schema-valid list instead of 404 so the TUI never sees a
 // missing endpoint. Catalog items keep the shape the TUI expects from its model/provider endpoints.
 
-const JSON_CONTENT_TYPE = "application/json";
 // Model.Info.default / Model.Capabilities.default values the bridge fills in for what senpi does not report.
 const DEFAULT_CONTEXT_LIMIT = 200_000;
 const DEFAULT_OUTPUT_LIMIT = 32_000;
@@ -92,48 +92,6 @@ export function getSessionAgent(sessionID: string): string | undefined {
 
 export function resetSessionAgents(): void {
   selectedAgents.clear();
-}
-
-class HandlerProblem extends Error {
-  readonly status: number;
-  readonly tag: string;
-  readonly fields: Record<string, unknown>;
-
-  constructor(status: number, tag: string, message: string, fields: Record<string, unknown> = {}) {
-    super(message);
-    this.name = "HandlerProblem";
-    this.status = status;
-    this.tag = tag;
-    this.fields = fields;
-  }
-}
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": JSON_CONTENT_TYPE },
-  });
-}
-
-function errorResponse(status: number, tag: string, message: string, fields: Record<string, unknown> = {}): Response {
-  return jsonResponse(status, { _tag: tag, message, ...fields });
-}
-
-function noContent(): Response {
-  return new Response(null, { status: 204 });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-async function respond(operation: () => Promise<Response>): Promise<Response> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof HandlerProblem) return errorResponse(error.status, error.tag, error.message, error.fields);
-    return errorResponse(503, "ServiceUnavailableError", messageOf(error), { service: "senpi" });
-  }
 }
 
 function requireTransport(): CatalogTransport {
@@ -236,7 +194,7 @@ function requireModelList(caller: CatalogTransport): Promise<SenpiModelInfo[]> {
 }
 
 export async function handleModelList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const data = (await requireModelList(requireTransport())).map(publicModel);
     // A row the TUI could not decode is a bridge bug: fail loudly instead of emitting an invalid body.
     for (const item of data) {
@@ -252,7 +210,7 @@ export async function handleModelList(_request: Request, url: URL): Promise<Resp
 }
 
 export async function handleProviderList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const models = await requireModelList(requireTransport());
     const seen = new Set<string>();
     const data: CatalogProvider[] = [];
@@ -266,14 +224,14 @@ export async function handleProviderList(_request: Request, url: URL): Promise<R
 }
 
 export async function handleAgentList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     // A fresh array per read keeps callers from mutating the shared row, while the id and order stay stable.
     return jsonResponse(200, { location: locationFor(url), data: [{ ...DEFAULT_AGENT }] });
   });
 }
 
 export async function handleCommandList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = transport;
     const listed = caller?.getCommands === undefined ? [] : await caller.getCommands();
     return jsonResponse(200, { location: locationFor(url), data: listed.map(publicCommand) });
@@ -281,26 +239,26 @@ export async function handleCommandList(_request: Request, url: URL): Promise<Re
 }
 
 export async function handleSkillList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
 
 export async function handleReferenceList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
 
 export async function handleMcpList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
 
 export async function handleMcpResourceCatalog(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     // `/api/mcp/resource` answers an Mcp.ResourceCatalog, not a list: the TUI reads `data.resources`.
     return jsonResponse(200, { location: locationFor(url), data: { resources: [], templates: [] } });
   });
 }
 
 export async function handleIntegrationList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
 
 // `plugin.list` declares `Location.response(Schema.Array(Plugin.Info))`
@@ -308,15 +266,15 @@ export async function handleIntegrationList(_request: Request, url: URL): Promis
 // (`packages/tui/src/plugin/context.tsx:540`). senpi has no plugin registry and the bridge loads no
 // server plugins, so the empty inventory is the truthful answer rather than a missing route.
 export async function handlePluginList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
 
 export async function handleWebsearchProviders(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
 }
 
 export async function handlePermissionSavedList(_request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     // Saved rules are real bridge state: an "always" reply records them in permission.ts.
     const sessionID = url.searchParams.get("sessionID")?.trim();
     const data = listSavedPermissions(sessionID === undefined || sessionID.length === 0 ? undefined : sessionID);
@@ -342,7 +300,7 @@ function modelSelection(body: unknown): { provider: string; id: string } {
 }
 
 export async function handleSessionSwitchModel(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const caller = requireTransport();
     const selection = modelSelection(await readJsonBody(request));
     // setModel applies to the transport's open session; a switch for any other session must attach
@@ -364,8 +322,9 @@ function agentSelection(body: unknown): string {
 }
 
 export async function handleSessionSwitchAgent(request: Request, url: URL): Promise<Response> {
-  return respond(async () => {
+  return respond(url, async () => {
     const sessionID = sessionIdFromPath(url);
+    await requireKnownSession(sessionID);
     const agent = agentSelection(await readJsonBody(request));
     // senpi has no agent switch and no agent registry: the selection is recorded here so the next
     // turn's prompt options can apply it. Answering 204 keeps the TUI's switch flow working.
