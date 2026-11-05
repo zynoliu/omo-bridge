@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import { validateResponse } from "../../contract/validate";
+import { storedCredentialMethod } from "../../senpi/credentials";
 import type { SenpiModelInfo, SenpiTransport } from "../../senpi/transport";
 import { locationInfo, type LocationPublicInfo } from "./fs-location";
 import { listSavedPermissions } from "./permission";
@@ -24,6 +25,11 @@ export type CatalogCommand = { name: string; description?: string };
 
 export type CatalogTransport = Pick<SenpiTransport, "getAvailableModels" | "setModel"> & {
   getCommands?: () => Promise<readonly CatalogCommand[]>;
+  /**
+   * The agent directory whose `auth.json` backs the host's providers. A caller without one can report
+   * models but not credentials, so the integration list stays empty for it.
+   */
+  readonly agentDir?: string;
 };
 
 /** One row of GET /api/model: the TUI decodes it as `Model.Info` (`packages/schema/src/model.ts`). */
@@ -42,6 +48,27 @@ export type CatalogModel = {
 };
 
 export type CatalogProvider = { id: string; name: string };
+
+/** One connection row of `Integration.Info` (`packages/schema/src/connection.ts`). */
+export type CatalogCredentialConnection = {
+  type: "credential";
+  id: string;
+  label: string;
+  method: "key" | "oauth";
+};
+
+/**
+ * One row of GET /api/integration: the TUI decodes it as `Integration.Info`
+ * (`packages/schema/src/integration.ts`). `methods` is always empty on purpose: senpi exposes no
+ * connect flow the bridge could honor, so offering a method would promise an action that must fail.
+ * The connect routes keep their declared errors; only this listing is backed by real state.
+ */
+export type CatalogIntegration = {
+  id: string;
+  name: string;
+  methods: [];
+  connections: CatalogCredentialConnection[];
+};
 
 /** One row of GET /api/agent: the TUI decodes it as `Agent.Info` (`packages/schema/src/agent.ts`). */
 export type CatalogAgent = {
@@ -257,8 +284,57 @@ export async function handleMcpResourceCatalog(_request: Request, url: URL): Pro
   });
 }
 
+/**
+ * A provider is connected when the host reports at least one model for it AND the agent directory's
+ * credential store holds key material for it. Both halves come from real state: the model list is the
+ * host's own catalog, the credential store is the file the host signs in with. A provider missing
+ * either half is not reported as connected, so `/models` legitimately stays on its connect view.
+ */
+function connectedIntegrations(models: readonly SenpiModelInfo[], agentDir: string): CatalogIntegration[] {
+  const providerIDs = new Set<string>();
+  for (const model of models) {
+    if (model.provider.length > 0) providerIDs.add(model.provider);
+  }
+  const integrations: CatalogIntegration[] = [];
+  for (const providerID of providerIDs) {
+    const method = storedCredentialMethod(agentDir, providerID);
+    if (method === undefined) continue;
+    integrations.push({
+      id: providerID,
+      name: providerID,
+      methods: [],
+      connections: [
+        {
+          type: "credential",
+          id: `cred_${providerID}`,
+          label: method === "key" ? "API key" : "OAuth",
+          method,
+        },
+      ],
+    });
+  }
+  return integrations;
+}
+
 export async function handleIntegrationList(_request: Request, url: URL): Promise<Response> {
-  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(url, async () => {
+    const location = locationFor(url);
+    const caller = transport;
+    if (caller === undefined) return jsonResponse(200, { location, data: [] });
+    const agentDir = caller.agentDir;
+    if (agentDir === undefined) return jsonResponse(200, { location, data: [] });
+    const models = await requireModelList(caller);
+    const body = { location, data: connectedIntegrations(models, agentDir) };
+    // The TUI decodes this body as Integration.Info rows; a row it could not decode is a bridge bug,
+    // so fail loudly instead of answering a body the client would reject mid-startup.
+    const result = validateResponse("integration.list", body);
+    if (!result.ok) {
+      throw new HandlerProblem(500, "InternalError", "the integration list is not an integration.list", {
+        errors: result.errors,
+      });
+    }
+    return jsonResponse(200, body);
+  });
 }
 
 // `plugin.list` declares `Location.response(Schema.Array(Plugin.Info))`
