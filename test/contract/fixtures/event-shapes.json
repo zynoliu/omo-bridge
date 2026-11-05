@@ -1,0 +1,326 @@
+{
+  "source": "opencode/packages/client/src/promise/generated/types.ts",
+  "events": {
+    "form.cancelled": {
+      "emitter": "form",
+      "required": [
+        "id",
+        "sessionID"
+      ]
+    },
+    "form.created": {
+      "emitter": "form",
+      "required": [
+        "form"
+      ]
+    },
+    "form.replied": {
+      "emitter": "form",
+      "required": [
+        "id",
+        "sessionID",
+        "answer"
+      ]
+    },
+    "permission.asked": {
+      "emitter": "permission",
+      "required": [
+        "id",
+        "sessionID",
+        "action",
+        "resources"
+      ]
+    },
+    "permission.replied": {
+      "emitter": "permission",
+      "required": [
+        "sessionID",
+        "requestID",
+        "reply"
+      ]
+    },
+    "server.connected": {
+      "emitter": "bus",
+      "required": []
+    },
+    "session.archived": {
+      "emitter": "session-write",
+      "required": [
+        "sessionID"
+      ]
+    },
+    "session.compaction.ended": {
+      "emitter": "lifecycle",
+      "required": [
+        "sessionID",
+        "reason",
+        "text"
+      ]
+    },
+    "session.compaction.started": {
+      "emitter": "lifecycle",
+      "required": [
+        "sessionID",
+        "reason"
+      ]
+    },
+    "session.deleted": {
+      "emitter": "session-write",
+      "required": [
+        "sessionID"
+      ]
+    },
+    "session.execution.failed": {
+      "emitter": "lifecycle",
+      "required": [
+        "sessionID",
+        "error"
+      ]
+    },
+    "session.execution.interrupted": {
+      "emitter": "lifecycle",
+      "required": [
+        "sessionID",
+        "reason"
+      ]
+    },
+    "session.execution.started": {
+      "emitter": "lifecycle",
+      "required": [
+        "sessionID"
+      ]
+    },
+    "session.execution.succeeded": {
+      "emitter": "lifecycle",
+      "required": [
+        "sessionID"
+      ]
+    },
+    "session.inbox.cancelled": {
+      "emitter": "inbox",
+      "required": [
+        "sessionID",
+        "inboxID"
+      ]
+    },
+    "session.inbox.delivery.changed": {
+      "emitter": "inbox",
+      "required": [
+        "sessionID",
+        "inboxID",
+        "delivery"
+      ]
+    },
+    "session.inbox.enqueued": {
+      "emitter": "inbox",
+      "required": [
+        "sessionID",
+        "inboxID",
+        "item"
+      ]
+    },
+    "session.metadata.updated": {
+      "emitter": "session-write",
+      "required": [
+        "sessionID",
+        "metadata"
+      ]
+    },
+    "session.moved": {
+      "emitter": "session-write",
+      "required": [
+        "sessionID",
+        "location",
+        "projectID"
+      ]
+    },
+    "session.permissions": {
+      "emitter": "session-write",
+      "required": [
+        "sessionID",
+        "permissions"
+      ]
+    },
+    "session.reasoning.delta": {
+      "emitter": "stream",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "ordinal",
+        "delta"
+      ]
+    },
+    "session.reasoning.ended": {
+      "emitter": "stream",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "ordinal",
+        "text"
+      ]
+    },
+    "session.reasoning.started": {
+      "emitter": "stream",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "ordinal"
+      ]
+    },
+    "session.renamed": {
+      "emitter": "session-write",
+      "required": [
+        "sessionID",
+        "title"
+      ]
+    },
+    "session.shell.ended": {
+      "emitter": "shell",
+      "required": [
+        "sessionID",
+        "shell",
+        "output"
+      ]
+    },
+    "session.shell.started": {
+      "emitter": "shell",
+      "required": [
+        "sessionID",
+        "shell"
+      ]
+    },
+    "session.step.ended": {
+      "emitter": "stream",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "finish",
+        "cost",
+        "tokens"
+      ]
+    },
+    "session.step.started": {
+      "emitter": "stream",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "agent",
+        "model",
+        "started"
+      ]
+    },
+    "session.step.streamed": {
+      "emitter": "lifecycle",
+      "required": [
+        "sessionID",
+        "assistantMessageID"
+      ]
+    },
+    "session.text.delta": {
+      "emitter": "stream",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "ordinal",
+        "delta"
+      ]
+    },
+    "session.text.ended": {
+      "emitter": "stream",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "ordinal",
+        "text"
+      ]
+    },
+    "session.text.started": {
+      "emitter": "stream",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "ordinal"
+      ]
+    },
+    "session.tool.called": {
+      "emitter": "tools",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "id",
+        "input",
+        "executed"
+      ]
+    },
+    "session.tool.failed": {
+      "emitter": "tools",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "id",
+        "error",
+        "executed"
+      ]
+    },
+    "session.tool.input.delta": {
+      "emitter": "tools",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "id",
+        "delta"
+      ]
+    },
+    "session.tool.input.ended": {
+      "emitter": "tools",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "id",
+        "text"
+      ]
+    },
+    "session.tool.input.started": {
+      "emitter": "tools",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "id",
+        "name"
+      ]
+    },
+    "session.tool.progress": {
+      "emitter": "tools",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "id",
+        "metadata"
+      ]
+    },
+    "session.tool.success": {
+      "emitter": "tools",
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "id",
+        "content",
+        "executed"
+      ]
+    },
+    "session.unarchived": {
+      "emitter": "session-write",
+      "required": [
+        "sessionID"
+      ]
+    },
+    "session.usage.updated": {
+      "emitter": "lifecycle",
+      "required": [
+        "sessionID",
+        "cost",
+        "tokens"
+      ]
+    }
+  }
+}
