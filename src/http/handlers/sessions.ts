@@ -163,31 +163,59 @@ function readLimit(url: URL, fallback: number, max?: number): number {
   return value;
 }
 
-function encodeCursor(offset: number): string {
-  return Buffer.from(JSON.stringify({ offset }), "utf8").toString("base64url");
+type MessageOrder = "asc" | "desc";
+
+/** `session.message` declares `order=asc|desc` for the first page: desc is newest first. */
+function readMessageOrder(url: URL): MessageOrder | undefined {
+  const raw = url.searchParams.get("order");
+  if (raw === null || raw.trim().length === 0) return undefined;
+  const value = raw.trim();
+  if (value !== "asc" && value !== "desc") {
+    throw invalidRequest(`order must be asc or desc (found ${JSON.stringify(raw)})`, "order");
+  }
+  return value;
 }
 
-function readCursor(url: URL): number {
+function encodeCursor(offset: number, order?: MessageOrder): string {
+  return Buffer.from(JSON.stringify(order === undefined ? { offset } : { offset, order }), "utf8").toString(
+    "base64url",
+  );
+}
+
+/** Reads the offset plus the order a message cursor was issued with, so later pages keep its direction. */
+function readMessageCursor(url: URL): { offset: number; order: MessageOrder | undefined } {
   const raw = url.searchParams.get("cursor");
-  if (raw === null || raw.trim().length === 0) return 0;
+  if (raw === null || raw.trim().length === 0) return { offset: 0, order: undefined };
   let parsed: unknown;
   try {
     parsed = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
   } catch {
     throw invalidCursor("cursor is not a cursor this endpoint issued");
   }
-  const offset = typeof parsed === "object" && parsed !== null ? (parsed as { offset?: unknown }).offset : undefined;
+  const record = typeof parsed === "object" && parsed !== null ? (parsed as { offset?: unknown; order?: unknown }) : {};
+  const offset = record.offset;
   if (typeof offset !== "number" || !Number.isInteger(offset) || offset < 0) {
     throw invalidCursor("cursor is not a cursor this endpoint issued");
   }
-  return offset;
+  const order = record.order === "asc" || record.order === "desc" ? record.order : undefined;
+  return { offset, order };
 }
 
-function pageCursor(offset: number, returned: number, total: number, limit: number): PublicCursor {
+function pageCursor(
+  offset: number,
+  returned: number,
+  total: number,
+  limit: number,
+  order?: MessageOrder,
+): PublicCursor {
   const cursor: PublicCursor = {};
-  if (offset > 0) cursor.previous = encodeCursor(Math.max(0, offset - limit));
-  if (offset + returned < total) cursor.next = encodeCursor(offset + returned);
+  if (offset > 0) cursor.previous = encodeCursor(Math.max(0, offset - limit), order);
+  if (offset + returned < total) cursor.next = encodeCursor(offset + returned, order);
   return cursor;
+}
+
+function readCursor(url: URL): number {
+  return readMessageCursor(url).offset;
 }
 
 function projectIdOf(cwd: string): string {
@@ -502,9 +530,13 @@ async function readMessages(caller: SessionReadTransport, mediaRefs: boolean): P
   return mapped;
 }
 
-function paginate<T>(items: T[], offset: number, limit: number): { page: T[]; cursor: PublicCursor } {
+function pageCursorFor<T>(items: T[], offset: number, limit: number, order?: MessageOrder): { page: T[]; cursor: PublicCursor } {
   const page = items.slice(offset, offset + limit);
-  return { page, cursor: pageCursor(offset, page.length, items.length, limit) };
+  return { page, cursor: pageCursor(offset, page.length, items.length, limit, order) };
+}
+
+function paginate<T>(items: T[], offset: number, limit: number): { page: T[]; cursor: PublicCursor } {
+  return pageCursorFor(items, offset, limit);
 }
 
 export async function handleSessionList(_request: Request, url: URL): Promise<Response> {
@@ -565,10 +597,12 @@ export async function handleSessionMessages(request: Request, url: URL): Promise
     const sessionID = sessionIdFromPath(url);
     const { row } = await requireMappedSession(caller, sessionID);
     const limit = readLimit(url, DEFAULT_PAGE_LIMIT, MAX_MESSAGE_LIMIT);
-    const offset = readCursor(url);
+    const cursor = readMessageCursor(url);
+    const order = cursor.order ?? readMessageOrder(url) ?? "asc";
     const messages = await readMessagesFor(caller, row, wantsMediaRefs(request));
-    const { page, cursor } = paginate(messages, offset, limit);
-    return jsonResponse(200, { data: page, cursor });
+    const ordered = order === "desc" ? [...messages].reverse() : messages;
+    const { page, cursor: next } = pageCursorFor(ordered, cursor.offset, limit, order);
+    return jsonResponse(200, { data: page, cursor: next });
   });
 }
 

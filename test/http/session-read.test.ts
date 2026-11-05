@@ -431,6 +431,53 @@ describe("session messages", () => {
     ]);
   }
 
+  test("honours order=desc for the first page and keeps it across the cursor", async () => {
+    setSessionReadTransport(
+      new FakeTransport({
+        sessions: [session({ durableSessionId: "durable-1" })],
+        entries: messageEntries(),
+      }),
+    );
+
+    const first = await bodyOf(
+      await handleSessionMessages(
+        get("/api/session/durable-1/message?order=desc&limit=2"),
+        url("/api/session/durable-1/message?order=desc&limit=2"),
+      ),
+    );
+    expect((first.data as Array<Record<string, unknown>>).map((message) => message.id)).toEqual(["e4", "e2"]);
+
+    const cursor = (first.cursor as { next?: string }).next;
+    expect(typeof cursor).toBe("string");
+    const second = await bodyOf(
+      await handleSessionMessages(
+        get(`/api/session/durable-1/message?cursor=${cursor ?? ""}`),
+        url(`/api/session/durable-1/message?cursor=${cursor ?? ""}`),
+      ),
+    );
+    // The cursor carries desc, so the second page is still newest-first and ends at the oldest entry.
+    expect((second.data as Array<Record<string, unknown>>).map((message) => message.id)).toEqual(["e1"]);
+
+    const ascending = await bodyOf(
+      await handleSessionMessages(
+        get("/api/session/durable-1/message?order=asc"),
+        url("/api/session/durable-1/message?order=asc"),
+      ),
+    );
+    expect((ascending.data as Array<Record<string, unknown>>).map((message) => message.id)).toEqual(["e1", "e2", "e4"]);
+  });
+
+  test("rejects an order it does not declare", async () => {
+    setSessionReadTransport(
+      new FakeTransport({ sessions: [session({ durableSessionId: "durable-1" })], entries: messageEntries() }),
+    );
+    const response = await handleSessionMessages(
+      get("/api/session/durable-1/message?order=sideways"),
+      url("/api/session/durable-1/message?order=sideways"),
+    );
+    expect(response.status).toBe(400);
+  });
+
   test("maps user, assistant and tool parts with stable entry ids", async () => {
     setSessionReadTransport(
       new FakeTransport({
