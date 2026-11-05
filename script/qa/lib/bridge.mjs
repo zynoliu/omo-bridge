@@ -130,6 +130,15 @@ export async function isBridgeListening(port) {
   return isListening(port);
 }
 
+export async function listMessages({ url, headers, sessionID, limit = 50 }) {
+  const response = await fetch(`${url}/api/session/${encodeURIComponent(sessionID)}/message?limit=${limit}&order=desc`, {
+    headers,
+  });
+  if (!response.ok) throw new Error(`message list failed: ${response.status}`);
+  const body = await response.json();
+  return Array.isArray(body?.data) ? body.data : [];
+}
+
 export async function createSession({ url, headers, directory, title, id }) {
   const sessionID = id ?? `ses_qa_${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
   const response = await fetch(`${url}/api/session`, {

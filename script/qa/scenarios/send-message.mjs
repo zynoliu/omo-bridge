@@ -102,6 +102,24 @@ export default {
       const afterPath = await ctx.writeFile("frame-after.txt", frameAfter);
       await ctx.writeFile("transcript.txt", await tui.transcript());
 
+      let sessionID;
+      let history = { total: 0, assistant: 0, lastText: "" };
+      try {
+        const sessions = await fetch(`${bridge.url}/api/session?limit=1`, { headers: bridge.headers }).then((r) => r.json());
+        sessionID = sessions?.data?.[0]?.id;
+        if (sessionID !== undefined) {
+          const messages = await ctx.listMessages({ url: bridge.url, headers: bridge.headers, sessionID });
+          const assistant = messages.filter((message) => message.type === "assistant");
+          history = {
+            total: messages.length,
+            assistant: assistant.length,
+            lastText: String(assistant[0]?.text ?? "").slice(0, 200),
+          };
+        }
+      } catch (error) {
+        history = { total: 0, assistant: 0, lastText: `unavailable: ${String(error).slice(0, 80)}` };
+      }
+
       let screenshot = { written: false, reason: "not attempted" };
       try {
         screenshot = await tui.screenshot(`${evidence}/frame.png`);
@@ -118,6 +136,8 @@ export default {
         opened,
         openRequested: process.env.QA_OPEN_SESSION !== "0",
         fault: ctx.fault ?? null,
+        sessionID,
+        history,
         durations: { totalMs: Date.now() - started, replyWaitMs: Date.now() - sentAt },
         exitCode: outcome === "reply" && !checks.error ? 0 : 1,
         renderMode: screenshot.written ? "webview" : "text",

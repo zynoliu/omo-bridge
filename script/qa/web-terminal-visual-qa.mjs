@@ -1,7 +1,8 @@
 import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { createSession, startBridge } from "./lib/bridge.mjs";
+import { createSession, listMessages, startBridge } from "./lib/bridge.mjs";
 import { startTui } from "./lib/tui.mjs";
+import { startXtermTui } from "./lib/xterm.mjs";
 
 const USAGE = `Usage: bun run qa:tui -- --scenario <name> [--evidence-dir <dir>] [--keep]
 
@@ -58,7 +59,14 @@ async function main() {
     fault: options.fault,
     startBridge: (input = {}) => startBridge({ repo, bunExe, evidenceDir: options.evidenceDir, ...input }),
     createSession: (input) => createSession(input),
-    startTui: (input = {}) => startTui({ repo, bunExe, ...input }),
+    listMessages: (input) => listMessages(input),
+    startTui: (input = {}) =>
+      process.env.QA_RENDERER === "tmux"
+        ? startTui({ repo, bunExe, ...input })
+        : startXtermTui({ repo, bunExe, ...input }).catch((error) => {
+            process.stderr.write(`qa: xterm renderer unavailable (${String(error).slice(0, 120)}); using tmux\n`);
+            return startTui({ repo, bunExe, ...input });
+          }),
     async writeFile(name, content) {
       const path = join(options.evidenceDir, name);
       await Bun.write(path, content);
