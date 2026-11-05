@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
 import { basename } from "node:path";
-import { emptySessionUsage, readTranscriptEntries, sessionKeyOf, type SessionUsage } from "../../model/session-map";
+import { emptySessionUsage, readTranscriptEntries, sessionKeyOf, toPublicSessionInfo, type SessionUsage } from "../../model/session-map";
 import type { SenpiEntriesResult, SenpiMessages, SenpiTransport } from "../../senpi/transport";
 import { mediaUriFor, wantsMediaRefs } from "./media";
 import { getSessionManagementStore } from "./session-write";
@@ -313,6 +313,20 @@ async function requireMappedSession(
   for (const row of rows) {
     const mapped = toMappedSession(row);
     if (matchesSession(mapped, row, sessionID)) return { mapped, row };
+  }
+  // A session created under a client-minted id is filed in the bridge's own map, and the host lists it
+  // under its routing id only. Without this lookup every read on such a session answers 404 while the
+  // write paths, which consult the map first, already work.
+  const stored = getSessionManagementStore()?.get(sessionID);
+  if (stored !== undefined) {
+    const row =
+      rows.find((candidate) => candidate.sessionId === stored.routingId) ??
+      ({
+        sessionId: stored.routingId,
+        cwd: stored.cwd,
+        ...(stored.sessionPath === undefined ? {} : { sessionPath: stored.sessionPath }),
+      } as SenpiEntriesRow);
+    return { mapped: { id: stored.key, routeId: stored.routingId, info: toPublicSessionInfo(stored) }, row };
   }
   throw sessionNotFound(sessionID);
 }

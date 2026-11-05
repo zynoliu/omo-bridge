@@ -18,6 +18,7 @@ const DEFAULT_DELIVERY = "queue" as const;
 
 // senpi refuses a client message id longer than 256 characters (docs/rpc.md, durable client identity).
 export const MAX_CLIENT_MESSAGE_ID_LENGTH = 256;
+export const MAX_SESSION_ID_LENGTH = 256;
 export const MAX_REMEMBERED_ADMISSIONS = 4096;
 
 export type Delivery = "steer" | "queue";
@@ -361,6 +362,13 @@ export async function handleSessionCreate(request: Request, url: URL): Promise<R
     if (location !== undefined && directory === undefined) {
       throw invalidRequest("location.directory must be a non-empty string", "location");
     }
+    // The TUI mints its own session id and sends it as `id`; every later call it makes uses that id,
+    // so the bridge has to file the session under it. Ignoring it creates a session the TUI can never
+    // address again ("session not found" on the first model switch).
+    const requestedId = asTrimmed(body.id);
+    if (requestedId !== undefined && requestedId.length > MAX_SESSION_ID_LENGTH) {
+      throw invalidRequest(`id must be at most ${MAX_SESSION_ID_LENGTH} characters`, "id");
+    }
 
     const opened = await caller.openSession({
       cwd: directory ?? process.cwd(),
@@ -383,7 +391,7 @@ export async function handleSessionCreate(request: Request, url: URL): Promise<R
     const row = rows.find((candidate) => candidate.sessionId === opened.sessionId);
     const observedAt = new Date().toISOString();
     const record: SessionRecord = {
-      key: row === undefined ? opened.sessionId : durableKeyOf(row),
+      key: requestedId ?? (row === undefined ? opened.sessionId : durableKeyOf(row)),
       routingId: opened.sessionId,
       ...(row?.sessionPath === undefined ? {} : { sessionPath: row.sessionPath }),
       cwd: row?.cwd ?? cwd,
@@ -395,7 +403,16 @@ export async function handleSessionCreate(request: Request, url: URL): Promise<R
     // The session map is what turns senpi's routing id into the durable id event dispatch serves;
     // without this every session created after startup keeps an rpc-* id on its live deltas that the
     // TUI cannot attach to the session it is showing.
-    const persisted = getSessionManagementStore()?.upsert(row ?? { sessionId: opened.sessionId, cwd });
+    const store = getSessionManagementStore();
+    const existing = requestedId === undefined ? undefined : store?.get(requestedId);
+    if (existing !== undefined && existing.routingId !== opened.sessionId) {
+      throw invalidRequest(`session id is already in use: ${requestedId}`, "id");
+    }
+    const upsertRow = {
+      ...(row ?? { sessionId: opened.sessionId, cwd }),
+      ...(requestedId === undefined ? {} : { durableSessionId: requestedId }),
+    };
+    const persisted = store?.upsert(upsertRow);
     return jsonResponse(200, { data: toPublicSessionInfo(persisted ?? record) });
   });
 }

@@ -195,6 +195,37 @@ describe("POST /api/session", () => {
     expect(typeof info.title).toBe("string");
   });
 
+  test("files the session under the id the client minted", async () => {
+    const clientId = "ses_01hxclientminted";
+    const response = await handleSessionCreate(
+      post("/api/session", { id: clientId, title: "Minted", location: { directory: workDir } }),
+      url("/api/session"),
+    );
+    expect(response.status).toBe(200);
+    const info = (await bodyOf(response)).data as Record<string, unknown>;
+    expect(info.id).toBe(clientId);
+    expect(validateResponse("session.publicInfo", info)).toEqual({ ok: true });
+
+    // The TUI addresses the session by the id it minted, so the map must file it under that key.
+    expect(transport.opens.length).toBe(1);
+  });
+
+  test("is idempotent when the client re-creates the id it already minted", async () => {
+    const clientId = "ses_01hxretry";
+    const first = await handleSessionCreate(
+      post("/api/session", { id: clientId, location: { directory: workDir } }),
+      url("/api/session"),
+    );
+    const second = await handleSessionCreate(
+      post("/api/session", { id: clientId, location: { directory: workDir } }),
+      url("/api/session"),
+    );
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    const info = (await bodyOf(second)).data as Record<string, unknown>;
+    expect(info.id).toBe(clientId);
+  });
+
   test("answers 503 when no transport is wired", async () => {
     setSessionWriteTransport(undefined);
     const response = await handleSessionCreate(post("/api/session", {}), url("/api/session"));
