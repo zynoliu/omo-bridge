@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/project.list",
+  "title": "project.list",
+  "description": "Derived from packages/schema/src/project.ts:40 - success body of GET /api/project (a bare array, no location envelope).",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "canonical": {
+        "type": "string"
+      },
+      "vcs": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "icon": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "override": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          }
+        }
+      },
+      "commands": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string"
+          }
+        }
+      },
+      "time": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "updated": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "active": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "archived": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "created",
+          "updated",
+          "active"
+        ]
+      },
+      "sandboxes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "id",
+      "canonical",
+      "time",
+      "sandboxes"
+    ]
+  }
+}

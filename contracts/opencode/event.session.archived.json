@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.archived",
+  "title": "event.session.archived",
+  "description": "Derived from packages/schema/src/session-event.ts:133 - session archived.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.archived"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionID"
+      ]
+    }
+  }
+}

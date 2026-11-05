@@ -9,10 +9,34 @@ const MAX_DEPTH = 8;
 
 export type JsonSchema = Record<string, unknown>;
 
+/**
+ * The envelope an endpoint wraps its payload in. The bridge serves the same envelopes the fork's
+ * `HttpApiEndpoint` declarations use, so the wrapper is derived here rather than hand-written per
+ * endpoint:
+ * - `data`                -> `{ data: T }`
+ * - `dataArray`           -> `{ data: T[] }`
+ * - `recordData`          -> `{ data: Record<string, T> }`
+ * - `locationOnly`        -> `{ location: Location.PublicRef }`
+ * - `locationData`        -> `{ location: Location.PublicRef, data: T }`
+ * - `locationDataArray`   -> `{ location: Location.PublicRef, data: T[] }`
+ * - `locationDataNullable`-> `{ location: Location.PublicRef, data: T | null }`
+ * - `array`               -> `T[]`
+ */
+type Wrap =
+  | "data"
+  | "dataArray"
+  | "recordData"
+  | "locationOnly"
+  | "locationData"
+  | "locationDataArray"
+  | "locationDataNullable"
+  | "array";
+
 type Endpoint =
-  | { id: string; kind: "decl"; file: string; name: string; note: string }
-  | { id: string; kind: "annotate"; file: string; identifier: string; note: string }
-  | { id: string; kind: "errors"; file: string; note: string };
+  | { id: string; kind: "decl"; file: string; name: string; note: string; wrap?: Wrap }
+  | { id: string; kind: "annotate"; file: string; identifier: string; note: string; wrap?: Wrap }
+  | { id: string; kind: "errors"; file: string; note: string }
+  | { id: string; kind: "event"; file: string; type: string; note: string };
 
 export const ENDPOINTS: Endpoint[] = [
   {
@@ -77,6 +101,545 @@ export const ENDPOINTS: Endpoint[] = [
     file: "packages/protocol/src/errors.ts",
     note: "tagged error envelope shared by every failing endpoint",
   },
+
+  // --- session reads -------------------------------------------------------------------------
+  {
+    id: "session.list",
+    kind: "annotate",
+    file: "packages/protocol/src/groups/session.ts",
+    identifier: "SessionsResponse",
+    note: "success body of GET /api/session (data + cursor)",
+  },
+  {
+    id: "session.get",
+    kind: "decl",
+    file: "packages/protocol/src/groups/session.ts",
+    name: "PublicSessionInfo",
+    wrap: "data",
+    note: "success body of GET /api/session/:sessionID",
+  },
+  {
+    id: "session.create",
+    kind: "decl",
+    file: "packages/protocol/src/groups/session.ts",
+    name: "PublicSessionInfo",
+    wrap: "data",
+    note: "success body of POST /api/session",
+  },
+  {
+    id: "session.fork",
+    kind: "decl",
+    file: "packages/protocol/src/groups/session.ts",
+    name: "PublicSessionInfo",
+    wrap: "data",
+    note: "success body of POST /api/session/:sessionID/fork",
+  },
+  {
+    id: "session.active",
+    kind: "annotate",
+    file: "packages/protocol/src/groups/session.ts",
+    identifier: "SessionActive",
+    wrap: "recordData",
+    note: "success body of GET /api/session/active (session id -> running marker)",
+  },
+  {
+    id: "session.message.get",
+    kind: "decl",
+    file: "packages/protocol/src/groups/message.ts",
+    name: "PublicSessionMessage",
+    wrap: "data",
+    note: "success body of GET /api/session/:sessionID/message/:messageID",
+  },
+  {
+    id: "session.inbox.list",
+    kind: "annotate",
+    file: "packages/protocol/src/groups/session.ts",
+    identifier: "Session.Inbox.Info",
+    wrap: "dataArray",
+    note: "success body of GET /api/session/:sessionID/inbox",
+  },
+  {
+    id: "session.diff",
+    kind: "decl",
+    file: "packages/schema/src/file-diff.ts",
+    name: "Info",
+    wrap: "dataArray",
+    note: "success body of GET /api/session/:sessionID/diff",
+  },
+
+  // --- interaction surfaces -------------------------------------------------------------------
+  {
+    id: "permission.list",
+    kind: "decl",
+    file: "packages/schema/src/permission.ts",
+    name: "Request",
+    wrap: "dataArray",
+    note: "success body of GET /api/session/:sessionID/permission",
+  },
+  {
+    id: "form.list",
+    kind: "decl",
+    file: "packages/schema/src/form.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/form",
+  },
+  {
+    id: "form.session.list",
+    kind: "decl",
+    file: "packages/schema/src/form.ts",
+    name: "Info",
+    wrap: "dataArray",
+    note: "success body of GET /api/session/:sessionID/form",
+  },
+
+  // --- startup catalogs -----------------------------------------------------------------------
+  {
+    id: "model.list",
+    kind: "decl",
+    file: "packages/schema/src/model.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/model",
+  },
+  {
+    id: "agent.list",
+    kind: "decl",
+    file: "packages/schema/src/agent.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/agent",
+  },
+  {
+    id: "command.list",
+    kind: "decl",
+    file: "packages/schema/src/command.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/command",
+  },
+  {
+    id: "skill.list",
+    kind: "decl",
+    file: "packages/schema/src/skill.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/skill",
+  },
+  {
+    id: "reference.list",
+    kind: "decl",
+    file: "packages/schema/src/reference.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/reference",
+  },
+  {
+    id: "mcp.list",
+    kind: "decl",
+    file: "packages/schema/src/mcp.ts",
+    name: "Server",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/mcp",
+  },
+  {
+    id: "mcp.resourceCatalog",
+    kind: "decl",
+    file: "packages/schema/src/mcp.ts",
+    name: "ResourceCatalog",
+    wrap: "locationData",
+    note: "success body of GET /api/mcp/resource",
+  },
+  {
+    id: "integration.list",
+    kind: "decl",
+    file: "packages/schema/src/integration.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/integration",
+  },
+
+  // --- filesystem, location, project, vcs, config ---------------------------------------------
+  {
+    id: "fs.list",
+    kind: "decl",
+    file: "packages/schema/src/filesystem.ts",
+    name: "Entry",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/fs/list",
+  },
+  {
+    id: "fs.find",
+    kind: "decl",
+    file: "packages/schema/src/filesystem.ts",
+    name: "Entry",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/fs/find",
+  },
+  {
+    id: "location.get",
+    kind: "decl",
+    file: "packages/schema/src/location.ts",
+    name: "PublicInfo",
+    wrap: "locationOnly",
+    note: "success body of GET /api/location",
+  },
+  {
+    id: "project.list",
+    kind: "decl",
+    file: "packages/schema/src/project.ts",
+    name: "Info",
+    wrap: "array",
+    note: "success body of GET /api/project (a bare array, no location envelope)",
+  },
+  {
+    id: "vcs.get",
+    kind: "decl",
+    file: "packages/schema/src/vcs.ts",
+    name: "Info",
+    wrap: "locationData",
+    note: "success body of GET /api/vcs",
+  },
+  {
+    id: "vcs.base",
+    kind: "decl",
+    file: "packages/schema/src/vcs.ts",
+    name: "Base",
+    wrap: "locationDataNullable",
+    note: "success body of GET /api/vcs/base (null when no base is resolvable)",
+  },
+  {
+    id: "vcs.diff",
+    kind: "decl",
+    file: "packages/schema/src/file-diff.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/vcs/diff",
+  },
+  {
+    id: "config.get",
+    kind: "decl",
+    file: "packages/schema/src/config.ts",
+    name: "Entry",
+    wrap: "array",
+    note: "success body of GET /api/config (a bare array, no location envelope)",
+  },
+
+  // --- shell ----------------------------------------------------------------------------------
+  {
+    id: "shell.list",
+    kind: "decl",
+    file: "packages/schema/src/shell.ts",
+    name: "Info",
+    wrap: "locationDataArray",
+    note: "success body of GET /api/shell",
+  },
+  {
+    id: "shell.get",
+    kind: "decl",
+    file: "packages/schema/src/shell.ts",
+    name: "Info",
+    wrap: "locationData",
+    note: "success body of GET /api/shell/:id",
+  },
+  {
+    id: "shell.output",
+    kind: "decl",
+    file: "packages/schema/src/shell.ts",
+    name: "Output",
+    wrap: "locationData",
+    note: "success body of GET /api/shell/:id/output",
+  },
+
+  // --- degraded families ----------------------------------------------------------------------
+  {
+    id: "worktree.list",
+    kind: "decl",
+    file: "packages/schema/src/worktree.ts",
+    name: "Directory",
+    wrap: "array",
+    note: "success body of GET /api/worktree (a bare array)",
+  },
+  {
+    id: "persistentPty.list",
+    kind: "decl",
+    file: "packages/schema/src/persistent-pty.ts",
+    name: "Info",
+    wrap: "dataArray",
+    note: "success body of GET /api/experimental/session/:sessionID/terminal",
+  },
+  {
+    id: "migration.status",
+    kind: "decl",
+    file: "packages/protocol/src/groups/migration.ts",
+    name: "V1MigrationStatus",
+    note: "success body of GET /api/experimental/migration/v1",
+  },
+  {
+    id: "usage.limits",
+    kind: "decl",
+    file: "packages/schema/src/usage-limits.ts",
+    name: "Info",
+    wrap: "locationDataNullable",
+    note: "success body of GET /api/experimental/usage/limits (data is null when signed out)",
+  },
+
+  // --- event frames ---------------------------------------------------------------------------
+  // The bridge publishes these types on GET /api/event. The frame envelope modelled below is the
+  // one the TUI reads (`{ id, type, created, data }` in packages/tui/src/context/event.ts); the
+  // fork's own durable envelope additionally carries `durable`, which the bridge does not emit.
+  {
+    id: "event.server.connected",
+    kind: "event",
+    file: "packages/schema/src/server-event.ts",
+    type: "server.connected",
+    note: "first frame of every event stream",
+  },
+  {
+    id: "event.session.execution.started",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.execution.started",
+    note: "agent_start opened a run",
+  },
+  {
+    id: "event.session.execution.succeeded",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.execution.succeeded",
+    note: "agent_end without failure or abort",
+  },
+  {
+    id: "event.session.execution.failed",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.execution.failed",
+    note: "agent_end with a failure record",
+  },
+  {
+    id: "event.session.execution.interrupted",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.execution.interrupted",
+    note: "agent_end with aborted=true",
+  },
+  {
+    id: "event.session.step.started",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.step.started",
+    note: "assistant message opened",
+  },
+  {
+    id: "event.session.step.streamed",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.step.streamed",
+    note: "provider response boundary inside a run",
+  },
+  {
+    id: "event.session.step.ended",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.step.ended",
+    note: "assistant message closed with usage",
+  },
+  {
+    id: "event.session.text.started",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.text.started",
+    note: "text block opened",
+  },
+  {
+    id: "event.session.text.delta",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.text.delta",
+    note: "text fragment (live only)",
+  },
+  {
+    id: "event.session.text.ended",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.text.ended",
+    note: "text block closed",
+  },
+  {
+    id: "event.session.reasoning.started",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.reasoning.started",
+    note: "reasoning block opened",
+  },
+  {
+    id: "event.session.reasoning.delta",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.reasoning.delta",
+    note: "reasoning fragment (live only)",
+  },
+  {
+    id: "event.session.reasoning.ended",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.reasoning.ended",
+    note: "reasoning block closed",
+  },
+  {
+    id: "event.session.tool.input.started",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.tool.input.started",
+    note: "tool call announced",
+  },
+  {
+    id: "event.session.tool.input.delta",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.tool.input.delta",
+    note: "tool argument fragment (live only)",
+  },
+  {
+    id: "event.session.tool.input.ended",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.tool.input.ended",
+    note: "tool arguments settled",
+  },
+  {
+    id: "event.session.usage.updated",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.usage.updated",
+    note: "run usage totals",
+  },
+  {
+    id: "event.session.compaction.started",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.compaction.started",
+    note: "compaction began",
+  },
+  {
+    id: "event.session.shell.started",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.shell.started",
+    note: "shell command registered",
+  },
+  {
+    id: "event.session.shell.ended",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.shell.ended",
+    note: "shell command settled with its output page",
+  },
+  {
+    id: "event.session.inbox.enqueued",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.inbox.enqueued",
+    note: "queued input admitted",
+  },
+  {
+    id: "event.session.inbox.cancelled",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.inbox.cancelled",
+    note: "queued input cancelled",
+  },
+  {
+    id: "event.session.inbox.delivery.changed",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.inbox.delivery.changed",
+    note: "queued input delivery switched",
+  },
+  {
+    id: "event.session.renamed",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.renamed",
+    note: "session title changed",
+  },
+  {
+    id: "event.session.archived",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.archived",
+    note: "session archived",
+  },
+  {
+    id: "event.session.unarchived",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.unarchived",
+    note: "session unarchived",
+  },
+  {
+    id: "event.session.metadata.updated",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.metadata.updated",
+    note: "session metadata replaced",
+  },
+  {
+    id: "event.session.permissions",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.permissions",
+    note: "session permission ruleset replaced",
+  },
+  {
+    id: "event.session.deleted",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.deleted",
+    note: "session deleted",
+  },
+  {
+    id: "event.session.moved",
+    kind: "event",
+    file: "packages/schema/src/session-event.ts",
+    type: "session.moved",
+    note: "session moved to another directory",
+  },
+  {
+    id: "event.permission.asked",
+    kind: "event",
+    file: "packages/schema/src/permission.ts",
+    type: "permission.asked",
+    note: "permission prompt opened",
+  },
+  {
+    id: "event.permission.replied",
+    kind: "event",
+    file: "packages/schema/src/permission.ts",
+    type: "permission.replied",
+    note: "permission prompt answered",
+  },
+  {
+    id: "event.form.created",
+    kind: "event",
+    file: "packages/schema/src/form.ts",
+    type: "form.created",
+    note: "form prompt opened",
+  },
+  {
+    id: "event.form.replied",
+    kind: "event",
+    file: "packages/schema/src/form.ts",
+    type: "form.replied",
+    note: "form prompt answered",
+  },
+  {
+    id: "event.form.cancelled",
+    kind: "event",
+    file: "packages/schema/src/form.ts",
+    type: "form.cancelled",
+    note: "form prompt cancelled",
+  },
 ];
 
 type Ctx = { module: string; depth: number; chain: string[] };
@@ -121,15 +684,50 @@ function findVariable(rel: string, name: string): ts.VariableDeclaration | undef
         if (ts.isIdentifier(decl.name) && decl.name.text === name) return decl;
       }
     }
-    if (ts.isExportDeclaration(st) && st.moduleSpecifier && ts.isStringLiteral(st.moduleSpecifier) && st.exportClause && ts.isNamedExports(st.exportClause)) {
-      for (const el of st.exportClause.elements) {
-        if (el.name.text !== name) continue;
-        const target = relFromSpec(rel, st.moduleSpecifier.text);
-        if (target) return findVariable(target, el.propertyName?.text ?? el.name.text);
-      }
-    }
   }
   return undefined;
+}
+
+// Name lookup across module boundaries: a local declaration wins, then the import binding is
+// followed, and a re-exported module variable (`export { X }` next to `import { X }`) resolves to
+// the module that declares it. The owning module travels with the declaration, because every
+// field expression must be evaluated in the module that wrote it.
+function resolveVariable(rel: string, name: string, seen: Set<string> = new Set()): { decl: ts.VariableDeclaration; module: string } | undefined {
+  const key = `${rel}#${name}`;
+  if (seen.has(key)) return undefined;
+  seen.add(key);
+  const local = findVariable(rel, name);
+  if (local) return { decl: local, module: rel };
+  // Event schemas share field fragments declared inside the surrounding `namespace` (session-event's
+  // `ToolBase`), so a name that is not at the top level still belongs to this file.
+  const nested = findNestedVariable(rel, name);
+  if (nested) return { decl: nested, module: rel };
+  const binding = lookupImport(rel, name);
+  if (binding && binding.kind === "named" && binding.module) {
+    return resolveVariable(binding.module, binding.imported, seen);
+  }
+  return undefined;
+}
+
+function findNestedVariable(rel: string, name: string): ts.VariableDeclaration | undefined {
+  let found: ts.VariableDeclaration | undefined;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (ts.isModuleDeclaration(node) && node.body && ts.isModuleBlock(node.body)) {
+      for (const st of node.body.statements) {
+        if (!ts.isVariableStatement(st)) continue;
+        for (const decl of st.declarationList.declarations) {
+          if (ts.isIdentifier(decl.name) && decl.name.text === name) {
+            found = decl;
+            return;
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source(rel));
+  return found;
 }
 
 function findClass(rel: string, name: string): ts.ClassDeclaration | undefined {
@@ -171,6 +769,8 @@ const NAMESPACE_SCALARS: Record<string, JsonSchema> = {
   Any: {},
   Json: {},
   Null: { type: "null" },
+  Trim: { type: "string" },
+  DurationFromString: { type: "string" },
 };
 
 const IMPORTED_SCALARS: Record<string, JsonSchema> = {
@@ -191,17 +791,21 @@ const SCHEMA_METHODS = new Set([
   "statics",
   "withStatics",
   "toTaggedUnion",
+  "mapFields",
   "decodeTo",
   "encodeTo",
 ]);
 
 const SCHEMA_NAMESPACE_METHODS = new Set([
   "Struct",
+  "StructWithRest",
   "optional",
   "Array",
   "ArrayEnsure",
   "NonEmptyArray",
   "Union",
+  "NullOr",
+  "UndefinedOr",
   "Literal",
   "Literals",
   "Record",
@@ -300,14 +904,14 @@ function classFields(cls: ts.ClassDeclaration, ctx: Ctx): Field[] | null {
 
 function fieldsFromNames(node: ts.Expression, ctx: Ctx): Field[] | null {
   if (ts.isIdentifier(node)) {
-    const local = findVariable(ctx.module, node.text);
-    if (local?.initializer) return fieldsFrom(local.initializer, { ...ctx, depth: ctx.depth + 1 });
+    const resolved = resolveVariable(ctx.module, node.text);
+    if (resolved?.decl.initializer) {
+      return fieldsFrom(resolved.decl.initializer, { module: resolved.module, depth: ctx.depth + 1, chain: ctx.chain });
+    }
     const cls = findClass(ctx.module, node.text);
     if (cls) return classFields(cls, { ...ctx, depth: ctx.depth + 1 });
     const binding = lookupImport(ctx.module, node.text);
     if (binding && binding.kind === "named" && binding.module) {
-      const decl = findVariable(binding.module, binding.imported);
-      if (decl?.initializer) return fieldsFrom(decl.initializer, { module: binding.module, depth: ctx.depth + 1, chain: ctx.chain });
       const imported = findClass(binding.module, binding.imported);
       if (imported) return classFields(imported, { module: binding.module, depth: ctx.depth + 1, chain: ctx.chain });
     }
@@ -316,8 +920,10 @@ function fieldsFromNames(node: ts.Expression, ctx: Ctx): Field[] | null {
   if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression)) {
     const module = namespaceModuleFor(ctx.module, node.expression.text);
     if (!module) return null;
-    const decl = findVariable(module, node.name.text);
-    if (decl?.initializer) return fieldsFrom(decl.initializer, { module, depth: ctx.depth + 1, chain: ctx.chain });
+    const resolved = resolveVariable(module, node.name.text);
+    if (resolved?.decl.initializer) {
+      return fieldsFrom(resolved.decl.initializer, { module: resolved.module, depth: ctx.depth + 1, chain: ctx.chain });
+    }
     const cls = findClass(module, node.name.text);
     if (cls) return classFields(cls, { module, depth: ctx.depth + 1, chain: ctx.chain });
   }
@@ -358,13 +964,22 @@ function fieldsFrom(node: ts.Expression, ctx: Ctx): Field[] | null {
       return fn.fn === "omit" ? base.filter((f) => !keys.has(f.name)) : base.filter((f) => keys.has(f.name));
     }
     if (fn?.ns === "Schema" && (fn.fn === "Struct" || fn.fn === "Class") && node.arguments[0]) return fieldsFrom(node.arguments[0], ctx);
+    if (fn?.ns === "Schema" && fn.fn === "StructWithRest" && node.arguments[0]) return fieldsFrom(node.arguments[0], ctx);
     if (ts.isCallExpression(node.expression)) {
       const inner = namespaceFn(node.expression.expression);
       if (inner?.ns === "Schema" && inner.fn === "Class" && node.arguments[0]) return fieldsFrom(node.arguments[0], ctx);
     }
     return null;
   }
-  if (ts.isPropertyAccessExpression(node) && node.name.text === "fields") return fieldsFromNames(node.expression, ctx);
+  if (ts.isPropertyAccessExpression(node) && node.name.text === "schema") {
+    // `Provider.Settings.schema.fields`: the owner is a schema declaration, and its `.schema` view
+    // exposes the same fields; resolve through the declaration instead of the member expression.
+    const owner = schemaDeclFor(node.expression, ctx);
+    if (owner?.decl.initializer) {
+      return fieldsFrom(owner.decl.initializer, { module: owner.module, depth: ctx.depth + 1, chain: ctx.chain });
+    }
+  }
+  if (ts.isPropertyAccessExpression(node) && node.name.text === "fields") return fieldsFrom(node.expression, ctx);
   return fieldsFromNames(node, ctx);
 }
 
@@ -392,13 +1007,11 @@ function evalVariable(decl: ts.VariableDeclaration, module: string, ctx: Ctx): E
 
 function evalRef(expr: ts.Expression, module: string, ctx: Ctx): EvalResult {
   const name = ts.isIdentifier(expr) ? expr.text : expr.getText();
-  const local = findVariable(module, name);
-  if (local) return evalVariable(local, module, ctx);
+  const resolved = resolveVariable(module, name);
+  if (resolved) return evalVariable(resolved.decl, resolved.module, ctx);
   const binding = lookupImport(module, name);
   if (binding) {
     if (binding.kind === "named" && binding.module) {
-      const decl = findVariable(binding.module, binding.imported);
-      if (decl) return evalVariable(decl, binding.module, ctx);
       const cls = findClass(binding.module, binding.imported);
       if (cls) {
         const fields = classFields(cls, { module: binding.module, depth: ctx.depth + 1, chain: ctx.chain });
@@ -418,6 +1031,18 @@ function evalRef(expr: ts.Expression, module: string, ctx: Ctx): EvalResult {
 function evalQualified(expr: ts.PropertyAccessExpression, ctx: Ctx): EvalResult {
   const left = expr.expression;
   const member = expr.name.text;
+  if (ts.isIdentifier(left)) {
+    // `Overlays.headers` where `Overlays` is a plain object of schema fields (config overrides use
+    // this to share the settings/headers/body trio between provider and model info).
+    const shared = findVariable(ctx.module, left.text);
+    if (shared?.initializer && ts.isObjectLiteralExpression(shared.initializer)) {
+      for (const prop of shared.initializer.properties) {
+        if (!ts.isPropertyAssignment(prop)) continue;
+        const name = ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name) ? prop.name.text : undefined;
+        if (name === member) return evalExpr(prop.initializer, { ...ctx, depth: ctx.depth + 1 });
+      }
+    }
+  }
   if (ts.isPropertyAccessExpression(left) && left.name.text === "fields") {
     const owner = schemaDeclFor(left.expression, ctx);
     if (owner?.decl.initializer) {
@@ -435,12 +1060,13 @@ function evalQualified(expr: ts.PropertyAccessExpression, ctx: Ctx): EvalResult 
   if (ts.isIdentifier(left)) {
     const module = namespaceModuleFor(ctx.module, left.text);
     if (module) {
-      const decl = findVariable(module, member);
-      if (decl) return evalVariable(decl, module, ctx);
+      const resolved = resolveVariable(module, member);
+      if (resolved) return evalVariable(resolved.decl, resolved.module, ctx);
       const cls = findClass(module, member);
       if (cls) {
-        const fields = classFields(cls, ctx);
-        if (fields) return { schema: buildStruct(fields, ctx), optional: false };
+        const classCtx = { ...ctx, module };
+        const fields = classFields(cls, classCtx);
+        if (fields) return { schema: buildStruct(fields, classCtx), optional: false };
       }
       return opaque(`${left.text}.${member}`);
     }
@@ -480,6 +1106,25 @@ function evalNamespaceCall(method: string, args: readonly ts.Expression[], ctx: 
       const inner = arg(0) ? evalExpr(arg(0)!, ctx).schema : {};
       return { schema: { type: "array", items: inner }, optional: false };
     }
+    case "StructWithRest": {
+      // `Schema.StructWithRest(struct, [rest])` is a struct plus an index signature; the rest
+      // member contributes `additionalProperties`, never required fields.
+      if (!arg(0)) return opaque("Schema.StructWithRest()");
+      const fields = fieldsFrom(arg(0)!, ctx);
+      if (!fields) return opaque(textOf(arg(0)!));
+      const schema = buildStruct(fields, ctx);
+      const rest = arg(1);
+      if (rest && ts.isArrayLiteralExpression(rest)) {
+        let additional: JsonSchema | undefined;
+        for (const element of rest.elements) {
+          const evaluated = evalExpr(element, ctx).schema;
+          const value = evaluated.additionalProperties;
+          additional = additional === undefined || value === undefined ? (value as JsonSchema | undefined) : {};
+        }
+        if (additional !== undefined) schema.additionalProperties = additional;
+      }
+      return { schema, optional: false };
+    }
     case "NonEmptyArray": {
       const inner = arg(0) ? evalExpr(arg(0)!, ctx).schema : {};
       return { schema: { type: "array", items: inner, minItems: 1 }, optional: false };
@@ -493,6 +1138,15 @@ function evalNamespaceCall(method: string, args: readonly ts.Expression[], ctx: 
         return { schema: { enum: members.map((m) => m.const) }, optional: false };
       }
       return { schema: { anyOf: members }, optional: false };
+    }
+    case "NullOr": {
+      if (!arg(0)) return opaque("Schema.NullOr()");
+      return { schema: { anyOf: [evalExpr(arg(0)!, ctx).schema, { type: "null" }] }, optional: false };
+    }
+    case "UndefinedOr": {
+      // `undefined` has no wire representation: an omitted key, not a JSON value.
+      if (!arg(0)) return opaque("Schema.UndefinedOr()");
+      return evalExpr(arg(0)!, ctx);
     }
     case "Literal": {
       const value = arg(0);
@@ -667,25 +1321,139 @@ function deriveErrorEnvelope(rel: string): { schema: JsonSchema; line: number } 
   return { schema, line: firstLine };
 }
 
+function applyWrap(inner: JsonSchema, wrap: Wrap | undefined): JsonSchema {
+  if (wrap === undefined) return inner;
+  const location = locationRefSchema();
+  const array = { type: "array", items: inner };
+  switch (wrap) {
+    case "data":
+      return { type: "object", required: ["data"], properties: { data: inner } };
+    case "dataArray":
+      return { type: "object", required: ["data"], properties: { data: array } };
+    case "recordData":
+      return { type: "object", required: ["data"], properties: { data: { type: "object", additionalProperties: inner } } };
+    case "locationOnly":
+      return { type: "object", required: ["location"], properties: { location } };
+    case "locationData":
+      return { type: "object", required: ["location", "data"], properties: { location, data: inner } };
+    case "locationDataArray":
+      return { type: "object", required: ["location", "data"], properties: { location, data: array } };
+    case "locationDataNullable":
+      return { type: "object", required: ["location", "data"], properties: { location, data: { anyOf: [inner, { type: "null" }] } } };
+    case "array":
+      return array;
+  }
+}
+
+// `Location.response(...)` envelopes carry `Location.PublicRef`, derived here from the fork so the
+// wrapper cannot drift from the schema it references.
+let locationRef: JsonSchema | null = null;
+function locationRefSchema(): JsonSchema {
+  if (locationRef === null) {
+    const { schema } = deriveOne({
+      id: "location.publicRef",
+      kind: "decl",
+      file: "packages/schema/src/location.ts",
+      name: "PublicRef",
+      note: "location envelope",
+    });
+    locationRef = schema;
+  }
+  return locationRef;
+}
+
+function findEventDefinition(rel: string, type: string): { schema: ts.Expression; node: ts.Node } | null {
+  let found: { schema: ts.Expression; node: ts.Node } | null = null;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const method = ts.isPropertyAccessExpression(callee)
+        ? callee.name.text
+        : ts.isIdentifier(callee)
+          ? callee.text
+          : undefined;
+      const input = node.arguments[0];
+      if ((method === "durable" || method === "ephemeral") && input && ts.isObjectLiteralExpression(input)) {
+        let declaredType: string | undefined;
+        let schema: ts.Expression | undefined;
+        for (const prop of input.properties) {
+          if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) continue;
+          if (prop.name.text === "type" && ts.isStringLiteral(prop.initializer)) declaredType = prop.initializer.text;
+          if (prop.name.text === "schema") schema = prop.initializer;
+        }
+        if (declaredType === type && schema !== undefined) {
+          found = { schema, node };
+          return;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source(rel));
+  return found;
+}
+
+// The frame the TUI reads off GET /api/event: `{ id, type, created, data }`
+// (packages/tui/src/context/event.ts switches on `type` and reads `data`). The fork's durable
+// events also carry `durable`, which the bridge does not emit, so the envelope stays open to it.
+function deriveEvent(rel: string, type: string): { schema: JsonSchema; line: number } {
+  const definition = findEventDefinition(rel, type);
+  if (!definition) throw new Error(`${rel}: event definition for ${type} not found`);
+  const ctx: Ctx = { module: rel, depth: 0, chain: [] };
+  const fields = fieldsFrom(definition.schema, ctx);
+  if (!fields) throw new Error(`${rel}: cannot read the data schema of event ${type}`);
+  return {
+    schema: {
+      type: "object",
+      required: ["id", "type", "created", "data"],
+      properties: {
+        id: { type: "string" },
+        type: { const: type },
+        created: { type: "number" },
+        data: buildStruct(fields, ctx),
+      },
+    },
+    line: lineOf(rel, definition.node),
+  };
+}
+
+// An unresolvable reference would silently become `{}` (accept anything), which turns a contract
+// assertion into a no-op. Every checked-in schema must resolve in full.
+function assertResolved(schema: JsonSchema, endpoint: string, path = endpoint): void {
+  if (Array.isArray(schema)) {
+    schema.forEach((value, index) => assertResolved(value as JsonSchema, endpoint, `${path}[${index}]`));
+    return;
+  }
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === "$comment" && typeof value === "string" && value.startsWith("unresolved:")) {
+      throw new Error(`${endpoint}: unresolved leaf at ${path}: ${value}`);
+    }
+    if (value !== null && typeof value === "object") assertResolved(value as JsonSchema, endpoint, `${path}.${key}`);
+  }
+}
+
 function deriveOne(endpoint: Endpoint): { schema: JsonSchema; line: number } {
   if (endpoint.kind === "errors") return deriveErrorEnvelope(endpoint.file);
+  if (endpoint.kind === "event") return deriveEvent(endpoint.file, endpoint.type);
   const ctx: Ctx = { module: endpoint.file, depth: 0, chain: [] };
   if (endpoint.kind === "decl") {
     const decl = findVariable(endpoint.file, endpoint.name);
     if (!decl) throw new Error(`${endpoint.file}: export ${endpoint.name} not found`);
     const result = evalVariable(decl, endpoint.file, ctx);
-    return { schema: result.schema, line: lineOf(endpoint.file, decl) };
+    return { schema: applyWrap(result.schema, endpoint.wrap), line: lineOf(endpoint.file, decl) };
   }
   const annotated = findAnnotated(endpoint.file, endpoint.identifier);
   if (!annotated) throw new Error(`${endpoint.file}: annotate identifier ${endpoint.identifier} not found`);
   const result = evalExpr(annotated.expr, ctx);
-  return { schema: result.schema, line: lineOf(endpoint.file, annotated.expr) };
+  return { schema: applyWrap(result.schema, endpoint.wrap), line: lineOf(endpoint.file, annotated.expr) };
 }
 
 export function deriveSchemas(): Map<string, JsonSchema> {
   const out = new Map<string, JsonSchema>();
   for (const endpoint of ENDPOINTS) {
     const { schema, line } = deriveOne(endpoint);
+    assertResolved(schema, endpoint.id);
     out.set(endpoint.id, {
       $schema: "http://json-schema.org/draft-07/schema#",
       $id: `opencode/${endpoint.id}`,

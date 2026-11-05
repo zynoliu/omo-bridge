@@ -1,0 +1,24 @@
+{
+  "data": [
+    {
+      "id": "per_01hx",
+      "sessionID": "ses_01hx",
+      "action": "bash",
+      "resources": [
+        "npm install"
+      ],
+      "save": [
+        "npm install"
+      ],
+      "metadata": {
+        "tool": "bash"
+      },
+      "message": "Install dependencies?",
+      "source": {
+        "type": "tool",
+        "messageID": "msg_01hx",
+        "id": "call_01hx"
+      }
+    }
+  ]
+}

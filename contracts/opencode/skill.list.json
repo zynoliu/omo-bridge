@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/skill.list",
+  "title": "skill.list",
+  "description": "Derived from packages/schema/src/skill.ts:27 - success body of GET /api/skill.",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "autoinvoke": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "path",
+          "content"
+        ]
+      }
+    }
+  }
+}

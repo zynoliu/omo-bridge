@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.form.replied",
+  "title": "event.form.replied",
+  "description": "Derived from packages/schema/src/form.ts:174 - form prompt answered.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "form.replied"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionID": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "sessionID",
+        "answer"
+      ]
+    }
+  }
+}

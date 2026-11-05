@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/persistentPty.list",
+  "title": "persistentPty.list",
+  "description": "Derived from packages/schema/src/persistent-pty.ts:9 - success body of GET /api/experimental/session/:sessionID/terminal.",
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "exited"
+            ]
+          },
+          "pid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "exitCode": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sessionID": {
+            "type": "string"
+          },
+          "userTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "foregroundProcess": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "size": {
+            "type": "object",
+            "properties": {
+              "cols": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "rows": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "cols",
+              "rows"
+            ]
+          },
+          "output": {
+            "type": "object",
+            "properties": {
+              "head": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tail": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "head",
+              "tail"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "command",
+          "args",
+          "cwd",
+          "status",
+          "pid",
+          "sessionID",
+          "userTitle",
+          "foregroundProcess",
+          "size",
+          "output"
+        ]
+      }
+    }
+  }
+}

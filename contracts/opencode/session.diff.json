@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/session.diff",
+  "title": "session.diff",
+  "description": "Derived from packages/schema/src/file-diff.ts:6 - success body of GET /api/session/:sessionID/diff.",
+  "type": "object",
+  "required": [
+    "data"
+  ],
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "additions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deletions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ]
+          },
+          "more": {
+            "const": true
+          }
+        },
+        "required": [
+          "file",
+          "patch",
+          "additions",
+          "deletions",
+          "status"
+        ]
+      }
+    }
+  }
+}

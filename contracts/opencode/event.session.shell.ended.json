@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.shell.ended",
+  "title": "event.session.shell.ended",
+  "description": "Derived from packages/schema/src/session-event.ts:321 - shell command settled with its output page.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.shell.ended"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "shell": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "running",
+                "exited",
+                "timeout",
+                "killed"
+              ]
+            },
+            "command": {
+              "type": "string"
+            },
+            "cwd": {
+              "type": "string"
+            },
+            "shell": {
+              "type": "string"
+            },
+            "file": {
+              "type": "string"
+            },
+            "pid": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "exit": {
+              "type": "number"
+            },
+            "signal": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "time": {
+              "type": "object",
+              "properties": {
+                "started": {
+                  "type": "number"
+                },
+                "completed": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "started"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "status",
+            "command",
+            "cwd",
+            "shell",
+            "file",
+            "metadata",
+            "time"
+          ]
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "output": {
+              "type": "string"
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "truncated": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "output",
+            "cursor",
+            "size",
+            "truncated"
+          ]
+        }
+      },
+      "required": [
+        "sessionID",
+        "shell",
+        "output"
+      ]
+    }
+  }
+}

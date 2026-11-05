@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.form.cancelled",
+  "title": "event.form.cancelled",
+  "description": "Derived from packages/schema/src/form.ts:175 - form prompt cancelled.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "form.cancelled"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionID"
+      ]
+    }
+  }
+}

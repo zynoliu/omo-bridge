@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.permission.replied",
+  "title": "event.permission.replied",
+  "description": "Derived from packages/schema/src/permission.ts:46 - permission prompt answered.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "permission.replied"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "requestID": {
+          "type": "string"
+        },
+        "reply": {
+          "enum": [
+            "once",
+            "always",
+            "reject"
+          ]
+        }
+      },
+      "required": [
+        "sessionID",
+        "requestID",
+        "reply"
+      ]
+    }
+  }
+}

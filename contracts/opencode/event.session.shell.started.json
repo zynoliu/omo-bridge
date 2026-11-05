@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.shell.started",
+  "title": "event.session.shell.started",
+  "description": "Derived from packages/schema/src/session-event.ts:311 - shell command registered.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.shell.started"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "shell": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "running",
+                "exited",
+                "timeout",
+                "killed"
+              ]
+            },
+            "command": {
+              "type": "string"
+            },
+            "cwd": {
+              "type": "string"
+            },
+            "shell": {
+              "type": "string"
+            },
+            "file": {
+              "type": "string"
+            },
+            "pid": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "exit": {
+              "type": "number"
+            },
+            "signal": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "time": {
+              "type": "object",
+              "properties": {
+                "started": {
+                  "type": "number"
+                },
+                "completed": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "started"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "status",
+            "command",
+            "cwd",
+            "shell",
+            "file",
+            "metadata",
+            "time"
+          ]
+        }
+      },
+      "required": [
+        "sessionID",
+        "shell"
+      ]
+    }
+  }
+}

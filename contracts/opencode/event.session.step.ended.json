@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.step.ended",
+  "title": "event.session.step.ended",
+  "description": "Derived from packages/schema/src/session-event.ts:360 - assistant message closed with usage.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.step.ended"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "assistantMessageID": {
+          "type": "string"
+        },
+        "finish": {
+          "enum": [
+            "stop",
+            "length",
+            "tool-calls",
+            "content-filter",
+            "error",
+            "unknown"
+          ]
+        },
+        "rawFinish": {
+          "type": "string"
+        },
+        "native": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "cost": {
+          "type": "number"
+        },
+        "tokens": {
+          "type": "object",
+          "properties": {
+            "input": {
+              "type": "number"
+            },
+            "output": {
+              "type": "number"
+            },
+            "reasoning": {
+              "type": "number"
+            },
+            "cache": {
+              "type": "object",
+              "properties": {
+                "read": {
+                  "type": "number"
+                },
+                "write": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "read",
+                "write"
+              ]
+            }
+          },
+          "required": [
+            "input",
+            "output",
+            "reasoning",
+            "cache"
+          ]
+        },
+        "snapshot": {
+          "type": "string"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "sessionID",
+        "assistantMessageID",
+        "finish",
+        "cost",
+        "tokens"
+      ]
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "data": {
+    "id": "msg_01hy",
+    "time": {
+      "created": 1793851260000
+    },
+    "type": "assistant",
+    "agent": "build",
+    "model": {
+      "id": "deepseek-v4",
+      "providerID": "deepseek"
+    },
+    "content": [
+      {
+        "type": "text",
+        "text": "Running the tests."
+      },
+      {
+        "type": "tool",
+        "id": "call_1",
+        "name": "bash",
+        "executed": true,
+        "state": {
+          "status": "completed",
+          "input": {
+            "command": "bun test"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "ok"
+            }
+          ]
+        },
+        "time": {
+          "created": 1793851261000
+        }
+      }
+    ]
+  }
+}

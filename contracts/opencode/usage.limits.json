@@ -1,0 +1,216 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/usage.limits",
+  "title": "usage.limits",
+  "description": "Derived from packages/schema/src/usage-limits.ts:67 - success body of GET /api/experimental/usage/limits (data is null when signed out).",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "workspace": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "usageURL": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "usageURL"
+              ]
+            },
+            "go": {
+              "type": "object",
+              "properties": {
+                "rolling": {
+                  "type": "object",
+                  "properties": {
+                    "percent": {
+                      "type": "number"
+                    },
+                    "limited": {
+                      "type": "boolean"
+                    },
+                    "resetsAt": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "percent",
+                    "limited",
+                    "resetsAt"
+                  ]
+                },
+                "weekly": {
+                  "type": "object",
+                  "properties": {
+                    "percent": {
+                      "type": "number"
+                    },
+                    "limited": {
+                      "type": "boolean"
+                    },
+                    "resetsAt": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "percent",
+                    "limited",
+                    "resetsAt"
+                  ]
+                },
+                "monthly": {
+                  "type": "object",
+                  "properties": {
+                    "percent": {
+                      "type": "number"
+                    },
+                    "limited": {
+                      "type": "boolean"
+                    },
+                    "resetsAt": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "percent",
+                    "limited",
+                    "resetsAt"
+                  ]
+                }
+              },
+              "required": [
+                "rolling",
+                "weekly",
+                "monthly"
+              ]
+            },
+            "budgets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "limit": {
+                    "type": "number"
+                  },
+                  "spent": {
+                    "type": "number"
+                  },
+                  "scope": {
+                    "enum": [
+                      "each",
+                      "combined"
+                    ]
+                  },
+                  "per": {
+                    "enum": [
+                      "set",
+                      "model"
+                    ]
+                  },
+                  "coverage": {
+                    "enum": [
+                      "all",
+                      "models"
+                    ]
+                  },
+                  "models": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "providerID": {
+                          "type": "string"
+                        },
+                        "modelID": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "spent": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "providerID",
+                        "modelID",
+                        "name"
+                      ]
+                    }
+                  },
+                  "vendors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "inputPriceAtLeast": {
+                    "type": "number"
+                  },
+                  "picked": {
+                    "type": "boolean"
+                  },
+                  "shared": {
+                    "type": "boolean"
+                  },
+                  "resetsAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "limit",
+                  "spent",
+                  "scope",
+                  "per",
+                  "coverage",
+                  "models",
+                  "vendors",
+                  "picked",
+                  "shared",
+                  "resetsAt"
+                ]
+              }
+            }
+          },
+          "required": [
+            "workspace",
+            "budgets"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

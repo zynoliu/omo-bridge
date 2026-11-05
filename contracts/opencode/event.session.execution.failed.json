@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.execution.failed",
+  "title": "event.session.execution.failed",
+  "description": "Derived from packages/schema/src/session-event.ts:251 - agent_end with a failure record.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.execution.failed"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "status": {
+              "type": "integer"
+            },
+            "response": {
+              "type": "object",
+              "properties": {
+                "body": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "body"
+              ]
+            },
+            "retryAfterMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "type",
+            "message"
+          ]
+        }
+      },
+      "required": [
+        "sessionID",
+        "error"
+      ]
+    }
+  }
+}

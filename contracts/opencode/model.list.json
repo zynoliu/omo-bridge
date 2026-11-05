@@ -1,0 +1,400 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/model.list",
+  "title": "model.list",
+  "description": "Derived from packages/schema/src/model.ts:114 - success body of GET /api/model.",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "modelID": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "canonical": {
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "chat",
+                  "decision",
+                  "image"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "family": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "compatibility": {
+            "type": "object",
+            "properties": {
+              "reasoningField": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "reasoning",
+                      "reasoning_content",
+                      "reasoning_text"
+                    ]
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "requireReasoning": {
+                "type": "boolean"
+              },
+              "maxTokensField": {
+                "enum": [
+                  "max_completion_tokens",
+                  "max_tokens"
+                ]
+              },
+              "requireFinishReason": {
+                "type": "boolean"
+              },
+              "requireAssistantAfterTool": {
+                "type": "boolean"
+              },
+              "supportsPromptCacheKey": {
+                "type": "boolean"
+              },
+              "streamUsage": {
+                "type": "boolean"
+              },
+              "cacheFormat": {
+                "enum": [
+                  "anthropic",
+                  "alibaba"
+                ]
+              },
+              "supportsThinkingBlockBinding": {
+                "type": "boolean"
+              },
+              "supportsEffortUpdates": {
+                "type": "boolean"
+              },
+              "mediaInput": {
+                "enum": [
+                  "assets",
+                  "state",
+                  "root"
+                ]
+              }
+            }
+          },
+          "package": {
+            "type": "string"
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "compaction": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "summary"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "native"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "cache": {
+                "type": "object",
+                "properties": {
+                  "ttl": {
+                    "type": "string"
+                  },
+                  "warming": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "interval": {
+                            "anyOf": [
+                              {
+                                "const": "auto"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "duration": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "encoding": {
+                "enum": [
+                  "zstd",
+                  "gzip",
+                  "none"
+                ]
+              }
+            },
+            "additionalProperties": {}
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "tools": {
+                "type": "boolean"
+              },
+              "input": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "output": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "temperature": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "tools",
+              "input",
+              "output"
+            ]
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "settings": {
+                  "type": "object",
+                  "properties": {
+                    "compaction": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "const": "summary"
+                            }
+                          },
+                          "required": [
+                            "type"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "const": "native"
+                            }
+                          },
+                          "required": [
+                            "type"
+                          ]
+                        }
+                      ]
+                    },
+                    "encoding": {
+                      "enum": [
+                        "zstd",
+                        "gzip",
+                        "none"
+                      ]
+                    }
+                  }
+                },
+                "headers": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "body": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "id"
+              ]
+            }
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "released": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "released"
+            ]
+          },
+          "cost": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tier": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "const": "context"
+                    },
+                    "size": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "size"
+                  ]
+                },
+                "input": {
+                  "type": "number"
+                },
+                "output": {
+                  "type": "number"
+                },
+                "cache": {
+                  "type": "object",
+                  "properties": {
+                    "read": {
+                      "type": "number"
+                    },
+                    "write": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "read",
+                    "write"
+                  ]
+                }
+              },
+              "required": [
+                "input",
+                "output",
+                "cache"
+              ]
+            }
+          },
+          "status": {
+            "enum": [
+              "alpha",
+              "beta",
+              "deprecated",
+              "active"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "object",
+            "properties": {
+              "context": {
+                "type": "integer"
+              },
+              "input": {
+                "type": "integer"
+              },
+              "output": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "context",
+              "output"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "modelID",
+          "providerID",
+          "name",
+          "capabilities",
+          "variants",
+          "time",
+          "cost",
+          "status",
+          "enabled",
+          "limit"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/fs.list",
+  "title": "fs.list",
+  "description": "Derived from packages/schema/src/filesystem.ts:18 - success body of GET /api/fs/list.",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "file",
+              "directory"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "type"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/event.session.execution.interrupted",
+  "title": "event.session.execution.interrupted",
+  "description": "Derived from packages/schema/src/session-event.ts:258 - agent_end with aborted=true.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "created",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "const": "session.execution.interrupted"
+    },
+    "created": {
+      "type": "number"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "user",
+            "shutdown",
+            "superseded",
+            "inactivity"
+          ]
+        }
+      },
+      "required": [
+        "sessionID",
+        "reason"
+      ]
+    }
+  }
+}

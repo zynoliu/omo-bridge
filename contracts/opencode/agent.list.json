@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/agent.list",
+  "title": "agent.list",
+  "description": "Derived from packages/schema/src/agent.ts:23 - success body of GET /api/agent.",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              },
+              "variant": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "providerID"
+            ]
+          },
+          "request": {
+            "type": "object",
+            "properties": {
+              "settings": {
+                "type": "object",
+                "properties": {
+                  "timeout": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "const": false
+                      }
+                    ]
+                  },
+                  "headerTimeout": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "const": false
+                      }
+                    ]
+                  },
+                  "chunkTimeout": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "const": false
+                      }
+                    ]
+                  },
+                  "compaction": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "summary"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "native"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ]
+                      }
+                    ]
+                  },
+                  "cache": {
+                    "type": "object",
+                    "properties": {
+                      "ttl": {
+                        "type": "string"
+                      },
+                      "warming": {
+                        "anyOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "interval": {
+                                "anyOf": [
+                                  {
+                                    "const": "auto"
+                                  },
+                                  {
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "duration": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "transport": {
+                    "enum": [
+                      "http",
+                      "websocket"
+                    ]
+                  },
+                  "encoding": {
+                    "enum": [
+                      "zstd",
+                      "gzip",
+                      "none"
+                    ]
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "body": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            },
+            "required": [
+              "settings",
+              "headers",
+              "body"
+            ]
+          },
+          "system": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "subagent",
+              "primary",
+              "all"
+            ]
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "color": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "resource": {
+                  "type": "string"
+                },
+                "effect": {
+                  "enum": [
+                    "allow",
+                    "deny",
+                    "ask"
+                  ]
+                }
+              },
+              "required": [
+                "action",
+                "resource",
+                "effect"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "request",
+          "mode",
+          "hidden",
+          "permissions"
+        ]
+      }
+    }
+  }
+}

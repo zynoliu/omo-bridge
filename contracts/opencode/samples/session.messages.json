@@ -1,0 +1,79 @@
+{
+  "data": [
+    {
+      "id": "msg_01hx",
+      "time": {
+        "created": 1793851200000
+      },
+      "type": "user",
+      "text": "Run the tests"
+    },
+    {
+      "id": "msg_01hy",
+      "time": {
+        "created": 1793851260000
+      },
+      "type": "model-switched",
+      "model": {
+        "id": "deepseek-v4",
+        "providerID": "deepseek"
+      }
+    },
+    {
+      "id": "msg_01hz",
+      "time": {
+        "created": 1793851320000,
+        "completed": 1793851380000
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "deepseek-v4",
+        "providerID": "deepseek"
+      },
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "The user wants the suite run."
+        },
+        {
+          "type": "text",
+          "text": "Running the tests."
+        },
+        {
+          "type": "tool",
+          "id": "call_1",
+          "name": "bash",
+          "executed": true,
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "bun test"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "ok"
+              }
+            ]
+          },
+          "time": {
+            "created": 1793851330000
+          }
+        }
+      ],
+      "finish": "stop",
+      "cost": 0.0012,
+      "tokens": {
+        "input": 1200,
+        "output": 340,
+        "reasoning": 40,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      }
+    }
+  ],
+  "cursor": {}
+}

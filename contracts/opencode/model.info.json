@@ -100,7 +100,76 @@
       "type": "string"
     },
     "settings": {
-      "$comment": "unresolved: Schema.StructWithRest( Schema.Struct(Struct.pick(Provider.Settings.schema.fields, [\"com..."
+      "type": "object",
+      "properties": {
+        "compaction": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "summary"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "native"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          ]
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttl": {
+              "type": "string"
+            },
+            "warming": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "interval": {
+                      "anyOf": [
+                        {
+                          "const": "auto"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "duration": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "encoding": {
+          "enum": [
+            "zstd",
+            "gzip",
+            "none"
+          ]
+        }
+      },
+      "additionalProperties": {}
     },
     "headers": {
       "type": "object",
@@ -149,7 +218,42 @@
             "type": "string"
           },
           "settings": {
-            "$comment": "unresolved: Schema.StructWithRest( Schema.Struct(Struct.omit(Settings.schema.fields, [\"cache\"])), S..."
+            "type": "object",
+            "properties": {
+              "compaction": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "summary"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "native"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "encoding": {
+                "enum": [
+                  "zstd",
+                  "gzip",
+                  "none"
+                ]
+              }
+            }
           },
           "headers": {
             "type": "object",

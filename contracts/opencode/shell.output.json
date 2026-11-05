@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/shell.output",
+  "title": "shell.output",
+  "description": "Derived from packages/schema/src/shell.ts:77 - success body of GET /api/shell/:id/output.",
+  "type": "object",
+  "required": [
+    "location",
+    "data"
+  ],
+  "properties": {
+    "location": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        },
+        "cursor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "output",
+        "cursor",
+        "size",
+        "truncated"
+      ]
+    }
+  }
+}
