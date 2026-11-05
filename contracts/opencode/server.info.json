@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "opencode/server.info",
+  "title": "server.info",
+  "description": "Derived from packages/protocol/src/groups/server.ts:5 - success body of GET /api/info.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "pid": {
+      "type": "integer"
+    },
+    "hostname": {
+      "type": "string"
+    },
+    "urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "paths": {
+      "type": "object",
+      "properties": {
+        "tmp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tmp"
+      ]
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "persistentPty": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "required": [
+    "version",
+    "pid",
+    "urls",
+    "paths"
+  ]
+}

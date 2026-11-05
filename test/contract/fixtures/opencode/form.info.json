@@ -1,0 +1,28 @@
+{
+  "id": "frm_01hx",
+  "sessionID": "ses_01hx",
+  "title": "Deploy",
+  "metadata": {
+    "origin": "mcp"
+  },
+  "fields": [
+    {
+      "key": "environment",
+      "type": "string",
+      "title": "Environment",
+      "required": true,
+      "format": "uri"
+    },
+    {
+      "key": "replicas",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    {
+      "key": "confirm",
+      "type": "boolean",
+      "default": false
+    }
+  ]
+}

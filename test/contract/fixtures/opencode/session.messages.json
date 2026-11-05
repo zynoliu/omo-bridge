@@ -1,0 +1,13 @@
+{
+  "data": [
+    {
+      "id": "msg_01hx",
+      "time": {
+        "created": "2026-11-05T04:00:00.000Z"
+      },
+      "type": "agent-switched",
+      "agent": "build"
+    }
+  ],
+  "cursor": {}
+}
