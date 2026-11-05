@@ -25,6 +25,12 @@ export type StreamProjector = {
 
 type BlockKind = "text" | "reasoning";
 
+function epochMillisOf(value: unknown): number | undefined {
+  if (typeof value !== "string") return undefined;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
 type DraftBlock = { text: string; streamed: boolean };
 
 const FINISH_REASONS: Record<string, string> = {
@@ -73,6 +79,9 @@ export function createStreamProjector(ctx: TranslateContext, sink: EventSink = (
   let assistantMessageID: string | undefined;
   const drafts = new Map<string, DraftBlock>();
   const settled = new Set<string>();
+  // Cleared on message_end, so it cannot answer "did this step already stream its text" once the
+  // durable entry arrives; the entry would then repeat the text the TUI already appended.
+  let textStreamedFor: string | undefined;
 
   const ignore = (): void => {
     stats.ignored += 1;
@@ -95,6 +104,7 @@ export function createStreamProjector(ctx: TranslateContext, sink: EventSink = (
     if (settled.has(key)) return;
     const draft = drafts.get(key) ?? { text: "", streamed: false };
     drafts.set(key, { text: `${draft.text}${delta}`, streamed: true });
+    if (kind === "text") textStreamedFor = id;
     emit(`session.${kind}.delta`, { sessionID: ctx.sessionID, assistantMessageID: id, ordinal, delta });
   };
 
@@ -202,6 +212,62 @@ export function createStreamProjector(ctx: TranslateContext, sink: EventSink = (
     settled.clear();
   };
 
+  /**
+   * The host names a message only when its durable entry lands, so this is where a step that
+   * streamed without an id becomes addressable. Buffered deltas flush under the entry id, which is
+   * also the id the durable projection serves: one row, live and after a refetch.
+   */
+  const handleEntryAppended = (record: Record<string, unknown>): void => {
+    const entry = asRecord(record.entry);
+    if (entry?.type !== "message") return;
+    const message = asRecord(entry.message);
+    if (message?.role !== "assistant") return;
+    const id = assistantMessageID ?? asNonEmptyString(entry.id);
+    if (id === undefined) {
+      ignore();
+      return;
+    }
+    const agent = asNonEmptyString(message.agent) ?? DEFAULT_AGENT;
+    const modelID = asNonEmptyString(message.model);
+    const providerID = asNonEmptyString(message.provider);
+    if (assistantMessageID === undefined) {
+      emit("session.step.started", {
+        sessionID: ctx.sessionID,
+        assistantMessageID: id,
+        agent,
+        ...(modelID === undefined || providerID === undefined ? {} : { model: { id: modelID, providerID } }),
+        started: epochMillisOf(entry.timestamp) ?? ctx.now(),
+      });
+    }
+    const content = Array.isArray(message.content) ? message.content : [];
+    const text = content
+      .map((part) => asRecord(part))
+      .filter((part): part is Record<string, unknown> => part?.type === "text")
+      .map((part) => asString(part.text) ?? "")
+      .join("");
+    // A step that already streamed its text must not repeat it: the TUI appends every delta.
+    const textAlreadyStreamed = textStreamedFor === id;
+    if (text.length > 0 && !textAlreadyStreamed) {
+      startBlock(id, "text", 0);
+      deltaBlock(id, "text", 0, text);
+      endBlock(id, "text", 0, text);
+    }
+    const usage = asRecord(message.usage);
+    const cost = asRecord(usage?.cost);
+    emit("session.step.ended", {
+      sessionID: ctx.sessionID,
+      assistantMessageID: id,
+      finish: finishOf(message.stopReason),
+      tokens: {
+        input: numberOrZero(usage?.input),
+        output: numberOrZero(usage?.output),
+        reasoning: numberOrZero(usage?.reasoning),
+        cache: { read: numberOrZero(usage?.cacheRead), write: numberOrZero(usage?.cacheWrite) },
+      },
+      cost: numberOrZero(cost?.total),
+    });
+  };
+
   const handle = (event: unknown): void => {
     const record = asRecord(event);
     const type = asString(record?.type);
@@ -219,6 +285,10 @@ export function createStreamProjector(ctx: TranslateContext, sink: EventSink = (
     }
     if (type === "message_end") {
       handleMessageEnd(record);
+      return;
+    }
+    if (type === "entry_appended") {
+      handleEntryAppended(record);
       return;
     }
     ignore();

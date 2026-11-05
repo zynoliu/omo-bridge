@@ -719,7 +719,7 @@ describe("runtime frame dispatch", () => {
     setFormEventBus(undefined);
   });
 
-  test("mints one message id for stream and tool frames that arrive without one", async () => {
+  test("holds frames until the durable entry names the step, then replays them under its id", async () => {
     const bus = createEventBus({ capacity: 32 });
     const dispatch = createFrameDispatch({ bus, defaultSessionID: () => "ses_frame_dispatch" });
     const subscription = bus.subscribe({ types: ["session.step.started", "session.tool.input.started"] });
@@ -732,10 +732,14 @@ describe("runtime frame dispatch", () => {
       type: "message_update",
       assistantMessageEvent: { type: "toolcall_start", contentIndex: 1, id: "call_mount", toolName: "bash" },
     });
+    dispatch.handle({
+      type: "entry_appended",
+      entry: { type: "message", id: "4aac42d6", message: { role: "assistant", content: [] } },
+    });
     const [step, tool] = await readEvents(subscription, 2);
     subscription.close();
 
-    expect(step!.data.assistantMessageID).toBeDefined();
+    expect(step!.data.assistantMessageID).toBe("4aac42d6");
     expect(tool!.type).toBe("session.tool.input.started");
     expect(tool!.data.assistantMessageID).toBe(step!.data.assistantMessageID);
   });

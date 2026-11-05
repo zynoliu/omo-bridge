@@ -92,8 +92,9 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
     string,
     { stream: ReturnType<typeof createStreamProjector>; tools: ReturnType<typeof createToolProjector>; lifecycle: ReturnType<typeof createLifecycleProjector> }
   >();
+  const heldFrames = new Map<string, Record<string, unknown>[]>();
+  type ProjectorSet = NonNullable<ReturnType<typeof projectors.get>>;
   let sequence = 0;
-let messageSequence = 0;
 
   const sink = (event: OpenCodeEvent): void => {
     if (event.type === "session.usage.updated" && onUsage !== undefined) {
@@ -125,13 +126,42 @@ let messageSequence = 0;
 
   const project = (frame: Record<string, unknown>, sessionID: string): void => {
     const set = projectorsFor(sessionID);
-    // senpi's assistant `message_start` frame carries no message id, but the stream and tool
-    // projectors both key their events by it. Mint one id here so they agree on the same message
-    // instead of each projector inventing a different fallback.
-    const started = frame.type === "message_start" ? asRecord(frame.message) : undefined;
+    // The host opens an assistant step before it has an id and names it only when the durable entry
+    // lands. Frames held here are replayed under that id, so the live row and the row a refetch
+    // serves are the same message; inventing an id instead leaves the TUI with two rows it can
+    // never merge.
+    const held = heldFrames.get(sessionID);
+    const type = frame.type;
+    const started = type === "message_start" ? asRecord(frame.message) : undefined;
     if (started?.role === "assistant" && asString(started.id) === undefined) {
-      started.id = `msg_${sessionID}_${++messageSequence}`;
+      heldFrames.set(sessionID, [frame]);
+      return;
     }
+    if (held !== undefined && (type === "message_update" || type === "message_end")) {
+      held.push(frame);
+      return;
+    }
+    if (held !== undefined && type === "entry_appended") {
+      const entry = asRecord(frame.entry);
+      const entryMessage = asRecord(entry?.message);
+      const id = asString(entry?.id);
+      if (entry?.type === "message" && entryMessage?.role === "assistant" && id !== undefined && id.length > 0) {
+        heldFrames.delete(sessionID);
+        for (const heldFrame of held) {
+          const message = asRecord(heldFrame.message);
+          if (message !== undefined && asString(message.id) === undefined) message.id = id;
+          dispatchFrame(heldFrame, set, sessionID);
+        }
+      }
+    }
+    dispatchFrame(frame, set, sessionID);
+  };
+
+  const dispatchFrame = (
+    frame: Record<string, unknown>,
+    set: ProjectorSet,
+    sessionID: string,
+  ): void => {
     const entries = [
       ["stream", set.stream],
       ["tools", set.tools],
