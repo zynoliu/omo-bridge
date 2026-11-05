@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
 import { basename } from "node:path";
 import type { SenpiEntriesResult, SenpiMessages, SenpiTransport } from "../../senpi/transport";
+import { mediaUriFor, wantsMediaRefs } from "./media";
 
 // Read-only session endpoints. Handlers take (request, url) and read ids from url.pathname, so the
 // transport is injected once with setSessionReadTransport() instead of arriving through a router.
@@ -64,7 +65,9 @@ export type PublicToolState =
       content: Array<{ type: "text"; text: string }>;
     };
 
-export type PublicMessageFile = { data: string; mime: string; source: { type: "inline" } };
+export type PublicMessageFile =
+  | { data: string; mime: string; source: { type: "inline" } }
+  | { uri: string; mime: string; source: { type: "inline" }; bytes: number };
 
 export type PublicSessionMessage = {
   id: string;
@@ -323,11 +326,23 @@ function textOfUserContent(content: Extract<AgentMessage, { role: "user" }>["con
     .join("\n");
 }
 
-function filesOfUserContent(content: Extract<AgentMessage, { role: "user" }>["content"]): PublicMessageFile[] {
+function filesOfUserContent(
+  content: Extract<AgentMessage, { role: "user" }>["content"],
+  mediaRefs: boolean,
+): PublicMessageFile[] {
   if (typeof content === "string") return [];
-  return content.flatMap((block) =>
-    block.type === "image" ? [{ data: block.data, mime: block.mimeType, source: { type: "inline" as const } }] : [],
-  );
+  const files: PublicMessageFile[] = [];
+  for (const block of content) {
+    if (block.type !== "image") continue;
+    const source = { type: "inline" as const };
+    if (!mediaRefs) {
+      files.push({ data: block.data, mime: block.mimeType, source });
+      continue;
+    }
+    const bytes = Buffer.from(block.data, "base64");
+    files.push({ uri: mediaUriFor(bytes, block.mimeType), mime: block.mimeType, source, bytes: bytes.byteLength });
+  }
+  return files;
 }
 
 function toolResultText(result: ToolResultMessage): string {
@@ -382,7 +397,7 @@ function mapAssistantContent(
   return parts;
 }
 
-function mapEntries(entries: SessionEntry[]): PublicSessionMessage[] {
+function mapEntries(entries: SessionEntry[], mediaRefs: boolean): PublicSessionMessage[] {
   const toolResults = toolResultsById(entries);
   const messages: PublicSessionMessage[] = [];
   for (const entry of entries) {
@@ -399,7 +414,7 @@ function mapEntries(entries: SessionEntry[]): PublicSessionMessage[] {
     const message = entry.message;
     const createdAt = isoTimestamp(entry.timestamp);
     if (message.role === "user") {
-      const files = filesOfUserContent(message.content);
+      const files = filesOfUserContent(message.content, mediaRefs);
       messages.push({
         id: entry.id,
         time: { created: createdAt },
@@ -425,14 +440,14 @@ function mapEntries(entries: SessionEntry[]): PublicSessionMessage[] {
 
 // Entries carry durable ids; a host that refuses the unpaged read falls back to projected messages,
 // whose ids are positional and stable only while the transcript stays append-only.
-async function readMessages(caller: SessionReadTransport): Promise<PublicSessionMessage[]> {
+async function readMessages(caller: SessionReadTransport, mediaRefs: boolean): Promise<PublicSessionMessage[]> {
   let entries: SessionEntry[] | undefined;
   try {
     entries = (await caller.getEntries()).entries;
   } catch {
     entries = undefined;
   }
-  if (entries !== undefined) return mapEntries(entries);
+  if (entries !== undefined) return mapEntries(entries, mediaRefs);
 
   const messages = await caller.getMessages();
   const toolResults = new Map<string, ToolResultMessage>();
@@ -442,7 +457,7 @@ async function readMessages(caller: SessionReadTransport): Promise<PublicSession
     const createdAt = isoTimestamp(message.timestamp);
     const id = `message-${index}`;
     if (message.role === "user") {
-      const files = filesOfUserContent(message.content);
+      const files = filesOfUserContent(message.content, mediaRefs);
       mapped.push({
         id,
         time: { created: createdAt },
@@ -512,37 +527,40 @@ export async function handleSessionGet(_request: Request, url: URL): Promise<Res
   });
 }
 
-export async function handleSessionMessages(_request: Request, url: URL): Promise<Response> {
+export async function handleSessionMessages(request: Request, url: URL): Promise<Response> {
   return respond(async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     await requireMappedSession(caller, sessionID);
     const limit = readLimit(url, DEFAULT_PAGE_LIMIT, MAX_MESSAGE_LIMIT);
     const offset = readCursor(url);
-    const messages = await readMessages(caller);
+    const messages = await readMessages(caller, wantsMediaRefs(request));
     const { page, cursor } = paginate(messages, offset, limit);
     return jsonResponse(200, { data: page, cursor });
   });
 }
 
-export async function handleSessionMessageGet(_request: Request, url: URL): Promise<Response> {
+export async function handleSessionMessageGet(request: Request, url: URL): Promise<Response> {
   return respond(async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     const messageID = messageIdFromPath(url);
     await requireMappedSession(caller, sessionID);
-    const messages = await readMessages(caller);
+    const messages = await readMessages(caller, wantsMediaRefs(request));
     const message = messages.find((candidate) => candidate.id === messageID);
     if (message === undefined) throw messageNotFound(sessionID, messageID);
     return jsonResponse(200, { data: message });
   });
 }
 
-export async function handleSessionInboxList(_request: Request, url: URL): Promise<Response> {
+export async function handleSessionInboxList(request: Request, url: URL): Promise<Response> {
   return respond(async () => {
     const caller = requireTransport();
     const sessionID = sessionIdFromPath(url);
     await requireMappedSession(caller, sessionID);
+    // The inbox projection is empty, but it is a message read that may carry files, so it honours
+    // the same capability the TUI sends; item files will be projected with it once items exist.
+    void wantsMediaRefs(request);
     return jsonResponse(200, { data: [] }); // todo 13: pending-input ledger
   });
 }
