@@ -12,13 +12,23 @@ import {
 import { homedir, userInfo } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { resolveConfig, type Config } from "./config";
-import { setSessionInboxTransport } from "./http/handlers/inbox";
+import {
+  setSessionInboxTransport,
+  type InboxCommand,
+  type SessionInboxTransport,
+} from "./http/handlers/inbox";
 import { setSessionWriteTransport, type PromptCommand, type SessionWriteTransport } from "./http/handlers/prompt";
 import { setSessionReadTransport, type SessionReadTransport } from "./http/handlers/sessions";
 import { setSessionManagementTransport } from "./http/handlers/session-write";
 import { createRuntime, type BridgeRuntime } from "./runtime";
 import { SenpiTransportError, mapSenpiError } from "./senpi/errors";
-import type { SenpiOpenSessionOptions, SenpiOpenSessionResult, SenpiTransport } from "./senpi/transport";
+import type {
+  SenpiAbortAnswer,
+  SenpiAbortOptions,
+  SenpiOpenSessionOptions,
+  SenpiOpenSessionResult,
+  SenpiTransport,
+} from "./senpi/transport";
 
 // Launcher and lifecycle for the bridge process.
 //
@@ -148,7 +158,7 @@ export type StartedBridge = {
   readonly host: EnsuredHost;
   readonly recovery: SessionRecovery | undefined;
   /** The transport proxy installed into the http handlers (undefined without a connected host). */
-  readonly transport: (SessionReadTransport & SessionWriteTransport) | undefined;
+  readonly transport: (SessionReadTransport & SessionWriteTransport & SessionInboxTransport) | undefined;
   /** In-process shutdown: close SSE, dispose the transport, stop the private host. Never kills this pid. */
   readonly stop: () => Promise<ShutdownReport>;
 };
@@ -728,7 +738,7 @@ function sessionPathOf(opened: SenpiOpenSessionResult): string | undefined {
 function createTransportProxy(
   transport: SenpiTransport,
   recovery: SessionRecovery,
-): SessionReadTransport & SessionWriteTransport {
+): SessionReadTransport & SessionWriteTransport & SessionInboxTransport {
   const call = <T>(operation: (target: SenpiTransport) => Promise<T>): Promise<T> => {
     if (recovery.state !== "attached") {
       return Promise.reject(
@@ -757,6 +767,9 @@ function createTransportProxy(
       if (sessionPath !== undefined) recovery.rememberSession(sessionPath);
       return opened;
     },
+    abort: (options?: SenpiAbortOptions) => call((target) => target.abort(options)),
+    getPendingInputs: (knownClientMessageIds?: readonly string[]) =>
+      call((target) => target.getPendingInputs(knownClientMessageIds)),
     prompt: (message, options) => call((target) => target.prompt(message, options)),
     steer: (message, images, steerOptions) => call((target) => target.steer(message, images, steerOptions)),
     followUp: (message, images, steerOptions) => call((target) => target.followUp(message, images, steerOptions)),
@@ -764,7 +777,9 @@ function createTransportProxy(
       await call((target) => target.setSessionName(name));
     },
     raw: {
-      request: <T>(command: PromptCommand) => call((target) => target.raw.request<T>(command)),
+      // One channel backs both the prompt and inbox command sets; the facade's RawChannel accepts
+      // every RpcCommand, so the union is the honest type for the proxy.
+      request: <T>(command: PromptCommand | InboxCommand) => call((target) => target.raw.request<T>(command)),
     },
   };
 }
@@ -776,9 +791,10 @@ function clearHandlerTransports(): void {
   setSessionManagementTransport(undefined);
 }
 
-function installHandlerTransports(proxy: SessionReadTransport & SessionWriteTransport): void {
+function installHandlerTransports(proxy: SessionReadTransport & SessionWriteTransport & SessionInboxTransport): void {
   setSessionReadTransport(proxy);
   setSessionWriteTransport(proxy);
+  setSessionInboxTransport(proxy);
 }
 
 export async function start(options: StartOptions = {}): Promise<StartedBridge> {
@@ -819,7 +835,7 @@ export async function start(options: StartOptions = {}): Promise<StartedBridge> 
 
   const transport = runtime.transport;
   let recovery: SessionRecovery | undefined;
-  let proxy: (SessionReadTransport & SessionWriteTransport) | undefined;
+  let proxy: (SessionReadTransport & SessionWriteTransport & SessionInboxTransport) | undefined;
   if (transport !== undefined) {
     recovery = createSessionRecovery({ transport, reconnectDelaysMs: deps.reconnectDelaysMs });
     proxy = createTransportProxy(transport, recovery);

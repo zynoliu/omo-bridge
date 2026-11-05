@@ -4,6 +4,7 @@ import { resolveConfig, type Config } from "./config";
 import { eventBus as sharedEventBus, type EventBus } from "./http/events";
 import { setCatalogTransport } from "./http/handlers/catalogs";
 import { onDialogFrame, onQuestionFrame, setFormEventBus, setFormTransport } from "./http/handlers/form";
+import { setSessionInboxTransport } from "./http/handlers/inbox";
 import { onUiRequest, setPermissionEventBus, setPermissionTransport } from "./http/handlers/permission";
 import { setSessionWriteTransport } from "./http/handlers/prompt";
 import {
@@ -278,6 +279,7 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
   const unsubscribe = transport?.onEvent(dispatch.handle);
 
   setSessionReadTransport(transport);
+  setSessionInboxTransport(transport);
   setSessionWriteTransport(transport);
   setCatalogTransport(transport);
   setPermissionTransport(transport);
@@ -302,6 +304,7 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
       closed = true;
       unsubscribe?.();
       setSessionReadTransport(undefined);
+      setSessionInboxTransport(undefined);
       setSessionWriteTransport(undefined);
       setCatalogTransport(undefined);
       setPermissionTransport(undefined);
