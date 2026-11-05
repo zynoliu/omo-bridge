@@ -5,6 +5,14 @@ import { join } from "node:path";
 import { resolveConfig } from "../../src/config";
 import { createEventBus, type BridgeEvent, type EventBus, type EventSubscription } from "../../src/http/events";
 import { setCatalogTransport } from "../../src/http/handlers/catalogs";
+import {
+  resetSessionInboxState,
+  setSessionInboxTransport,
+  type InboxCommand,
+  type InboxCommandChannel,
+  type QueueEntry,
+  type SessionInboxTransport,
+} from "../../src/http/handlers/inbox";
 import { resetForms, setFormEventBus, setFormTransport } from "../../src/http/handlers/form";
 import { putMedia, setMediaStateDir } from "../../src/http/handlers/media";
 import { resetPermissions, setPermissionEventBus, setPermissionTransport } from "../../src/http/handlers/permission";
@@ -15,9 +23,12 @@ import { BASIC_USERNAME, createServer, type BridgeServer } from "../../src/http/
 import { SessionMap } from "../../src/model/session-map";
 import { createFrameDispatch } from "../../src/runtime";
 import type {
+  SenpiAbortAnswer,
+  SenpiAbortOptions,
   SenpiEntriesResult,
   SenpiMessages,
   SenpiModelInfo,
+  SenpiOpenSessionResult,
   SenpiSessionState,
   SenpiSessionSummary,
   SenpiSelectedModel,
@@ -137,6 +148,58 @@ let base!: string;
 let root!: string;
 let workdir!: string;
 let fake!: FakeSenpi;
+let inbox!: FakeInbox;
+
+/**
+ * The inbox family reads its own transport seam. This fake keeps its queue and abort log separate
+ * from FakeSenpi so the mounted routes can be exercised without changing the read projections.
+ */
+class FakeInbox implements SessionInboxTransport {
+  readonly sessionId = ROUTING_ID;
+  ordered: QueueEntry[] = [];
+  pending: unknown[] = [];
+  readonly aborts: Array<SenpiAbortOptions | undefined> = [];
+  readonly commands: InboxCommand[] = [];
+  readonly raw: InboxCommandChannel = {
+    request: async <T>(command: InboxCommand): Promise<T> => {
+      this.commands.push(structuredClone(command));
+      return { status: "removed" } as T;
+    },
+  };
+
+  async abort(options?: SenpiAbortOptions): Promise<SenpiAbortAnswer> {
+    this.aborts.push(options);
+    return undefined as SenpiAbortAnswer;
+  }
+
+  async getState(): Promise<SenpiSessionState> {
+    return {
+      sessionId: ROUTING_ID,
+      isStreaming: false,
+      ordered: this.ordered,
+    } as unknown as SenpiSessionState;
+  }
+
+  async listSessions(): Promise<SenpiSessionSummary[]> {
+    return [
+      {
+        sessionId: ROUTING_ID,
+        durableSessionId: SESSION_ID,
+        cwd: workdir,
+        status: "open",
+        sessionPath: join(workdir, "mount.jsonl"),
+      } as SenpiSessionSummary,
+    ];
+  }
+
+  async openSession(): Promise<SenpiOpenSessionResult> {
+    return { sessionId: ROUTING_ID } as SenpiOpenSessionResult;
+  }
+
+  async getPendingInputs(): Promise<unknown> {
+    return { inputs: this.pending };
+  }
+}
 
 function auth(): Record<string, string> {
   return { authorization: `Basic ${Buffer.from(`${BASIC_USERNAME}:${PASSWORD}`, "utf8").toString("base64")}` };
@@ -200,6 +263,9 @@ beforeAll(() => {
   map.flush();
 
   fake = new FakeSenpi(rows, workdir);
+  inbox = new FakeInbox();
+  resetSessionInboxState();
+  setSessionInboxTransport(inbox);
   setSessionReadTransport(fake);
   setSessionManagementTransport(fake);
   setSessionManagementStore(sessionManagementStore(map));
@@ -222,6 +288,8 @@ beforeAll(() => {
 
 afterAll(async () => {
   await server.stop(true);
+  setSessionInboxTransport(undefined);
+  resetSessionInboxState();
   setSessionReadTransport(undefined);
   setSessionManagementTransport(undefined);
   setSessionManagementStore(undefined);
@@ -305,6 +373,41 @@ describe("mounted form routes", () => {
     const secondID = ((await json(second)).data as Record<string, unknown>).id;
     const cancelled = await send("DELETE", `/api/session/${SESSION_ID}/form/${secondID as string}`);
     expect(cancelled.status).toBe(204);
+  });
+});
+
+describe("mounted session inbox routes", () => {
+  test("interrupt, background, list, cancel and delivery update answer over HTTP", async () => {
+    inbox.pending = [{ id: "msg_mount_pending", text: "queued over HTTP", delivery: "steer" }];
+    inbox.ordered = [
+      { queuedId: "q_mount_1", text: "move me", mode: "followUp", enqueueOrder: 1, revision: 1 },
+    ];
+
+    const interrupted = await send("POST", `/api/session/${SESSION_ID}/interrupt`, {});
+    expect(interrupted.status).toBe(200);
+    expect(await json(interrupted)).toEqual({ interrupted: true });
+    expect(inbox.aborts).toEqual([{ intent: "stop" }]);
+
+    const background = await send("POST", `/api/session/${SESSION_ID}/background`);
+    expect(background.status).toBe(204);
+
+    const listed = await get(`/api/session/${SESSION_ID}/inbox`);
+    expect(listed.status).toBe(200);
+    const items = (await json(listed)).data as Array<Record<string, unknown>>;
+    expect(items.map((item) => [item.id, item.text, item.delivery])).toEqual([
+      ["msg_mount_pending", "queued over HTTP", "steer"],
+    ]);
+
+    const cancelled = await send("DELETE", `/api/session/${SESSION_ID}/inbox/q_mount_1`);
+    expect(cancelled.status).toBe(204);
+    expect(inbox.commands).toEqual([{ type: "dequeue_message", queuedId: "q_mount_1" }]);
+
+    inbox.ordered = [
+      { queuedId: "q_mount_2", text: "move me too", mode: "followUp", enqueueOrder: 2, revision: 1 },
+    ];
+    const updated = await send("PATCH", `/api/session/${SESSION_ID}/inbox/q_mount_2`, { delivery: "steer" });
+    expect(updated.status).toBe(204);
+    expect(inbox.commands.at(-1)).toEqual({ type: "steer", message: "move me too", enqueueOrder: 2 });
   });
 });
 
@@ -445,6 +548,7 @@ describe("mounted degradation routes", () => {
     { method: "GET", path: `/api/experimental/session/${SESSION_ID}/terminal`, status: 200 },
     { method: "POST", path: `/api/experimental/session/${SESSION_ID}/terminal`, status: 409, tag: "ServiceUnavailableError" },
     { method: "GET", path: "/api/experimental/persistent-pty/pty_1/snapshot", status: 404, tag: "PtyNotFoundError" },
+    { method: "GET", path: "/api/experimental/persistent-pty/x/connect", status: 404, tag: "PtyNotFoundError" },
     { method: "POST", path: "/api/experimental/persistent-pty/pty_1/connect-token", status: 404, tag: "PtyNotFoundError" },
     { method: "GET", path: "/api/experimental/migration/v1", status: 200 },
     { method: "POST", path: "/api/integration/int_1/connect/key", status: 409, tag: "IntegrationNotFoundError" },
@@ -484,6 +588,15 @@ describe("mounted degradation routes", () => {
 
   test("GET /api/experimental/migration/v1 reports completed", async () => {
     expect(await (await get("/api/experimental/migration/v1")).json()).toEqual({ status: "completed" });
+  });
+
+  test("GET /api/experimental/persistent-pty/:ptyID/connect answers the PtyNotFoundError envelope", async () => {
+    const response = await get("/api/experimental/persistent-pty/x/connect");
+    expect(response.status).toBe(404);
+    const body = await json(response);
+    expect(body._tag).toBe("PtyNotFoundError");
+    expect(body.ptyID).toBe("x");
+    assertNotRouter404(response, body);
   });
 });
 

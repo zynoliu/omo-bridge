@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { hostname, tmpdir } from "node:os";
+import pkg from "../../package.json";
 import type { Config } from "../config";
 import { validateResponse } from "../contract/validate";
 import { createRouter } from "./router";
@@ -7,6 +8,11 @@ import { routes } from "./routes";
 
 /** The opencode version the TUI expects, so it does not warn about a protocol mismatch. */
 export const BRIDGE_PROTOCOL_VERSION = "2.2.5";
+
+/** The bridge package's own version, read from package.json so the header cannot drift from it. */
+export const BRIDGE_VERSION: string = pkg.version;
+
+const VERSION_HEADER = "x-omo-bridge-version";
 
 export const BASIC_USERNAME = "opencode";
 
@@ -31,6 +37,12 @@ function errorResponse(
   headers: Record<string, string> = {},
 ): Response {
   return jsonResponse(status, { _tag: tag, message }, headers);
+}
+
+/** Every response leaves the server through here, so clients can always identify the bridge build. */
+function withBridgeVersion(response: Response): Response {
+  response.headers.set(VERSION_HEADER, BRIDGE_VERSION);
+  return response;
 }
 
 function unauthorized(message: string): Response {
@@ -94,8 +106,8 @@ export function createServer(config: Config): BridgeServer {
     idleTimeout: IDLE_TIMEOUT_SECONDS,
     fetch(request: Request): Response | Promise<Response> {
       const rejected = rejectUnauthenticated(request, config);
-      if (rejected !== null) return rejected;
-      return router(request);
+      if (rejected !== null) return withBridgeVersion(rejected);
+      return router(request).then(withBridgeVersion);
     },
   });
   return server;

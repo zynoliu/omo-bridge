@@ -98,14 +98,22 @@ export async function handlePersistentPtyCreate(_request: Request, _url: URL): P
   });
 }
 
-export async function handlePersistentPtySnapshot(_request: Request, url: URL): Promise<Response> {
+function ptyNotFound(url: URL): Response {
   const ptyID = segmentAfter(url, "persistent-pty");
   return errorResponse(404, "PtyNotFoundError", `persistent terminal ${ptyID} is not available`, { ptyID });
 }
 
+export async function handlePersistentPtySnapshot(_request: Request, url: URL): Promise<Response> {
+  return ptyNotFound(url);
+}
+
 export async function handlePersistentPtyConnectToken(_request: Request, url: URL): Promise<Response> {
-  const ptyID = segmentAfter(url, "persistent-pty");
-  return errorResponse(404, "PtyNotFoundError", `persistent terminal ${ptyID} is not available`, { ptyID });
+  return ptyNotFound(url);
+}
+
+export async function handlePersistentPtyConnect(_request: Request, url: URL): Promise<Response> {
+  // The attach path: no terminal can exist, so it answers the same declared not-found error as snapshot.
+  return ptyNotFound(url);
 }
 
 export async function handleMigrationV1Status(_request: Request, _url: URL): Promise<Response> {

@@ -13,13 +13,24 @@ import {
 } from "../../src/http/handlers/media";
 import {
   handleSessionInboxList,
+  setSessionInboxTransport,
+  type SessionInboxTransport,
+} from "../../src/http/handlers/inbox";
+import {
   handleSessionMessageGet,
   handleSessionMessages,
   setSessionReadTransport,
   type SessionReadTransport,
 } from "../../src/http/handlers/sessions";
 import { createRouter } from "../../src/http/router";
-import type { SenpiEntriesResult, SenpiMessages, SenpiSessionState, SenpiSessionSummary } from "../../src/senpi/transport";
+import type {
+  SenpiAbortAnswer,
+  SenpiEntriesResult,
+  SenpiMessages,
+  SenpiOpenSessionResult,
+  SenpiSessionState,
+  SenpiSessionSummary,
+} from "../../src/senpi/transport";
 
 const SESSION_ID = "durable-media-1";
 const ROUTING_ID = "rpc-media-1";
@@ -99,7 +110,17 @@ let mediaBase: string;
 let stateRoot: string;
 
 beforeAll(() => {
-  setSessionReadTransport(new FakeTransport());
+  const transport = new FakeTransport();
+  setSessionReadTransport(transport);
+  const inboxSeam: SessionInboxTransport = {
+    sessionId: transport.sessionId,
+    listSessions: () => transport.listSessions(),
+    getState: () => transport.getState(),
+    abort: async () => undefined as SenpiAbortAnswer,
+    openSession: async () => ({ sessionId: transport.sessionId }) as SenpiOpenSessionResult,
+    raw: { request: async <T>() => ({}) as T },
+  };
+  setSessionInboxTransport(inboxSeam);
   server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
@@ -111,6 +132,7 @@ beforeAll(() => {
 afterAll(async () => {
   await server.stop(true);
   setSessionReadTransport(undefined);
+  setSessionInboxTransport(undefined);
 });
 
 afterEach(() => {

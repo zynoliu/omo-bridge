@@ -30,6 +30,7 @@ import {
   handleMcpConnect,
   handleMcpDisconnect,
   handleMigrationV1Status,
+  handlePersistentPtyConnect,
   handlePersistentPtyConnectToken,
   handlePersistentPtyCreate,
   handlePersistentPtyList,
@@ -57,6 +58,13 @@ import {
   handleVcsDiff,
   handleVcsGet,
 } from "../handlers/fs-location";
+import {
+  handleSessionBackground,
+  handleSessionInboxCancel,
+  handleSessionInboxList,
+  handleSessionInboxUpdate,
+  handleSessionInterrupt,
+} from "../handlers/inbox";
 import { mediaRoute } from "../handlers/media";
 import { handlePermissionCreate, handlePermissionList, handlePermissionReply } from "../handlers/permission";
 import {
@@ -80,7 +88,6 @@ import {
   handleSessionActive,
   handleSessionDiff,
   handleSessionGet,
-  handleSessionInboxList,
   handleSessionList,
   handleSessionLog,
   handleSessionMessageGet,
@@ -132,7 +139,13 @@ export const sessionRoutes: Route[] = [
   route("POST", "/api/session/:sessionID/agent", handleSessionSwitchAgent),
   route("GET", "/api/session/:sessionID/message", handleSessionMessages),
   route("GET", "/api/session/:sessionID/message/:messageID", handleSessionMessageGet),
+  // The inbox family owns the static `inbox` segment at the same depth as `message`, so no
+  // :sessionID sub-path pattern can shadow it; static routes such as /api/session/active stay first.
+  route("POST", "/api/session/:sessionID/interrupt", handleSessionInterrupt),
+  route("POST", "/api/session/:sessionID/background", handleSessionBackground),
   route("GET", "/api/session/:sessionID/inbox", handleSessionInboxList),
+  route("DELETE", "/api/session/:sessionID/inbox/:inboxID", handleSessionInboxCancel),
+  route("PATCH", "/api/session/:sessionID/inbox/:inboxID", handleSessionInboxUpdate),
   route("GET", "/api/session/:sessionID/diff", handleSessionDiff),
   route("POST", "/api/session/:sessionID/view", handleSessionView),
   route("POST", "/api/experimental/session/:sessionID/wait", handleSessionWait),
@@ -180,6 +193,7 @@ export const degradationRoutes: Route[] = [
   route("GET", "/api/experimental/session/:sessionID/terminal", handlePersistentPtyList),
   route("POST", "/api/experimental/session/:sessionID/terminal", handlePersistentPtyCreate),
   route("GET", "/api/experimental/persistent-pty/:ptyID/snapshot", handlePersistentPtySnapshot),
+  route("GET", "/api/experimental/persistent-pty/:ptyID/connect", handlePersistentPtyConnect),
   route("POST", "/api/experimental/persistent-pty/:ptyID/connect-token", handlePersistentPtyConnectToken),
   route("GET", "/api/experimental/migration/v1", handleMigrationV1Status),
   route("POST", "/api/integration/:integrationID/connect/key", handleIntegrationConnectKey),

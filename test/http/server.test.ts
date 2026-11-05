@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import pkg from "../../package.json";
 import { resolveConfig } from "../../src/config";
 import { validateResponse } from "../../src/contract/validate";
 import { BASIC_USERNAME, BRIDGE_PROTOCOL_VERSION, createServer, type BridgeServer } from "../../src/http/server";
@@ -73,6 +74,22 @@ describe("GET /api/info", () => {
     const body = (await response.json()) as Record<string, unknown>;
     expect(body._tag).toBe("MethodNotAllowedError");
     expect(typeof body.message).toBe("string");
+  });
+});
+
+describe("X-Omo-Bridge-Version", () => {
+  test("every response carries the package version, including router errors and 401s", async () => {
+    const info = await get("/api/info", auth());
+    expect(info.headers.get("x-omo-bridge-version")).toBe(pkg.version);
+
+    const missing = await get("/api/nope", auth());
+    expect(missing.headers.get("x-omo-bridge-version")).toBe(pkg.version);
+
+    const unauthorized = await get("/api/info");
+    expect(unauthorized.headers.get("x-omo-bridge-version")).toBe(pkg.version);
+
+    const wrongMethod = await fetch(`${base}/api/info`, { method: "POST", headers: auth() });
+    expect(wrongMethod.headers.get("x-omo-bridge-version")).toBe(pkg.version);
   });
 });
 
