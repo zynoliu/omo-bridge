@@ -1,4 +1,5 @@
 import type { Route, RouteContext } from "../router";
+import { handleBridgeCapabilities } from "../handlers/bridge-capabilities";
 import {
   handleAgentList,
   handleCommandList,
@@ -241,8 +242,12 @@ export const degradationRoutes: Route[] = [
   route("POST", "/api/experimental/mcp/:server/disconnect", handleMcpDisconnect),
 ];
 
+// Bridge-local routes: they belong to no opencode endpoint family and the TUI never calls them.
+export const bridgeRoutes: Route[] = [route("GET", "/api/bridge/capabilities", handleBridgeCapabilities)];
+
 export const routes: Route[] = [
   eventRoute,
+  ...bridgeRoutes,
   ...fsLocationRoutes,
   ...sessionRoutes,
   ...interactionRoutes,
