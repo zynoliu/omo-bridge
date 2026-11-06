@@ -81,7 +81,7 @@ Sorted by severity. `Pre-fix` is the status at `e75a1bf` (live probe, or the rou
 | S8 | a | `POST /api/integration/:integrationID/connect/oauth/:attemptID/complete` | n/p | 404 | yes | no extracted schema | - | packages/tui/src/component/dialog-integration.tsx:780 |  |
 | S8 | a | `POST /api/integration/:integrationID/connect/oauth` | 404 | 404 | yes | no extracted schema | - | packages/tui/src/component/dialog-go-upsell.tsx:332, packages/tui/src/component/dialog-integration.tsx:617 |  |
 | S8 | a | `GET /api/integration/:integrationID/connect/oauth/:attemptID` | 404 | 404 | yes | no extracted schema | - | packages/tui/src/component/dialog-go-upsell.tsx:285, packages/tui/src/component/dialog-integration.tsx:698 |  |
-| S8 | a | `GET /api/mcp` | 200 | 200 | yes | pass | yes | packages/client/src/solid/data.ts:2119 | No MCP servers: dialog lists nothing (`dialog-mcp.tsx:46`). |
+| S8 | a | `GET /api/mcp` | 200 | 200 | yes | pass | yes | packages/client/src/solid/data.ts:2119 | No MCP servers configured: an unconfigured machine paints an empty dialog (`dialog-mcp.tsx:46`); configured ones are listed from the host's mcp.json + cache/mcp-cache.json with a last-known status. |
 | S8 | a | `GET /api/mcp/resource` | 200 | 200 | yes | pass | yes | packages/client/src/solid/data.ts:2121 | No MCP catalog; devtools resource rows empty (`devtools-bar.tsx:204`). |
 | S8 | a | `GET /api/session/:sessionID/message` | 200 | 200 | yes | pass | - | packages/client/src/promise/media.ts:33, packages/client/src/solid/data.ts:1823 |  |
 | S8 | a | `GET /api/model` | 200 | 200 | yes | pass | - | packages/client/src/solid/data.ts:2125, packages/tui/src/component/dialog-go-upsell.tsx:244 |  |

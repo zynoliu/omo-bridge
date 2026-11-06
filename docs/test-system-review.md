@@ -49,6 +49,8 @@
 **D4 能力声明只覆盖 1 个字段，且是常量断言。**
 `server.test.ts:49` 断言 `capabilities` 恰好等于 `{ persistentPty: false }`。全仓库仅此一处能力门控；mcp/skill/plugin/usage/worktree 都没有能力标记，只能靠 `[]` 表达“不支持”，用户无法区分“你没配置”和“我没接”。
 
+> 2026-11-06 更新：`contracts/bridge/capabilities.json` 的 `mcp` 行已翻为 `capability: true`，`GET /api/mcp` 改为投影宿主 `mcp.json` + `cache/mcp-cache.json`（状态为 last-known）；skill/plugin/usage/worktree 仍未标能力，本节其余结论不变。
+
 **D5 默认门禁排除了唯一的真实客户端层。**
 `real-client.test.ts:17,70` 用 `describe.skipIf(!OMO_BRIDGE_E2E_TUI_DIR)`；默认 5 个 skip 里 4 个来自这里。实测设置一个环境变量后 3 条全绿（849ms）——成本极低，却不在默认门禁内。
 

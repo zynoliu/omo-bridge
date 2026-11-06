@@ -32,7 +32,7 @@
 | `/connect` | `content` | 列出 `opencode-go`（`frame-connect.txt`），桥 `GET /api/integration` 200。 |
 | `/skills` | `content` | 列出 5 个 skill：`bun`、`context7-mcp`、`design-taste-frontend`、`find-skills`、`gpt-image-gen`（`frame-skills.txt`），桥 `GET /api/skill` 200/5 行。 |
 | `/plugins` | `content` | 列出 TUI 自带/已安装插件行（本次一行为 `oh-my-openagent@latest failed`，`frame-plugins.txt`）；这些行由 TUI 自己给出，桥 `GET /api/plugin` 声明为空。它是有内容，不是“文案自有”。 |
-| `/mcps` | `not-wired` | 弹窗只有通用兜底 `No items available`（`frame-mcp.txt`）；`dialog-mcp.tsx` 没有自己的空态文案，桥 `GET /api/mcp` 声明为空。补一句“MCP 未接入”属于“给通用兜底加文案”，不是本文件所指的界面自有文案。 |
+| `/mcps` | `not-wired` | 弹窗只有通用兜底 `No items available`（`frame-mcp.txt`）；`dialog-mcp.tsx` 没有自己的空态文案；桥 `GET /api/mcp` 会投影宿主的 `mcp.json` 与 `cache/mcp-cache.json`，本机没配任何服务器，所以返回 `[]` 是如实的零，弹窗只剩通用兜底。补一句“MCP 未接入”属于“给通用兜底加文案”，不是本文件所指的界面自有文案。 |
 
 ## 处理边界
 
