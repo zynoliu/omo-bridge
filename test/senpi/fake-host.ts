@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -10,7 +10,10 @@ export interface FakeFrame {
 export interface FakeConnectionSummary {
   index: number;
   capabilities: string[];
+  /** Frames the client sent to this connection. */
   frames: Record<string, unknown>[];
+  /** Frames this connection answered with, so a test can read the wire answer itself. */
+  sent: Record<string, unknown>[];
 }
 
 export interface FakeHostOptions {
@@ -27,6 +30,8 @@ export interface FakeHostOptions {
    * session the connection is attached to, which is what lets a test catch a read of the wrong session.
    */
   transcripts?: Record<string, readonly Record<string, unknown>[]>;
+  /** The `isStreaming` an `open_session` answer reports; defaults to the recorded value (false). */
+  streaming?: boolean;
 }
 
 // Two queued inputs in the shape of the host's `PendingInputSnapshot.inputs` projections.
@@ -66,11 +71,68 @@ interface ConnectionState {
   buffer: string;
   capabilities: string[];
   frames: Record<string, unknown>[];
+  sent: Record<string, unknown>[];
   sessionPath?: string;
   sessionId?: string;
 }
 
 const HANDSHAKE_COMMAND = "get_protocol_info";
+
+// The fake answers from the recording in `contracts/senpi/` instead of inventing a handshake.
+// `live.jsonl` is a real host's command session; `events.jsonl` carries the event order the pinned
+// docs record, because the contract job forbids a model call and so the live capture has no turn.
+const RECORDING_DIR = join(import.meta.dir, "..", "..", "contracts", "senpi");
+
+interface RecordedLine {
+  readonly frame: Record<string, unknown>;
+  readonly role?: string;
+}
+
+function readRecording(file: string): RecordedLine[] {
+  return readFileSync(join(RECORDING_DIR, file), "utf8")
+    .split("\n")
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as RecordedLine);
+}
+
+function asData(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("contracts/senpi/live.jsonl holds no recorded answer for this command");
+  }
+  return value as Record<string, unknown>;
+}
+
+const LIVE_FRAMES = readRecording("live.jsonl");
+
+function recordedAnswer(command: string): Record<string, unknown> {
+  const line = LIVE_FRAMES.find(
+    (entry) => entry.role === "response" && entry.frame.command === command && entry.frame.success === true,
+  );
+  return asData(line?.frame.data);
+}
+
+/** The live `get_protocol_info` answer: the fake reproduces it instead of advertising an invented set. */
+export const RECORDED_HANDSHAKE = recordedAnswer("get_protocol_info");
+
+/** The live `open_session` state; the transport seeds its streaming flag from `isStreaming`. */
+export const RECORDED_OPEN_SESSION_STATE = asData(recordedAnswer("open_session").state);
+
+const TURN_END_TYPES = ["agent_end", "agent_settled", "agent_idle"] as const;
+
+/**
+ * One turn's terminal frames in recorded order. A live capture that carries a turn wins; otherwise the
+ * recorded `agent_end` payload is followed by the `agent_settled`/`agent_idle` seals `rpc.md` documents.
+ */
+const TURN_END_FRAMES: readonly Record<string, unknown>[] = (() => {
+  const fromLive = LIVE_FRAMES.filter(
+    (entry) =>
+      entry.role === "event" &&
+      (TURN_END_TYPES as readonly string[]).includes(String(entry.frame.type)),
+  ).map((entry) => entry.frame);
+  if (fromLive.length > 0) return fromLive;
+  const recordedEnd = readRecording("events.jsonl").find((entry) => entry.frame.type === "agent_end")?.frame;
+  return [...(recordedEnd === undefined ? [] : [recordedEnd]), { type: "agent_settled" }, { type: "agent_idle" }];
+})();
 
 export class FakeSenpiHost {
   readonly dir: string;
@@ -99,6 +161,7 @@ export class FakeSenpiHost {
             buffer: "",
             capabilities: [],
             frames: [],
+            sent: [],
           };
           this.connections.push(state);
           socket.data = state;
@@ -144,12 +207,11 @@ export class FakeSenpiHost {
 
   /**
    * The host's answer to a client waiting for idle. There is no `wait_for_idle` wire command: the
-   * RpcClient resolves `waitForIdle` on the `agent_idle` event, which the host sends once the
-   * turn's `agent_end` has been delivered.
+   * RpcClient resolves `waitForIdle` on the `agent_idle` event, which the host sends after the turn's
+   * `agent_end` and its settle seal. The frames are replayed in recorded order, not hand-built.
    */
   finishTurn(): void {
-    this.emit({ type: "agent_end" });
-    this.emit({ type: "agent_idle" });
+    for (const frame of TURN_END_FRAMES) this.emit(frame);
   }
 
   stop(): void {
@@ -180,13 +242,9 @@ export class FakeSenpiHost {
         command: HANDSHAKE_COMMAND,
         success: true,
         data: {
-          instanceId: "fake-host-instance",
-          generation: 0,
-          engineVersion: "fake",
-          protocolVersion: 1,
-          capabilities: ["retain_on_disconnect", "session_kind", "subscribe_sessions"],
+          ...RECORDED_HANDSHAKE,
+          // The recording stores a placeholder agent dir; the fake answers with the directory it owns.
           agentDir: this.dir,
-          mode: "multi",
         },
       });
       return;
@@ -207,7 +265,18 @@ export class FakeSenpiHost {
         id,
         command: type,
         success: true,
-        data: { sessionId, sessionPath, attached: true, state: { sessionId, paused: false } },
+        data: {
+          sessionId,
+          sessionPath,
+          attached: true,
+          state: {
+            ...RECORDED_OPEN_SESSION_STATE,
+            sessionId,
+            sessionFile: sessionPath,
+            cwd: typeof frame.cwd === "string" ? frame.cwd : this.dir,
+            isStreaming: this.options.streaming ?? RECORDED_OPEN_SESSION_STATE.isStreaming ?? false,
+          },
+        },
       });
       return;
     }
@@ -317,6 +386,7 @@ export class FakeSenpiHost {
   }
 
   private write(socket: Bun.Socket<ConnectionState>, payload: unknown): void {
+    if (typeof payload === "object" && payload !== null) socket.data.sent.push(payload as Record<string, unknown>);
     socket.write(`${JSON.stringify(payload)}\n`);
   }
 }
