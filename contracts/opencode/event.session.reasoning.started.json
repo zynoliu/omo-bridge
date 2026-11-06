@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "opencode/event.session.reasoning.started",
   "title": "event.session.reasoning.started",
-  "description": "Derived from packages/schema/src/session-event.ts:435 - reasoning block opened.",
+  "description": "Derived from packages/schema/src/session-event.ts:437 - reasoning block opened.",
   "type": "object",
   "required": [
     "id",

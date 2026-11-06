@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "opencode/event.session.text.delta",
   "title": "event.session.text.delta",
-  "description": "Derived from packages/schema/src/session-event.ts:409 - text fragment (live only).",
+  "description": "Derived from packages/schema/src/session-event.ts:411 - text fragment (live only).",
   "type": "object",
   "required": [
     "id",

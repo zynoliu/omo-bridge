@@ -29,6 +29,9 @@
         "assistantMessageID": {
           "type": "string"
         },
+        "replaces": {
+          "type": "string"
+        },
         "agent": {
           "type": "string"
         },

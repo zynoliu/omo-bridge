@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createEventBus, type BridgeEvent } from "../../src/http/events";
+import { createFrameDispatch } from "../../src/runtime";
 import { createStreamProjector } from "../../src/translate/stream";
 import type { OpenCodeEvent } from "../../src/translate/types";
 
@@ -225,5 +227,165 @@ describe("stream projector", () => {
     ]);
     expect(emitted).toEqual([]);
     expect(projector.stats.ignored).toBe(6);
+  });
+});
+
+// The host opens an assistant step before it has an id and names it only when the durable entry
+// lands. These cases drive the real frame dispatch, so the provisional id the runtime mints, the
+// streaming the projectors do under it and the re-key at the entry are all exercised together.
+const LIVE_SESSION = "ses_live";
+const DURABLE_ID = "msg_durable_1";
+
+function liveTurn() {
+  const events: BridgeEvent[] = [];
+  const bus = createEventBus({ capacity: 64 });
+  const dispatch = createFrameDispatch({
+    bus: {
+      publish: (draft) => {
+        const event = bus.publish(draft);
+        events.push(event);
+        return event;
+      },
+      subscribe: bus.subscribe,
+      serverConnectedEvent: bus.serverConnectedEvent,
+    },
+    defaultSessionID: () => LIVE_SESSION,
+    resolveSessionID: (routingID) => routingID,
+  });
+  return { events, dispatch };
+}
+
+// A fresh frame per call: the runtime writes the provisional id into `message.id`, so a shared
+// object would arrive at the next test already named.
+function startFrameWithoutID(): Record<string, unknown> {
+  return {
+    type: "message_start",
+    message: { role: "assistant", content: [], provider: "anthropic", model: "claude-sonnet-4", timestamp: START },
+  };
+}
+
+function deltaFrame(kind: "text_delta" | "thinking_delta", contentIndex: number, delta: string): Record<string, unknown> {
+  return { type: "message_update", assistantMessageEvent: { type: kind, contentIndex, delta } };
+}
+
+function entryAppended(id: string, text: string): Record<string, unknown> {
+  return {
+    type: "entry_appended",
+    entry: {
+      type: "message",
+      id,
+      message: { role: "assistant", content: text.length === 0 ? [] : [{ type: "text", text }] },
+    },
+  };
+}
+
+/** One assistant step as the host sends it: no id on the start, then deltas, end and entry. */
+function streamedTurn(): BridgeEvent[] {
+  const { events, dispatch } = liveTurn();
+  dispatch.handle(startFrameWithoutID());
+  dispatch.handle({ type: "message_update", assistantMessageEvent: { type: "text_start", contentIndex: 0 } });
+  dispatch.handle(deltaFrame("text_delta", 0, "Hel"));
+  dispatch.handle(deltaFrame("text_delta", 0, "lo"));
+  dispatch.handle({ type: "message_update", assistantMessageEvent: { type: "thinking_start", contentIndex: 1 } });
+  dispatch.handle(deltaFrame("thinking_delta", 1, "thinking"));
+  dispatch.handle({
+    type: "message_end",
+    message: { role: "assistant", stopReason: "stop", usage: { input: 1, output: 2 } },
+  });
+  dispatch.handle(entryAppended(DURABLE_ID, "Hello"));
+  return events;
+}
+
+describe("live step identity", () => {
+  test("streams the deltas before any event carries the durable id", () => {
+    const events = streamedTurn();
+    const deltaIndexes = events.flatMap((event, index) =>
+      event.type === "session.text.delta" || event.type === "session.reasoning.delta" ? [index] : [],
+    );
+    const firstDurable = events.findIndex((event) => event.data.assistantMessageID === DURABLE_ID);
+
+    expect(deltaIndexes).toHaveLength(3);
+    expect(firstDurable).toBeGreaterThan(Math.max(...deltaIndexes));
+    expect(events[firstDurable]?.type).toBe("session.step.started");
+    expect(events.find((event) => event.type === "session.text.delta")?.data.assistantMessageID).toBe("msg_live_1");
+  });
+
+  test("re-keys the step exactly once, naming the provisional id it replaces", () => {
+    const events = streamedTurn();
+    const startsOf = (id: string) =>
+      events.filter((event) => event.type === "session.step.started" && event.data.assistantMessageID === id);
+
+    const durableStarts = startsOf(DURABLE_ID);
+    expect(durableStarts).toHaveLength(1);
+    expect(durableStarts[0]?.data.replaces).toBe("msg_live_1");
+
+    const liveStarts = startsOf("msg_live_1");
+    expect(liveStarts).toHaveLength(1);
+    expect(liveStarts[0]?.data.replaces).toBeUndefined();
+
+    // The step ends under the live id at the message end and again under the durable id at the entry.
+    expect(
+      events.filter((event) => event.type === "session.step.ended").map((event) => event.data.assistantMessageID),
+    ).toEqual(["msg_live_1", DURABLE_ID]);
+  });
+
+  test("emits the reply text exactly once", () => {
+    const events = streamedTurn();
+    const textDeltas = events.filter((event) => event.type === "session.text.delta");
+    const streamed = textDeltas.map((event) => String(event.data.delta)).join("");
+
+    // Re-projecting the entry text would make this "HelloHello".
+    expect(streamed).toBe("Hello");
+    expect(textDeltas).toHaveLength(2);
+  });
+
+  test("projects an entry that never opened a message as a cold start", () => {
+    const { events, dispatch } = liveTurn();
+    dispatch.handle(entryAppended("msg_cold_1", "Full reply"));
+
+    expect(events.map((event) => event.type)).toEqual([
+      "session.step.started",
+      "session.text.started",
+      "session.text.delta",
+      "session.text.ended",
+      "session.step.ended",
+    ]);
+    expect(events[0]?.data).toMatchObject({ sessionID: LIVE_SESSION, assistantMessageID: "msg_cold_1", agent: "build" });
+    expect(events[0]?.data.replaces).toBeUndefined();
+    expect(events[3]?.data.text).toBe("Full reply");
+  });
+
+  test("carries the provisional id before the entry and the durable id after it", () => {
+    const { events, dispatch } = liveTurn();
+    dispatch.handle(startFrameWithoutID());
+    dispatch.handle({
+      type: "message_update",
+      assistantMessageEvent: { type: "toolcall_start", contentIndex: 1, id: "call_live", toolName: "bash" },
+    });
+    dispatch.handle(entryAppended(DURABLE_ID, ""));
+    dispatch.handle({ type: "tool_execution_start", toolCallId: "call_live", toolName: "bash", args: { command: "ls" } });
+    dispatch.handle({
+      type: "tool_execution_end",
+      toolCallId: "call_live",
+      result: { content: [{ type: "text", text: "ok" }] },
+    });
+
+    const idsOf = (type: string) =>
+      events.filter((event) => event.type === type).map((event) => event.data.assistantMessageID);
+    expect(idsOf("session.tool.input.started")).toEqual(["msg_live_1"]);
+    expect(idsOf("session.tool.called")).toEqual([DURABLE_ID]);
+    expect(idsOf("session.tool.success")).toEqual([DURABLE_ID]);
+  });
+
+  test("reports the durable id for a step the lifecycle saw open under the provisional one", () => {
+    const { events, dispatch } = liveTurn();
+    dispatch.handle({ type: "agent_start" });
+    dispatch.handle(startFrameWithoutID());
+    dispatch.handle(entryAppended(DURABLE_ID, "Hello"));
+    dispatch.handle({ type: "turn_start" });
+
+    expect(
+      events.filter((event) => event.type === "session.step.streamed").map((event) => event.data.assistantMessageID),
+    ).toEqual([DURABLE_ID]);
   });
 });

@@ -233,6 +233,11 @@ export function createLifecycleProjector(
     sink(event);
   };
 
+  // The assistant id this projector remembers is the one `message_start` carried, which is the
+  // provisional id until the durable entry re-keys it (stream.ts). Resolve it when it is written.
+  const resolveMessageID = (id: string | undefined): string | undefined =>
+    id === undefined ? undefined : (ctx.identity?.aliases.get(id) ?? id);
+
   const startRun = (): void => {
     if (active) return;
     active = true;
@@ -247,9 +252,10 @@ export function createLifecycleProjector(
       startRun();
       return;
     }
+    const messageID = resolveMessageID(assistantMessageID);
     emit("session.step.streamed", {
       sessionID: ctx.sessionID,
-      ...(assistantMessageID === undefined ? {} : { assistantMessageID }),
+      ...(messageID === undefined ? {} : { assistantMessageID: messageID }),
     });
   };
 

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "opencode/event.session.reasoning.ended",
   "title": "event.session.reasoning.ended",
-  "description": "Derived from packages/schema/src/session-event.ts:459 - reasoning block closed.",
+  "description": "Derived from packages/schema/src/session-event.ts:461 - reasoning block closed.",
   "type": "object",
   "required": [
     "id",

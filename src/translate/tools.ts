@@ -7,6 +7,10 @@ import type { EventSink, OpenCodeEvent, TranslateContext } from "./types";
 //   `toolcall_start` is remembered per block until that block's `toolcall_end`.
 // - `tool_execution_*` frames arrive after the assistant `message_end`, so the last assistant id
 //   is retained past the end of the message and reused for execution events.
+// - A step streams under the provisional id the runtime minted until its durable entry lands, so
+//   every id written into an event is resolved through `ctx.identity.aliases`: toolcall frames
+//   arrive under the provisional id and execution frames after the re-key, and both must land on
+//   the same row.
 // - `tool_execution_update.partialResult` is already the cumulative snapshot; it is forwarded
 //   unchanged and never accumulated here.
 //
@@ -87,6 +91,11 @@ export function createToolProjector(ctx: TranslateContext, sink: EventSink = () 
     stats.ignored += 1;
   };
 
+  // An id is resolved at the moment it is written into an event, never stored resolved: a call
+  // announced before the entry still has to answer under the durable id after the re-key.
+  const resolveMessageID = (id: string | undefined): string | undefined =>
+    id === undefined ? undefined : (ctx.identity?.aliases.get(id) ?? id);
+
   const emit = (type: string, data: Record<string, unknown>): number => {
     const event: OpenCodeEvent = { id: ctx.nextID(), type, created: ctx.now(), data };
     sink(event);
@@ -95,7 +104,8 @@ export function createToolProjector(ctx: TranslateContext, sink: EventSink = () 
 
   // Execution frames carry no message identity; prefer the id remembered for the call itself over
   // the currently open message, since the call may belong to the previous assistant message.
-  const messageOf = (callID: string): string | undefined => messageOfCall.get(callID) ?? assistantMessageID;
+  const messageOf = (callID: string): string | undefined =>
+    resolveMessageID(messageOfCall.get(callID) ?? assistantMessageID);
 
   const handleMessageStart = (record: Record<string, unknown>): void => {
     const message = asRecord(record.message);
@@ -116,7 +126,7 @@ export function createToolProjector(ctx: TranslateContext, sink: EventSink = () 
     }
     const startedAt = emit("session.tool.input.started", {
       sessionID: ctx.sessionID,
-      assistantMessageID: messageID,
+      assistantMessageID: resolveMessageID(messageID),
       id,
       name,
     });

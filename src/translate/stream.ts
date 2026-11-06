@@ -5,7 +5,8 @@ import type { EventSink, OpenCodeEvent, TranslateContext } from "./types";
 //
 // Two wire differences shape this code:
 // - `message_update` carries no message identity, so the id from `message_start` is remembered
-//   until `message_end` (a message without an id gets one from `ctx.nextID()`).
+//   until `message_end` (the runtime mints a provisional id for a message that starts without one,
+//   and `entry_appended` re-keys that id to the durable one).
 // - `*_end.content` is authoritative on the wire, but the TUI overwrites the block with
 //   `session.*.ended.text`, so that text must be the accumulation of the deltas it already
 //   rendered.
@@ -79,8 +80,8 @@ export function createStreamProjector(ctx: TranslateContext, sink: EventSink = (
   let assistantMessageID: string | undefined;
   const drafts = new Map<string, DraftBlock>();
   const settled = new Set<string>();
-  // Cleared on message_end, so it cannot answer "did this step already stream its text" once the
-  // durable entry arrives; the entry would then repeat the text the TUI already appended.
+  // Survives message_end on purpose: the durable entry lands after it and has to know whether this
+  // step already streamed its text, or the TUI appends the reply a second time.
   let textStreamedFor: string | undefined;
 
   const ignore = (): void => {
@@ -214,15 +215,21 @@ export function createStreamProjector(ctx: TranslateContext, sink: EventSink = (
 
   /**
    * The host names a message only when its durable entry lands, so this is where a step that
-   * streamed without an id becomes addressable. Buffered deltas flush under the entry id, which is
-   * also the id the durable projection serves: one row, live and after a refetch.
+   * streamed under a provisional id becomes addressable. The re-key event names the durable id and
+   * the id it replaces, and the alias map carries the same mapping to the tool and lifecycle
+   * projectors. A step that already streamed its text must not repeat it: the TUI appends every
+   * delta, so the guard compares against the id the text was streamed under, not the durable one.
    */
   const handleEntryAppended = (record: Record<string, unknown>): void => {
     const entry = asRecord(record.entry);
     if (entry?.type !== "message") return;
     const message = asRecord(entry.message);
     if (message?.role !== "assistant") return;
-    const id = assistantMessageID ?? asNonEmptyString(entry.id);
+    const durableID = asNonEmptyString(entry.id);
+    const identity = ctx.identity;
+    const liveID = identity?.live;
+    const rekeys = identity !== undefined && liveID !== undefined && durableID !== undefined && liveID !== durableID;
+    const id = rekeys ? durableID : (assistantMessageID ?? durableID);
     if (id === undefined) {
       ignore();
       return;
@@ -230,7 +237,21 @@ export function createStreamProjector(ctx: TranslateContext, sink: EventSink = (
     const agent = asNonEmptyString(message.agent) ?? DEFAULT_AGENT;
     const modelID = asNonEmptyString(message.model);
     const providerID = asNonEmptyString(message.provider);
-    if (assistantMessageID === undefined) {
+    if (rekeys) {
+      emit("session.step.started", {
+        sessionID: ctx.sessionID,
+        assistantMessageID: id,
+        agent,
+        ...(modelID === undefined || providerID === undefined ? {} : { model: { id: modelID, providerID } }),
+        started: epochMillisOf(entry.timestamp) ?? ctx.now(),
+        replaces: liveID,
+      });
+      identity.aliases.set(liveID, id);
+      identity.live = undefined;
+      // Later frames of this step (a delta or the message end that has not landed yet) belong on the
+      // row the client just re-keyed, not on the provisional one it no longer shows.
+      assistantMessageID = id;
+    } else if (assistantMessageID === undefined) {
       emit("session.step.started", {
         sessionID: ctx.sessionID,
         assistantMessageID: id,
@@ -246,12 +267,14 @@ export function createStreamProjector(ctx: TranslateContext, sink: EventSink = (
       .map((part) => asString(part.text) ?? "")
       .join("");
     // A step that already streamed its text must not repeat it: the TUI appends every delta.
-    const textAlreadyStreamed = textStreamedFor === id;
+    const textAlreadyStreamed = textStreamedFor === (rekeys ? liveID : id);
     if (text.length > 0 && !textAlreadyStreamed) {
       startBlock(id, "text", 0);
       deltaBlock(id, "text", 0, text);
       endBlock(id, "text", 0, text);
     }
+    // The step answers to the durable id from here on, so a replayed entry cannot re-project text.
+    if (textAlreadyStreamed) textStreamedFor = id;
     const usage = asRecord(message.usage);
     const cost = asRecord(usage?.cost);
     emit("session.step.ended", {

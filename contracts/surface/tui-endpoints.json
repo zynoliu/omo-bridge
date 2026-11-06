@@ -18,7 +18,7 @@
       "sse": false,
       "schema": "agent.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:2111",
+        "packages/client/src/solid/data.ts:2127",
         "packages/tui/src/component/dialog-agent.tsx:11",
         "packages/tui/src/component/prompt/autocomplete.tsx:425",
         "packages/tui/src/component/prompt/index.tsx:1553",
@@ -43,7 +43,7 @@
       "sse": false,
       "schema": "command.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:2112",
+        "packages/client/src/solid/data.ts:2128",
         "packages/tui/src/component/prompt/autocomplete.tsx:503",
         "packages/tui/src/component/prompt/index.tsx:1158",
         "packages/tui/src/mini/catalog.shared.ts:88"
@@ -65,7 +65,7 @@
       "sse": false,
       "schema": "config.get",
       "callSites": [
-        "packages/client/src/solid/data.ts:2115",
+        "packages/client/src/solid/data.ts:2131",
         "packages/tui/src/app.tsx:218"
       ]
     },
@@ -418,7 +418,7 @@
       "sse": false,
       "schema": "usage.limits",
       "callSites": [
-        "packages/client/src/solid/data.ts:1486"
+        "packages/client/src/solid/data.ts:1502"
       ]
     },
     {
@@ -497,8 +497,8 @@
       "sse": false,
       "schema": "form.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:1972",
         "packages/client/src/solid/data.ts:1988",
+        "packages/client/src/solid/data.ts:2004",
         "packages/tui/src/component/devtools-bar.tsx:195",
         "packages/tui/src/component/session-nav.tsx:307",
         "packages/tui/src/context/session-tabs.tsx:167",
@@ -635,7 +635,7 @@
       "sse": false,
       "schema": "integration.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:2117",
+        "packages/client/src/solid/data.ts:2133",
         "packages/tui/src/component/dialog-go-upsell.tsx:222",
         "packages/tui/src/component/dialog-go-upsell.tsx:234",
         "packages/tui/src/component/dialog-integration.tsx:109",
@@ -752,7 +752,7 @@
       "sse": false,
       "schema": "location.get",
       "callSites": [
-        "packages/client/src/solid/data.ts:2065",
+        "packages/client/src/solid/data.ts:2081",
         "packages/client/src/solid/data.ts:733",
         "packages/tui/src/app.tsx:230",
         "packages/tui/src/component/dialog-workspaces.tsx:69",
@@ -795,7 +795,7 @@
       "sse": false,
       "schema": "mcp.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:2119"
+        "packages/client/src/solid/data.ts:2135"
       ]
     },
     {
@@ -814,7 +814,7 @@
       "sse": false,
       "schema": "mcp.resourceCatalog",
       "callSites": [
-        "packages/client/src/solid/data.ts:2121"
+        "packages/client/src/solid/data.ts:2137"
       ]
     },
     {
@@ -837,8 +837,8 @@
       "schema": "session.messages",
       "callSites": [
         "packages/client/src/promise/media.ts:33",
-        "packages/client/src/solid/data.ts:1823",
-        "packages/client/src/solid/data.ts:1890",
+        "packages/client/src/solid/data.ts:1839",
+        "packages/client/src/solid/data.ts:1906",
         "packages/tui/src/feature-plugins/prompt/footer.tsx:42",
         "packages/tui/src/feature-plugins/sidebar/context.tsx:12",
         "packages/tui/src/feature-plugins/sidebar/todo.tsx:11",
@@ -894,7 +894,7 @@
       "sse": false,
       "schema": "model.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:2125",
+        "packages/client/src/solid/data.ts:2141",
         "packages/tui/src/component/dialog-go-upsell.tsx:244",
         "packages/tui/src/component/dialog-integration.tsx:1274",
         "packages/tui/src/component/dialog-model-free.tsx:27",
@@ -926,7 +926,7 @@
       "sse": false,
       "schema": "permission.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:1938",
+        "packages/client/src/solid/data.ts:1954",
         "packages/tui/src/component/devtools-bar.tsx:194",
         "packages/tui/src/component/session-nav.tsx:304",
         "packages/tui/src/context/session-tabs.tsx:165",
@@ -956,7 +956,7 @@
       "sse": false,
       "schema": null,
       "callSites": [
-        "packages/client/src/solid/data.ts:1947",
+        "packages/client/src/solid/data.ts:1963",
         "packages/tui/src/component/session-nav.tsx:304",
         "packages/tui/src/mini/runtime.ts:273",
         "packages/tui/src/routes/session/index.tsx:274",
@@ -979,7 +979,7 @@
       "sse": false,
       "schema": null,
       "callSites": [
-        "packages/client/src/solid/data.ts:2030"
+        "packages/client/src/solid/data.ts:2046"
       ]
     },
     {
@@ -1056,7 +1056,7 @@
       "sse": false,
       "schema": "project.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:2017",
+        "packages/client/src/solid/data.ts:2033",
         "packages/tui/src/component/dialog-open.tsx:239",
         "packages/tui/src/component/session-nav.tsx:256"
       ]
@@ -1078,7 +1078,7 @@
       "sse": false,
       "schema": null,
       "callSites": [
-        "packages/client/src/solid/data.ts:2126",
+        "packages/client/src/solid/data.ts:2142",
         "packages/tui/src/component/dialog-integration.tsx:1275",
         "packages/tui/src/component/dialog-model.tsx:96",
         "packages/tui/src/component/usage.tsx:36",
@@ -1102,7 +1102,7 @@
       "sse": false,
       "schema": "reference.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:2127",
+        "packages/client/src/solid/data.ts:2143",
         "packages/tui/src/component/prompt/autocomplete.tsx:293",
         "packages/tui/src/mini/catalog.shared.ts:97"
       ]
@@ -1255,7 +1255,7 @@
       "sse": false,
       "schema": null,
       "callSites": [
-        "packages/client/src/solid/data.ts:1714",
+        "packages/client/src/solid/data.ts:1730",
         "packages/tui/src/mini/runtime.ts:927",
         "packages/tui/src/routes/session/index.tsx:1104"
       ]
@@ -1276,7 +1276,7 @@
       "sse": false,
       "schema": "session.create",
       "callSites": [
-        "packages/client/src/solid/data.ts:1676",
+        "packages/client/src/solid/data.ts:1692",
         "packages/tui/src/component/prompt/index.tsx:1239"
       ]
     },
@@ -1367,7 +1367,7 @@
       "sse": false,
       "schema": null,
       "callSites": [
-        "packages/client/src/solid/data.ts:2002",
+        "packages/client/src/solid/data.ts:2018",
         "packages/tui/src/component/session-nav.tsx:307",
         "packages/tui/src/mini/runtime.ts:287",
         "packages/tui/src/routes/session/form.tsx:470"
@@ -1391,7 +1391,7 @@
       "sse": false,
       "schema": "form.session.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:1988",
+        "packages/client/src/solid/data.ts:2004",
         "packages/tui/src/component/devtools-bar.tsx:195",
         "packages/tui/src/component/session-nav.tsx:307",
         "packages/tui/src/context/session-tabs.tsx:167",
@@ -1423,7 +1423,7 @@
       "sse": false,
       "schema": null,
       "callSites": [
-        "packages/client/src/solid/data.ts:1999",
+        "packages/client/src/solid/data.ts:2015",
         "packages/tui/src/mini/runtime.ts:278",
         "packages/tui/src/routes/session/form.tsx:272"
       ]
@@ -1468,7 +1468,7 @@
       "sse": false,
       "schema": "session.get",
       "callSites": [
-        "packages/client/src/solid/data.ts:1788",
+        "packages/client/src/solid/data.ts:1804",
         "packages/tui/src/app.tsx:533",
         "packages/tui/src/app.tsx:640",
         "packages/tui/src/app.tsx:786",
@@ -1586,7 +1586,7 @@
       "schema": "session.inbox.list",
       "callSites": [
         "packages/client/src/promise/media.ts:45",
-        "packages/client/src/solid/data.ts:1596",
+        "packages/client/src/solid/data.ts:1612",
         "packages/tui/src/mini/stream-v2.subagent.ts:410",
         "packages/tui/src/mini/stream-v2.transport.ts:976"
       ]
@@ -1750,7 +1750,7 @@
       "sse": false,
       "schema": null,
       "callSites": [
-        "packages/client/src/solid/data.ts:1774",
+        "packages/client/src/solid/data.ts:1790",
         "packages/tui/src/component/prompt/index.tsx:1366",
         "packages/tui/src/mini/stream-v2.transport.ts:1757"
       ]
@@ -1910,7 +1910,7 @@
       "sse": false,
       "schema": null,
       "callSites": [
-        "packages/client/src/solid/data.ts:1713",
+        "packages/client/src/solid/data.ts:1729",
         "packages/tui/src/component/prompt/index.tsx:1294",
         "packages/tui/src/mini/stream-v2.transport.ts:1822",
         "packages/tui/src/mini/stream-v2.transport.ts:1857"
@@ -2023,7 +2023,7 @@
       "sse": false,
       "schema": "shell.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:1488",
+        "packages/client/src/solid/data.ts:1504",
         "packages/tui/src/feature-plugins/prompt/footer.tsx:32"
       ]
     },
@@ -2087,7 +2087,7 @@
       "sse": false,
       "schema": "skill.list",
       "callSites": [
-        "packages/client/src/solid/data.ts:2139",
+        "packages/client/src/solid/data.ts:2155",
         "packages/tui/src/component/dialog-skill.tsx:26",
         "packages/tui/src/component/dialog-skill.tsx:29",
         "packages/tui/src/component/prompt/autocomplete.tsx:445"
@@ -2168,7 +2168,7 @@
       "sse": false,
       "schema": "vcs.get",
       "callSites": [
-        "packages/client/src/solid/data.ts:1485"
+        "packages/client/src/solid/data.ts:1501"
       ]
     },
     {
@@ -2207,7 +2207,7 @@
       "sse": false,
       "schema": null,
       "callSites": [
-        "packages/client/src/solid/data.ts:2134"
+        "packages/client/src/solid/data.ts:2150"
       ]
     },
     {

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "opencode/event.session.text.started",
   "title": "event.session.text.started",
-  "description": "Derived from packages/schema/src/session-event.ts:397 - text block opened.",
+  "description": "Derived from packages/schema/src/session-event.ts:399 - text block opened.",
   "type": "object",
   "required": [
     "id",

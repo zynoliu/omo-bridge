@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "opencode/event.session.reasoning.delta",
   "title": "event.session.reasoning.delta",
-  "description": "Derived from packages/schema/src/session-event.ts:448 - reasoning fragment (live only).",
+  "description": "Derived from packages/schema/src/session-event.ts:450 - reasoning fragment (live only).",
   "type": "object",
   "required": [
     "id",

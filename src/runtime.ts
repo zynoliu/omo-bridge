@@ -20,7 +20,7 @@ import { SenpiTransport, defaultKeyRoot } from "./senpi/transport";
 import { createLifecycleProjector } from "./translate/lifecycle";
 import { createStreamProjector } from "./translate/stream";
 import { createToolProjector } from "./translate/tools";
-import type { OpenCodeEvent } from "./translate/types";
+import type { MessageIdentity, OpenCodeEvent } from "./translate/types";
 
 export type BridgeRuntime = {
   config: Config;
@@ -98,10 +98,17 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
 
   const projectors = new Map<
     string,
-    { stream: ReturnType<typeof createStreamProjector>; tools: ReturnType<typeof createToolProjector>; lifecycle: ReturnType<typeof createLifecycleProjector> }
+    {
+      identity: MessageIdentity;
+      stream: ReturnType<typeof createStreamProjector>;
+      tools: ReturnType<typeof createToolProjector>;
+      lifecycle: ReturnType<typeof createLifecycleProjector>;
+    }
   >();
-  const heldFrames = new Map<string, Record<string, unknown>[]>();
   type ProjectorSet = NonNullable<ReturnType<typeof projectors.get>>;
+  // One counter per session: a provisional id only has to be unique within the transcript it is
+  // re-keyed into.
+  const liveSequences = new Map<string, number>();
   let sequence = 0;
 
   const sink = (event: OpenCodeEvent): void => {
@@ -122,8 +129,13 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
   const projectorsFor = (sessionID: string) => {
     const existing = projectors.get(sessionID);
     if (existing !== undefined) return existing;
-    const ctx = { sessionID, nextID: () => `evt_${++sequence}`, now: () => Date.now() };
+    // One identity object per session, shared by the three projectors: the runtime mints the
+    // provisional id, the stream projector re-keys it at the durable entry, and the tool and
+    // lifecycle projectors resolve through the same alias map.
+    const identity: MessageIdentity = { live: undefined, aliases: new Map() };
+    const ctx = { sessionID, nextID: () => `evt_${++sequence}`, now: () => Date.now(), identity };
     const created = {
+      identity,
       stream: createStreamProjector(ctx, sink),
       tools: createToolProjector(ctx, sink),
       lifecycle: createLifecycleProjector(ctx, sink),
@@ -140,32 +152,17 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
     }
     const set = projectorsFor(sessionID);
     // The host opens an assistant step before it has an id and names it only when the durable entry
-    // lands. Frames held here are replayed under that id, so the live row and the row a refetch
-    // serves are the same message; inventing an id instead leaves the TUI with two rows it can
-    // never merge.
-    const held = heldFrames.get(sessionID);
-    const type = frame.type;
-    const started = type === "message_start" ? asRecord(frame.message) : undefined;
-    if (started?.role === "assistant" && asString(started.id) === undefined) {
-      heldFrames.set(sessionID, [frame]);
-      return;
-    }
-    if (held !== undefined && (type === "message_update" || type === "message_end")) {
-      held.push(frame);
-      return;
-    }
-    if (held !== undefined && type === "entry_appended") {
-      const entry = asRecord(frame.entry);
-      const entryMessage = asRecord(entry?.message);
-      const id = asString(entry?.id);
-      if (entry?.type === "message" && entryMessage?.role === "assistant" && id !== undefined && id.length > 0) {
-        heldFrames.delete(sessionID);
-        for (const heldFrame of held) {
-          const message = asRecord(heldFrame.message);
-          if (message !== undefined && asString(message.id) === undefined) message.id = id;
-          dispatchFrame(heldFrame, set, sessionID);
-        }
-      }
+    // lands. Minting a provisional id lets the deltas reach the bus immediately; `entry_appended`
+    // re-keys the step to the durable id (stream.ts), so the live row and the row a refetch serves
+    // are the same message.
+    const message = frame.type === "message_start" ? asRecord(frame.message) : undefined;
+    const declaredID = message === undefined ? undefined : asString(message.id);
+    if (message?.role === "assistant" && (declaredID === undefined || declaredID.trim().length === 0)) {
+      const ordinal = (liveSequences.get(sessionID) ?? 0) + 1;
+      liveSequences.set(sessionID, ordinal);
+      const provisional = `msg_live_${ordinal}`;
+      message.id = provisional;
+      set.identity.live = provisional;
     }
     dispatchFrame(frame, set, sessionID);
   };

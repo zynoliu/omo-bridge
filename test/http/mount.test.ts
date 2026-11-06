@@ -719,7 +719,7 @@ describe("runtime frame dispatch", () => {
     setFormEventBus(undefined);
   });
 
-  test("holds frames until the durable entry names the step, then replays them under its id", async () => {
+  test("streams the step under a provisional id and re-keys it when the durable entry lands", async () => {
     const bus = createEventBus({ capacity: 32 });
     const dispatch = createFrameDispatch({ bus, defaultSessionID: () => "ses_frame_dispatch" });
     const subscription = bus.subscribe({ types: ["session.step.started", "session.tool.input.started"] });
@@ -736,12 +736,20 @@ describe("runtime frame dispatch", () => {
       type: "entry_appended",
       entry: { type: "message", id: "4aac42d6", message: { role: "assistant", content: [] } },
     });
-    const [step, tool] = await readEvents(subscription, 2);
+    const [liveStep, tool, rekeyedStep] = await readEvents(subscription, 3);
     subscription.close();
 
-    expect(step!.data.assistantMessageID).toBe("4aac42d6");
-    expect(tool!.type).toBe("session.tool.input.started");
-    expect(tool!.data.assistantMessageID).toBe(step!.data.assistantMessageID);
+    // The step opens under the provisional id the bridge minted, so the deltas can stream now.
+    expect(liveStep?.type).toBe("session.step.started");
+    expect(liveStep?.data.assistantMessageID).toBe("msg_live_1");
+    expect(liveStep?.data.replaces).toBeUndefined();
+    // The tool frame precedes the entry, so it answers under the provisional id too.
+    expect(tool?.type).toBe("session.tool.input.started");
+    expect(tool?.data.assistantMessageID).toBe("msg_live_1");
+    // The entry re-keys that step to the durable id, naming the id it replaces.
+    expect(rekeyedStep?.type).toBe("session.step.started");
+    expect(rekeyedStep?.data.assistantMessageID).toBe("4aac42d6");
+    expect(rekeyedStep?.data.replaces).toBe(tool?.data.assistantMessageID);
   });
 
   test("a projector error is reported and the subscription keeps consuming frames", () => {

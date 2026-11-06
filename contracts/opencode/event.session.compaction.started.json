@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "opencode/event.session.compaction.started",
   "title": "event.session.compaction.started",
-  "description": "Derived from packages/schema/src/session-event.ts:588 - compaction began.",
+  "description": "Derived from packages/schema/src/session-event.ts:590 - compaction began.",
   "type": "object",
   "required": [
     "id",
