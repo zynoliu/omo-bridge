@@ -1,0 +1,155 @@
+[
+  {
+    "family": "worktree",
+    "endpoints": [
+      "GET /api/worktree",
+      "POST /api/worktree",
+      "POST /api/worktree/refresh",
+      "DELETE /api/worktree"
+    ],
+    "capability": false,
+    "tuiBehaviour": "Workspaces and Open dialogs render the empty list, create toasts \"Creating workspace failed\", delete shows \"Failed to delete worktree\" (packages/tui/src/component/dialog-workspaces.tsx:83,244,296,357,363; dialog-open.tsx:122,133; prompt/move.tsx:41,59)",
+    "reason": "The bridge has no checkout manager: a senpi session is bound to one cwd, not to a worktree set. DELETE has no shim, so the router answers 405 MethodNotAllowedError before any handler runs."
+  },
+  {
+    "family": "terminal",
+    "endpoints": [
+      "GET /api/experimental/session/:sessionID/terminal",
+      "POST /api/experimental/session/:sessionID/terminal",
+      "GET /api/experimental/persistent-pty/:ptyID/snapshot",
+      "GET /api/experimental/persistent-pty/:ptyID/connect",
+      "POST /api/experimental/persistent-pty/:ptyID/connect-token"
+    ],
+    "capability": false,
+    "tuiBehaviour": "Terminal panes stay hidden behind capabilities.persistentPty:false, a direct create answers ServiceUnavailableError and an attach answers PtyNotFoundError (packages/tui/src/context/session-terminals.tsx:37,73,104; component/terminal-pane.tsx:182,189)",
+    "reason": "senpi has no PTY service, so no terminal can exist: the empty list matches the declared shape and the declared not-found error is the truthful attach answer."
+  },
+  {
+    "family": "migration",
+    "endpoints": ["GET /api/experimental/migration/v1"],
+    "capability": false,
+    "tuiBehaviour": "The migration overlay stays closed: the poll loop returns on status completed and only renders on running (packages/tui/src/component/migration-overlay.tsx:22)",
+    "reason": "The bridge starts from an empty state directory; there is no V1 history to migrate."
+  },
+  {
+    "family": "session-diff",
+    "endpoints": ["GET /api/session/:sessionID/diff"],
+    "capability": false,
+    "tuiBehaviour": "The \"Last turn\" source renders no files, exactly like a turn that changed nothing (packages/tui/src/feature-plugins/system/diff-viewer.tsx:84,147-152,185)",
+    "reason": "The endpoint answers a turn's diff from per-turn file snapshots; senpi records none, and the bridge's vcs.diff compares the working tree with HEAD, a different range."
+  },
+  {
+    "family": "integration",
+    "endpoints": ["GET /api/integration"],
+    "capability": true,
+    "tuiBehaviour": "/models lists the host's models once a provider is connected, and /connect lists each connected provider with its credential (packages/tui/src/component/use-connected.tsx:7; component/dialog-model.tsx:46-49; component/dialog-integration.tsx:109,161)",
+    "reason": "senpi has no integration registry, but the bridge projects real state: the host's model catalog plus key material in the agent directory's auth.json."
+  },
+  {
+    "family": "integration-auth",
+    "endpoints": [
+      "POST /api/integration/:integrationID/connect/key",
+      "POST /api/integration/:integrationID/connect/external",
+      "POST /api/integration/:integrationID/connect/oauth",
+      "GET /api/integration/:integrationID/connect/oauth/:attemptID",
+      "POST /api/integration/:integrationID/connect/oauth/:attemptID/complete",
+      "DELETE /api/integration/:integrationID/connect/oauth/:attemptID",
+      "POST /api/integration/:integrationID/connect/command",
+      "GET /api/integration/:integrationID/connect/command/:attemptID",
+      "DELETE /api/integration/:integrationID/connect/command/:attemptID"
+    ],
+    "capability": false,
+    "tuiBehaviour": "Key and external connect show the error inline; OAuth and command flows toast the declared error and fall back to the connect view (packages/tui/src/component/dialog-integration.tsx:372,423,431,478,513,568,617,698,729,766,780; dialog-go-upsell.tsx:285,332)",
+    "reason": "Connecting or starting an attempt would flip user-visible state. No credential store and no attempt runner exist, so the declared IntegrationNotFoundError / IntegrationAttemptNotFoundError answers are the only honest refusals."
+  },
+  {
+    "family": "credential",
+    "endpoints": [
+      "POST /api/credential/:credentialID/activate",
+      "PATCH /api/credential/:credentialID",
+      "DELETE /api/credential/:credentialID"
+    ],
+    "capability": false,
+    "tuiBehaviour": "Activate, rename and delete toast InvalidRequestError kind unsupported; the dialog does not pretend the credential changed (packages/tui/src/component/dialog-integration.tsx:232,254,271)",
+    "reason": "The bridge stores no credentials, so a 204 would silently fake a credential switch."
+  },
+  {
+    "family": "pair",
+    "endpoints": ["POST /api/pair"],
+    "capability": false,
+    "tuiBehaviour": "The pair dialog fails as a whole instead of rendering links with no code (packages/tui/src/component/dialog-pair.tsx:22,114)",
+    "reason": "Pairing hands a browser the server password; the bridge is attached through --server with Basic auth, so there is no pairing code or session to create."
+  },
+  {
+    "family": "usage",
+    "endpoints": ["GET /api/experimental/usage/limits"],
+    "capability": false,
+    "tuiBehaviour": "/usage shows the signed-out copy and no budget warnings (packages/tui/src/component/usage.tsx:37,122,125)",
+    "reason": "senpi has no OpenCode Console workspace, so the location is not signed in; null is part of the endpoint's declared success type."
+  },
+  {
+    "family": "mcp",
+    "endpoints": [
+      "GET /api/mcp",
+      "GET /api/mcp/resource",
+      "POST /api/experimental/mcp/:server/connect",
+      "POST /api/experimental/mcp/:server/disconnect"
+    ],
+    "capability": false,
+    "tuiBehaviour": "The MCP dialog renders no rows, so connect and disconnect are unreachable, and devtools resource rows are empty (packages/tui/src/component/dialog-mcp.tsx:46,124; component/devtools-bar.tsx:204)",
+    "reason": "No MCP server registry or resource catalog exists; with zero servers a toggle is a no-op write."
+  },
+  {
+    "family": "plugins",
+    "endpoints": [
+      "GET /api/plugin",
+      "POST /api/plugin/check",
+      "POST /api/plugin/update"
+    ],
+    "capability": false,
+    "tuiBehaviour": "/plugins lists only the builtins and the home footer's failed counter stays at 0 (packages/tui/src/plugin/context.tsx:540; feature-plugins/system/plugins.tsx:36; feature-plugins/home/footer.tsx:59)",
+    "reason": "senpi loads no package or local plugins, so the empty inventory is the truthful answer instead of the 404 the TUI hit at startup."
+  },
+  {
+    "family": "permission-saved",
+    "endpoints": ["GET /api/permission/saved"],
+    "capability": false,
+    "tuiBehaviour": "The client stores whatever saved rules exist, which is empty until a reply picks \"always\" (packages/client/src/solid/data.ts:2030)",
+    "reason": "senpi approvals are per-request. The bridge answers from its own in-memory \"always\" replies, and the PATCH and DELETE routes are not mounted."
+  },
+  {
+    "family": "form",
+    "endpoints": ["GET /api/form"],
+    "capability": true,
+    "tuiBehaviour": "Home shows no pending forms unless an engine frame filed one (packages/tui/src/routes/home.tsx:38; routes/session/index.tsx:215)",
+    "reason": "Forms are state-backed from extension_ui_request frames, not a degraded empty."
+  },
+  {
+    "family": "agent",
+    "endpoints": ["GET /api/agent"],
+    "capability": false,
+    "tuiBehaviour": "The agent picker lists the single Build agent, primary and visible, whose id every projected message carries (packages/tui/src/context/local.tsx:60)",
+    "reason": "senpi has no agent registry and no per-session agent switch, so the bridge projects the one agent it models instead of an empty list."
+  },
+  {
+    "family": "skills",
+    "endpoints": ["GET /api/skill"],
+    "capability": false,
+    "tuiBehaviour": "Skill autocomplete contributes nothing (packages/tui/src/component/dialog-skill.tsx:26)",
+    "reason": "senpi has no skill discovery."
+  },
+  {
+    "family": "reference",
+    "endpoints": ["GET /api/reference"],
+    "capability": false,
+    "tuiBehaviour": "Reference autocomplete contributes nothing (packages/tui/src/component/prompt/autocomplete.tsx:293)",
+    "reason": "senpi has no reference store."
+  },
+  {
+    "family": "websearch",
+    "endpoints": ["GET /api/websearch/provider"],
+    "capability": false,
+    "tuiBehaviour": "The websearch provider list is empty; the client has no direct tui/src reader (packages/client/src/solid/data.ts:2134)",
+    "reason": "senpi has no search-provider registry."
+  }
+]
