@@ -14,6 +14,11 @@ export const BRIDGE_VERSION: string = pkg.version;
 
 const VERSION_HEADER = "x-omo-bridge-version";
 
+/** `OMO_BRIDGE_DEBUG_REQUESTS=1` turns on the request/location log below; unset in production. */
+const DEBUG_REQUESTS_ENV = "OMO_BRIDGE_DEBUG_REQUESTS";
+
+const DEBUG_REQUESTS_PREFIX = "[omo-bridge:requests]";
+
 export const BASIC_USERNAME = "opencode";
 
 const WWW_AUTHENTICATE = 'Basic realm="opencode"';
@@ -75,6 +80,50 @@ function rejectUnauthenticated(request: Request, config: Config): Response | nul
   return usernameOk && passwordOk ? null : unauthorized("invalid credentials");
 }
 
+/**
+ * The TUI keys every per-location catalog by `[directory, workspaceID]`
+ * (`packages/client/src/solid/data.ts:148`) and publishes a sync under the directory the *response*
+ * reports, while readers ask under the directory they *requested*. When a dialog comes up empty, the
+ * log below separates a server that answers a different directory from a client that reads another key.
+ */
+function debugRequestsEnabled(): boolean {
+  return process.env[DEBUG_REQUESTS_ENV] === "1";
+}
+
+function requestedDirectoryOf(url: URL): string {
+  const raw = url.searchParams.get("location[directory]")?.trim();
+  return raw === undefined || raw.length === 0 ? "(absent)" : raw;
+}
+
+/** The `location.directory` a JSON body carries, or why the body had none worth reading. */
+async function answeredDirectoryOf(response: Response): Promise<string> {
+  if (response.body === null) return "(no body)";
+  const contentType = response.headers.get("content-type") ?? "";
+  // Cloning an event stream would buffer it forever and stall the client, so only JSON bodies are read.
+  if (!contentType.includes("application/json")) return "(no location: not json)";
+  try {
+    const body = await response.clone().json();
+    const location = (body as { location?: { directory?: unknown } } | null)?.location;
+    const directory = location?.directory;
+    return typeof directory === "string" ? directory : "(no location)";
+  } catch {
+    return "(no location: unreadable body)";
+  }
+}
+
+async function logRequest(request: Request, pending: Promise<Response>): Promise<Response> {
+  const url = new URL(request.url);
+  const response = await pending;
+  const answered = await answeredDirectoryOf(response);
+  const query = url.search.length === 0 ? "(none)" : url.search.slice(1);
+  process.stderr.write(
+    `${DEBUG_REQUESTS_PREFIX} ${request.method} ${url.pathname} query=${query} ` +
+      `requested.location.directory=${requestedDirectoryOf(url)} status=${response.status} ` +
+      `response.location.directory=${answered}\n`,
+  );
+  return response;
+}
+
 function infoHandler(config: Config, port: number): Response {
   const body = {
     version: BRIDGE_PROTOCOL_VERSION,
@@ -107,7 +156,9 @@ export function createServer(config: Config): BridgeServer {
     fetch(request: Request): Response | Promise<Response> {
       const rejected = rejectUnauthenticated(request, config);
       if (rejected !== null) return withBridgeVersion(rejected);
-      return router(request).then(withBridgeVersion);
+      const response = router(request).then(withBridgeVersion);
+      if (!debugRequestsEnabled()) return response;
+      return logRequest(request, response);
     },
   });
   return server;
