@@ -12,7 +12,7 @@ import {
   setSessionManagementStore,
   setSessionManagementTransport,
 } from "./http/handlers/session-write";
-import { setSessionReadTransport } from "./http/handlers/sessions";
+import { setSessionReadTransport, type SessionReadTransport } from "./http/handlers/sessions";
 import { setShellEventBus, setShellTransport, type ShellBashResult } from "./http/handlers/shell";
 import { createServer, type BridgeServer } from "./http/server";
 import { SessionMap, readSessionUsage, resolveSessionAlias, type SessionUsage } from "./model/session-map";
@@ -314,6 +314,49 @@ async function attachCatalogSession(transport: SenpiTransport, stateDir: string)
   });
 }
 
+/**
+ * Reads must not move the write attachment. The host generates a session's auto-title in the window
+ * after its turn settles, and that generation dies when the connection holding the session loses it,
+ * so a read of another session takes the second connection and a read of the session the write side
+ * already holds answers from that same attachment instead of attaching again (which would steal it).
+ */
+function createReadRouter(
+  write: SenpiTransport | undefined,
+  read: SenpiTransport | undefined,
+  sessionMap: SessionMap,
+): SessionReadTransport | undefined {
+  if (write === undefined) return read;
+  if (read === undefined) return write;
+  let active: SenpiTransport = write;
+  const heldPath = (): string | undefined => {
+    const routingId = write.sessionId;
+    if (routingId === undefined) return undefined;
+    return sessionMap.list({ limit: 1000 }).data.find((record) => record.routingId === routingId)?.sessionPath;
+  };
+  return {
+    get sessionId(): string | undefined {
+      return active.sessionId;
+    },
+    get streaming(): boolean {
+      return active.streaming;
+    },
+    listSessions: () => read.listSessions(),
+    getState: () => active.getState(),
+    getEntries: (since, page) => active.getEntries(since, page),
+    getMessages: () => active.getMessages(),
+    waitForIdle: (timeout) => active.waitForIdle(timeout),
+    async openSession(options) {
+      if (options?.sessionPath !== undefined && options.sessionPath === heldPath()) {
+        active = write;
+        const state = await write.getState();
+        return { sessionId: write.sessionId ?? "", state };
+      }
+      active = read;
+      return read.openSession(options);
+    },
+  };
+}
+
 /** Without OMO_BRIDGE_SENPI_SOCKET the server still starts and session routes answer 503. */
 export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promise<BridgeRuntime> {
   const config = resolveConfig(env);
@@ -330,6 +373,18 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
     } catch (error) {
       await candidate.dispose().catch(() => undefined);
       console.warn(`omo-bridge: senpi transport not connected (${socketPath}): ${messageOf(error)}`);
+    }
+  }
+
+  let readTransport: SenpiTransport | undefined;
+  if (socketPath !== undefined && socketPath.length > 0) {
+    const candidate = new SenpiTransport({ socketPath, keyRoot: agentDir });
+    try {
+      await candidate.connect();
+      readTransport = candidate;
+    } catch (error) {
+      await candidate.dispose().catch(() => undefined);
+      console.warn(`omo-bridge: read transport not connected (${socketPath}): ${messageOf(error)}`);
     }
   }
 
@@ -385,7 +440,7 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
   });
   const unsubscribe = transport?.onEvent(dispatch.handle);
 
-  setSessionReadTransport(transport);
+  setSessionReadTransport(createReadRouter(transport, readTransport, sessionMap));
   setSessionInboxTransport(transport);
   setSessionWriteTransport(transport);
   setCatalogTransport(transport);
@@ -410,6 +465,7 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
       if (closed) return;
       closed = true;
       unsubscribe?.();
+      await readTransport?.dispose().catch(() => undefined);
       setSessionReadTransport(undefined);
       setSessionInboxTransport(undefined);
       setSessionWriteTransport(undefined);

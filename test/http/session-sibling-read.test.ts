@@ -246,9 +246,10 @@ describe("a read of a sibling session during a running turn", () => {
     expect(openedPathsOnStreamingConnection()).toContain(alphaPath);
     expect(assistantText(await messagesOf(SESSION_ID))).toBe(ALPHA_ANSWER);
 
-    // With the run over, the transport may attach the sibling again instead of projecting it.
+    // With the run over, the sibling is read on the second connection: the attachment that ran the
+    // turn never moves, which is what keeps the host's post-turn auto-title alive.
     expect(assistantText(await messagesOf(SIBLING_ID))).toBe(BETA_ANSWER);
-    expect(openedPathsOnStreamingConnection()).toContain(betaPath);
+    expect(openedPathsOnStreamingConnection()).not.toContain(betaPath);
   });
 
   test("refuses a sibling with no transcript path instead of attaching it mid-run", async () => {
