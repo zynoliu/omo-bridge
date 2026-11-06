@@ -347,6 +347,35 @@ function compareRecords(left: SessionRecord, right: SessionRecord): number {
   return bySeen !== 0 ? bySeen : left.key.localeCompare(right.key);
 }
 
+const MAX_SESSION_ALIASES = 2048;
+
+// A prompt arrives on the id the client minted (`ses_tui_*`), while the host names the same session by
+// its routing id and by the durable id of its transcript, and the client drops every frame whose
+// session id is not the one it asked with. Admission is the one moment both ids are in hand, so the
+// pairing is remembered here and frame dispatch answers the client's id first.
+const sessionAliases = new Map<string, string>();
+
+export function rememberSessionAlias(hostId: string | undefined, clientID: string): void {
+  if (hostId === undefined || hostId.length === 0 || hostId === clientID) return;
+  if (sessionAliases.size >= MAX_SESSION_ALIASES) sessionAliases.clear();
+  sessionAliases.set(hostId, clientID);
+}
+
+export function resolveSessionAlias(hostId: string): string | undefined {
+  return sessionAliases.get(hostId);
+}
+
+export function resetSessionAliases(): void {
+  sessionAliases.clear();
+}
+
+/** The durable id a host transcript path carries: `<timestamp>_<uuid>.jsonl`. */
+export function durableIdOfPath(sessionPath: string | undefined): string | undefined {
+  if (sessionPath === undefined) return undefined;
+  const base = sessionPath.slice(sessionPath.lastIndexOf("/") + 1);
+  return /_([0-9a-f-]{36})\.jsonl$/.exec(base)?.[1];
+}
+
 function parsePermission(value: unknown): SessionPermission | undefined {
   const record = asRecord(value);
   const action = asString(record?.action);
@@ -585,6 +614,28 @@ export class SessionMap {
 
   has(key: string): boolean {
     return this.records.has(key);
+  }
+
+  /**
+   * The record a host id names, preferring the key the client filed the session under.
+   *
+   * A frame can carry the connection's routing id or the transcript's durable id, and the host's raw
+   * row for a transcript the client minted an id for can sit in the map next to the client's record.
+   * Both name one conversation; only the client's key reaches the client, so it wins. Listing is
+   * paged, so this looks at every record instead of one page.
+   */
+  findByHostId(hostId: string): SessionRecord | undefined {
+    let fallback: SessionRecord | undefined;
+    for (const record of this.records.values()) {
+      const matches =
+        record.key === hostId ||
+        record.routingId === hostId ||
+        durableIdOfPath(record.sessionPath) === hostId;
+      if (!matches) continue;
+      if (durableIdOfPath(record.sessionPath) !== record.key) return cloneRecord(record);
+      fallback ??= record;
+    }
+    return fallback === undefined ? undefined : cloneRecord(fallback);
   }
 
   get size(): number {

@@ -64,7 +64,7 @@ function get(path: string, params: Record<string, string> = {}): Request {
 }
 
 type Envelope<T> = {
-  location: { directory: string; project: { id: string; directory: string; canonical: string } };
+  location: { directory: string };
   data: T;
 };
 

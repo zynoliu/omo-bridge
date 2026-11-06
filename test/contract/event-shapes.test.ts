@@ -15,6 +15,7 @@ import {
 import {
   resetSessionInboxState,
   translateQueueUpdate,
+  translateUserDelivery,
   type InboxEvent,
 } from "../../src/http/handlers/inbox";
 import {
@@ -267,6 +268,11 @@ function inboxEvents(): Captured[] {
   translateQueueUpdate(frame([entry("steer")]), SESSION_ID, { now: () => START, emit });
   translateQueueUpdate(frame([entry("followUp")]), SESSION_ID, { now: () => START, emit });
   translateQueueUpdate(frame([]), SESSION_ID, { now: () => START, emit });
+  translateUserDelivery(
+    { type: "message_start", message: { role: "user", clientMessageId: "msg_contract_1", content: [] } },
+    SESSION_ID,
+    { now: () => START, emit },
+  );
   return emitted;
 }
 

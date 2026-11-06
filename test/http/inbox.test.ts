@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   backgroundedSessionIDs,
+  forgetInboxAdmission,
+  rememberInboxAdmission,
   resetSessionInboxState,
   setSessionInboxTransport,
   snapshotQueue,
   translateQueueUpdate,
+  translateUserDelivery,
   type InboxCommand,
   type InboxCommandChannel,
   type QueueEntry,
@@ -515,5 +518,115 @@ describe("translateQueueUpdate", () => {
 
     expect(events).toEqual([]);
     expect(snapshotQueue("durable-1")).toEqual([]);
+  });
+});
+
+describe("translateUserDelivery", () => {
+  const sessionID = "durable-1";
+  const now = 1_760_000_000_000;
+
+  test("reports delivery of the client's own prompt under the id it minted", () => {
+    expect(
+      translateUserDelivery(
+        { type: "message_start", message: { role: "user", clientMessageId: "msg_1", content: [] } },
+        sessionID,
+        { now: () => now },
+      ),
+    ).toEqual([{ type: "session.inbox.delivered", created: now, data: { sessionID, inboxID: "msg_1" } }]);
+  });
+
+  test("accepts the id the host stamps on the persisted entry", () => {
+    expect(
+      translateUserDelivery(
+        {
+          type: "entry_appended",
+          clientMessageId: "msg_2",
+          entry: { type: "message", id: "0ab1a3b8", message: { role: "user", content: "hi" } },
+        },
+        sessionID,
+        { now: () => now },
+      ),
+    ).toEqual([{ type: "session.inbox.delivered", created: now, data: { sessionID, inboxID: "msg_2" } }]);
+  });
+
+  test("reports one delivery per input although the host repeats the fact", () => {
+    const first = translateUserDelivery(
+      { type: "message_start", message: { role: "user", clientMessageId: "msg_3" } },
+      sessionID,
+      { now: () => now },
+    );
+    const second = translateUserDelivery(
+      { type: "entry_appended", clientMessageId: "msg_3", entry: { type: "message", message: { role: "user" } } },
+      sessionID,
+      { now: () => now },
+    );
+
+    expect(first).toHaveLength(1);
+    expect(second).toEqual([]);
+  });
+
+  test("ignores assistant frames and inputs that carry no client id", () => {
+    expect(
+      translateUserDelivery({ type: "message_start", message: { role: "assistant", id: "msg_a" } }, sessionID),
+    ).toEqual([]);
+    expect(
+      translateUserDelivery({ type: "message_start", message: { role: "user", content: "hi" } }, sessionID),
+    ).toEqual([]);
+    expect(translateUserDelivery({ type: "queue_update", steering: [], followUp: [] }, sessionID)).toEqual([]);
+  });
+
+  test("streams the delivery to the emit sink", () => {
+    const seen: string[] = [];
+    translateUserDelivery(
+      { type: "message_start", message: { role: "user", clientMessageId: "msg_4" } },
+      sessionID,
+      { emit: (event) => seen.push(`${event.type}:${event.data.inboxID}`), now: () => 1 },
+    );
+
+    expect(seen).toEqual(["session.inbox.delivered:msg_4"]);
+  });
+
+  // The TUI names its session `ses_tui_*` while host frames carry the transcript's durable id; a
+  // delivery published under the host id never reaches the session whose pending row it clears.
+  test("answers under the client's session id, not the host's", () => {
+    rememberInboxAdmission("msg_5", "ses_tui_client");
+
+    const first = translateUserDelivery(
+      { type: "message_start", message: { role: "user", clientMessageId: "msg_5" } },
+      "01a1afb6-host-durable",
+      { now: () => now },
+    );
+    expect(first).toEqual([
+      { type: "session.inbox.delivered", created: now, data: { sessionID: "ses_tui_client", inboxID: "msg_5" } },
+    ]);
+
+    // The durable entry reports the same delivery again; it must stay one event even though the
+    // admission has already been reported.
+    expect(
+      translateUserDelivery(
+        { type: "entry_appended", clientMessageId: "msg_5", entry: { type: "message", message: { role: "user" } } },
+        "01a1afb6-host-durable",
+        { now: () => now },
+      ),
+    ).toEqual([]);
+  });
+
+  test("forgets a refused admission so a later frame is not attributed to it", () => {
+    rememberInboxAdmission("msg_6", "ses_tui_client");
+    forgetInboxAdmission("msg_6");
+
+    expect(
+      translateUserDelivery(
+        { type: "message_start", message: { role: "user", clientMessageId: "msg_6" } },
+        "01a1afb6-host-durable",
+        { now: () => now },
+      ),
+    ).toEqual([
+      {
+        type: "session.inbox.delivered",
+        created: now,
+        data: { sessionID: "01a1afb6-host-durable", inboxID: "msg_6" },
+      },
+    ]);
   });
 });

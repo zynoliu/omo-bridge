@@ -103,6 +103,13 @@
         "inboxID"
       ]
     },
+    "session.inbox.delivered": {
+      "emitter": "inbox",
+      "required": [
+        "sessionID",
+        "inboxID"
+      ]
+    },
     "session.inbox.delivery.changed": {
       "emitter": "inbox",
       "required": [

@@ -57,6 +57,11 @@ export type InboxEvent =
       data: { sessionID: string; inboxID: string };
     }
   | {
+      type: "session.inbox.delivered";
+      created: number;
+      data: { sessionID: string; inboxID: string };
+    }
+  | {
       type: "session.inbox.delivery.changed";
       created: number;
       data: { sessionID: string; inboxID: string; delivery: Delivery };
@@ -66,6 +71,15 @@ export interface TranslateQueueUpdateContext {
   emit?: (event: InboxEvent) => void;
   now?: () => number;
 }
+
+export type TranslateUserDeliveryContext = TranslateQueueUpdateContext;
+
+export type InboxAdmissionNotice = {
+  sessionID: string;
+  inboxID: string;
+  text: string;
+  delivery: Delivery;
+};
 
 export type InboxCommand =
   | { type: "dequeue_message"; queuedId: string; expectedRevision?: number }
@@ -99,6 +113,13 @@ export function getSessionInboxTransport(): SessionInboxTransport | undefined {
 const backgrounded = new Set<string>();
 const lastQueues = new Map<string, QueueEntry[]>();
 const firstSeen = new Map<string, string>();
+// A client names its session by the key it asked with (the TUI mints `ses_tui_*`), while host frames
+// carry the durable id of the transcript. Admission is the one place both ids are known, so it is
+// remembered here and the delivery event answers under the client's own id.
+const admittedSessions = new Map<string, string>();
+// Delivery is reported by the host for both the live message and the durable entry it persists, and
+// moving an already-delivered row again would reorder it behind the reply that followed it.
+const deliveredClientMessages = new Set<string>();
 
 export function markSessionBackgrounded(sessionID: string): void {
   backgrounded.add(sessionID);
@@ -126,6 +147,8 @@ export function resetSessionInboxState(): void {
   backgrounded.clear();
   lastQueues.clear();
   firstSeen.clear();
+  admittedSessions.clear();
+  deliveredClientMessages.clear();
 }
 
 function rememberQueue(sessionID: string, entries: readonly QueueEntry[]): void {
@@ -621,4 +644,82 @@ export function translateQueueUpdate(
     for (const produced of events) ctx.emit(produced);
   }
   return events;
+}
+
+/**
+ * The TUI renders its own prompt under an id it mints and keeps that row in `store.session.pending`
+ * until the host confirms delivery of the same id. senpi reports delivery twice - a `message_start`
+ * for the user role and the `entry_appended` that persists it - and stamps both with the client's id
+ * once the client sent one. Without the delivered event the row stays pending, and the session view
+ * paints every pending input row after the messages, which puts the reply above the prompt it answers.
+ */
+export function translateUserDelivery(
+  event: unknown,
+  sessionID: string,
+  ctx: TranslateUserDeliveryContext = {},
+): InboxEvent[] {
+  const frame = asRecord(event);
+  if (frame === undefined) return [];
+  const message = deliveredUserMessage(frame);
+  if (message === undefined) return [];
+  const inboxID = asTrimmed(frame.clientMessageId) ?? asTrimmed(message.clientMessageId);
+  if (inboxID === undefined) return [];
+
+  const clientSessionID = admittedSessions.get(inboxID) ?? sessionID;
+  const key = `${clientSessionID}\u0000${inboxID}`;
+  if (deliveredClientMessages.has(key)) return [];
+  deliveredClientMessages.add(key);
+
+  const produced: InboxEvent = {
+    type: "session.inbox.delivered",
+    created: ctx.now?.() ?? Date.now(),
+    data: { sessionID: clientSessionID, inboxID },
+  };
+  ctx.emit?.(produced);
+  return [produced];
+}
+
+/**
+ * Records which client-facing session an admitted input belongs to, so its delivery is published
+ * under the id the client stores its pending row on. Registered before the host is asked, because the
+ * delivery frame can overtake the admission response, and kept after delivery so the second report of
+ * the same input (the durable entry after the live message) resolves to the same session.
+ */
+export function rememberInboxAdmission(inboxID: string, sessionID: string): void {
+  admittedSessions.set(inboxID, sessionID);
+}
+
+export function forgetInboxAdmission(inboxID: string): void {
+  admittedSessions.delete(inboxID);
+}
+
+function deliveredUserMessage(frame: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (frame.type === "message_start") {
+    const message = asRecord(frame.message);
+    return message?.role === "user" ? message : undefined;
+  }
+  if (frame.type === "entry_appended") {
+    const entry = asRecord(frame.entry);
+    if (entry?.type !== "message") return undefined;
+    const message = asRecord(entry.message);
+    return message?.role === "user" ? message : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * The admission half of the same contract: the client's optimistic row answers to the id it minted,
+ * so the echo reuses that id instead of adding a second row. Published only once the host accepted
+ * the input, so a refused delivery leaves the client's own rollback path intact.
+ */
+export function inboxEnqueuedEvent(admission: InboxAdmissionNotice, ctx: { now?: () => number } = {}): InboxEvent {
+  return {
+    type: "session.inbox.enqueued",
+    created: ctx.now?.() ?? Date.now(),
+    data: {
+      sessionID: admission.sessionID,
+      inboxID: admission.inboxID,
+      item: { type: "user", payload: { text: admission.text }, delivery: admission.delivery },
+    },
+  };
 }

@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { projectFor, toPublicSessionInfo, type SessionRecord } from "../../model/session-map";
+import { eventBus } from "../events";
+import {
+  durableIdOfPath,
+  projectFor,
+  rememberSessionAlias,
+  toPublicSessionInfo,
+  type SessionRecord,
+} from "../../model/session-map";
 import type { SenpiImages, SenpiPromptOptions, SenpiSessionSummary, SenpiTransport } from "../../senpi/transport";
+import { forgetInboxAdmission, inboxEnqueuedEvent, rememberInboxAdmission } from "./inbox";
 import { HandlerProblem, jsonResponse, messageOf, respond } from "./problem";
 import { getSessionManagementStore } from "./session-write";
 
@@ -186,6 +194,18 @@ async function resolveTarget(
     };
   }
   throw sessionNotFound(sessionID);
+}
+
+/**
+ * The client names its session by the id it minted, while the host names it by the routing id of the
+ * connection and by the durable id of its transcript. Neither host id reaches the client - it drops
+ * every frame whose session id is not the one it asked with - so the pairing is recorded here, at the
+ * one moment both are in hand, and frame dispatch answers the client's id first.
+ */
+function rememberSessionIdentity(target: { key: string; row: SenpiSessionSummary }): void {
+  rememberSessionAlias(target.row.sessionId, target.key);
+  rememberSessionAlias(target.row.durableSessionId, target.key);
+  rememberSessionAlias(durableIdOfPath(target.row.sessionPath), target.key);
 }
 
 /**
@@ -441,21 +461,41 @@ export async function handleSessionPrompt(request: Request, url: URL): Promise<R
     const body = await readBody(request);
     const input = parsePromptInput(body);
     const target = await resolveTarget(caller, sessionID);
+    rememberSessionIdentity(target);
 
     if (input.clientMessageId === undefined) {
       const disposition = await sendParsed(caller, target.row, input);
       return jsonResponse(200, { data: admissionOf(input, target.key, disposition) });
     }
 
-    const key = `${target.key}\u0000${input.clientMessageId}`;
+    const clientMessageId = input.clientMessageId;
+    const key = `${target.key}\u0000${clientMessageId}`;
     const entry = admissions.get(key);
     if (entry?.admission !== undefined) return jsonResponse(200, { data: entry.admission });
     if (entry?.pending !== undefined) return jsonResponse(200, { data: await entry.pending });
 
     const pending = (async (): Promise<PublicInboxUser> => {
-      const disposition = await sendParsed(caller, target.row, input);
+      rememberInboxAdmission(clientMessageId, target.key);
+      let disposition: PromptDisposition;
+      try {
+        disposition = await sendParsed(caller, target.row, input);
+      } catch (error) {
+        // A refused delivery admitted nothing, so its id must not shape a later delivery event.
+        forgetInboxAdmission(clientMessageId);
+        throw error;
+      }
       const admission = admissionOf(input, target.key, disposition);
       rememberAdmission(key, { admission });
+      // The TUI minted this id and holds its row pending until the host reports that same id
+      // delivered; announcing the admission under the client's id is what lets the echo land on the
+      // row the client already painted instead of leaving it pending for the whole turn.
+      const notice = inboxEnqueuedEvent({
+        sessionID: target.key,
+        inboxID: clientMessageId,
+        text: input.text,
+        delivery: input.delivery,
+      });
+      eventBus.publish({ type: notice.type, created: notice.created, data: notice.data });
       return admission;
     })();
     rememberAdmission(key, { pending });
@@ -475,6 +515,7 @@ export async function handleSessionSynthetic(request: Request, url: URL): Promis
     const sessionID = sessionIdFromPath(url);
     const body = await readBody(request);
     const target = await resolveTarget(caller, sessionID);
+    rememberSessionIdentity(target);
 
     const text = asString(body.text);
     if (text === undefined || text.trim().length === 0) {
@@ -542,6 +583,7 @@ export async function handleSessionCommand(request: Request, url: URL): Promise<
     if (name.length === 0) throw invalidRequest("command needs a name", "name");
 
     const target = await resolveTarget(caller, sessionID);
+    rememberSessionIdentity(target);
     const known = await commandNames(caller);
     if (known !== undefined && !known.has(name) && !known.has(`skill:${name}`)) {
       throw new HandlerProblem(400, "CommandNotFoundError", `command not found: ${name}`, { command: name });

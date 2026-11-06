@@ -3,6 +3,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { validateResponse } from "../../src/contract/validate";
+import { eventBus, type BridgeEvent } from "../../src/http/events";
+import { resetSessionAliases, resolveSessionAlias } from "../../src/model/session-map";
 import {
   handleSessionCommand,
   handleSessionCreate,
@@ -139,6 +141,23 @@ async function bodyOf(response: Response): Promise<Record<string, unknown>> {
   return (await response.json()) as Record<string, unknown>;
 }
 
+/** Reads the shared bus the handler publishes to, bounded so a missing event fails instead of hanging. */
+function eventReader(types: string[]): { next: (timeoutMs?: number) => Promise<BridgeEvent | undefined>; close: () => void } {
+  const subscription = eventBus.subscribe({ types });
+  const reader = subscription.stream.getReader();
+  return {
+    async next(timeoutMs = 200): Promise<BridgeEvent | undefined> {
+      const raced = await Promise.race([reader.read(), Bun.sleep(timeoutMs).then(() => "timeout" as const)]);
+      if (raced === "timeout" || raced.done === true) return undefined;
+      return raced.value;
+    },
+    close() {
+      void reader.cancel();
+      subscription.close();
+    },
+  };
+}
+
 beforeEach(() => {
   workDir = mkdtempSync(join(tmpdir(), "prompt-http-"));
   sessionPath = join(workDir, "session.jsonl");
@@ -151,6 +170,7 @@ beforeEach(() => {
 afterEach(() => {
   setSessionWriteTransport(undefined);
   resetPromptAdmissions();
+  resetSessionAliases();
   rmSync(workDir, { recursive: true, force: true });
 });
 
@@ -289,6 +309,54 @@ describe("POST /api/session/:sessionID/prompt", () => {
     expect((await transport.getEntries()).entries.length).toBe(entriesAfterFirst);
     expect(second.data).toEqual(first.data);
     expect((second.data as Record<string, unknown>).id).toBe("message-1");
+  });
+
+  test("announces the admission under the client's id so the TUI can clear its pending row", async () => {
+    const events = eventReader(["session.inbox.enqueued"]);
+    try {
+      const body = { id: "msg_client_1", text: "你好" };
+      const path = "/api/session/durable-1/prompt";
+      await handleSessionPrompt(post(path, body), url(path));
+
+      const announced = await events.next();
+      expect(announced?.type).toBe("session.inbox.enqueued");
+      expect(announced?.data).toEqual({
+        sessionID: "durable-1",
+        inboxID: "msg_client_1",
+        item: { type: "user", payload: { text: "你好" }, delivery: "queue" },
+      });
+
+      // A replay re-answers the stored admission; re-announcing it would re-admit a row the client
+      // may already have cleared.
+      await handleSessionPrompt(post(path, body), url(path));
+      expect(await events.next()).toBeUndefined();
+    } finally {
+      events.close();
+    }
+  });
+
+  // A prompt is the one moment the client's session id and the host's ids are both in hand; frames
+  // the host stamps with its own id have to be answered with the client's, or it drops them.
+  test("registers the host ids the prompt arrived with under the client's session id", async () => {
+    const path = "/api/session/durable-1/prompt";
+    await handleSessionPrompt(post(path, { id: "msg_alias_1", text: "hi" }), url(path));
+
+    expect(resolveSessionAlias("rpc-1")).toBe("durable-1");
+  });
+
+  test("announces nothing when the host refuses the input", async () => {
+    transport.prompt = async () => {
+      throw new Error("host refused the prompt");
+    };
+    const events = eventReader(["session.inbox.enqueued"]);
+    try {
+      const path = "/api/session/durable-1/prompt";
+      const response = await handleSessionPrompt(post(path, { id: "msg_client_2", text: "hi" }), url(path));
+      expect(response.status).toBe(503);
+      expect(await events.next()).toBeUndefined();
+    } finally {
+      events.close();
+    }
   });
 
   test("takes metadata.clientMessageId when the body has no id", async () => {

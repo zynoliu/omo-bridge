@@ -4,7 +4,7 @@ import { resolveConfig, type Config } from "./config";
 import { eventBus as sharedEventBus, type EventBus } from "./http/events";
 import { setCatalogTransport } from "./http/handlers/catalogs";
 import { onDialogFrame, onQuestionFrame, setFormEventBus, setFormTransport } from "./http/handlers/form";
-import { setSessionInboxTransport } from "./http/handlers/inbox";
+import { setSessionInboxTransport, translateUserDelivery } from "./http/handlers/inbox";
 import { onUiRequest, setPermissionEventBus, setPermissionTransport } from "./http/handlers/permission";
 import { setSessionWriteTransport } from "./http/handlers/prompt";
 import {
@@ -15,7 +15,7 @@ import {
 import { setSessionReadTransport } from "./http/handlers/sessions";
 import { setShellEventBus, setShellTransport, type ShellBashResult } from "./http/handlers/shell";
 import { createServer, type BridgeServer } from "./http/server";
-import { MAX_LIST_LIMIT, SessionMap, readSessionUsage, type SessionUsage } from "./model/session-map";
+import { SessionMap, readSessionUsage, resolveSessionAlias, type SessionUsage } from "./model/session-map";
 import { SenpiTransport, defaultKeyRoot } from "./senpi/transport";
 import { createLifecycleProjector } from "./translate/lifecycle";
 import { createStreamProjector } from "./translate/stream";
@@ -45,11 +45,19 @@ export type FrameDispatch = {
 
 const FEEDBACK_INPUT_TITLE = "feedback";
 
-/** The durable id a host transcript path carries: `<timestamp>_<uuid>.jsonl`. */
-function durableIdOf(sessionPath: string | undefined): string | undefined {
-  if (sessionPath === undefined) return undefined;
-  const base = sessionPath.slice(sessionPath.lastIndexOf("/") + 1);
-  return /_([0-9a-f-]{36})\.jsonl$/.exec(base)?.[1];
+/**
+ * The session id a host frame answers under.
+ *
+ * Host frames name a transcript by its durable id or by the connection's routing id. A session whose
+ * id the client minted is filed in the map under that id, and the same transcript can also sit in the
+ * map under the host's own id. Both name one conversation, and the client only knows the id it asked
+ * with, so a frame has to answer that id or the client drops every live frame of its own turn.
+ *
+ * The admission alias wins because it is the exact pairing the prompt established: the map can still
+ * be missing the session, hold it only under the host's id, or page it out of reach.
+ */
+export function resolveFrameSessionID(sessionMap: SessionMap, routingID: string): string | undefined {
+  return resolveSessionAlias(routingID) ?? sessionMap.findByHostId(routingID)?.key;
 }
 
 function messageOf(error: unknown): string {
@@ -125,6 +133,11 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
   };
 
   const project = (frame: Record<string, unknown>, sessionID: string): void => {
+    // Delivery of a client's own prompt is reported before the step that answers it, so publishing
+    // here keeps the client's pending row from outliving the turn that clears it.
+    for (const delivered of translateUserDelivery(frame, sessionID)) {
+      bus.publish({ type: delivered.type, created: delivered.created, data: delivered.data });
+    }
     const set = projectorsFor(sessionID);
     // The host opens an assistant step before it has an id and names it only when the durable entry
     // lands. Frames held here are replayed under that id, so the live row and the row a refetch
@@ -315,16 +328,14 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
     await probeModelAvailability(transport);
   }
 
+  const resolutionCache = new Map<string, string | undefined>();
   const resolveSessionID = (routingID: string | undefined): string | undefined => {
     if (routingID === undefined) return undefined;
-    if (sessionMap.has(routingID)) return routingID;
-    const known = sessionMap.list({ limit: MAX_LIST_LIMIT, includeArchived: true }).data;
-    const byRouting = known.find((record) => record.routingId === routingID);
-    if (byRouting !== undefined) return byRouting.key;
-    // Host frames name a session by its durable id, not by the connection-scoped routing id the
-    // transport reports. A session the TUI created itself is filed under the id the TUI minted, so
-    // without this match its deltas keep the durable id and the TUI drops every one of them.
-    return known.find((record) => durableIdOf(record.sessionPath) === routingID)?.key;
+    if (resolutionCache.has(routingID)) return resolutionCache.get(routingID);
+    const resolved = resolveFrameSessionID(sessionMap, routingID);
+    // An unresolved id is not remembered: a session filed a moment later still has to answer.
+    if (resolved !== undefined) resolutionCache.set(routingID, resolved);
+    return resolved;
   };
 
   const dispatch = createFrameDispatch({
