@@ -32,9 +32,84 @@ function replyOrder(frame, text) {
   return { ordered: user < reply, userIndex: user, replyIndex: reply };
 }
 
+// A session mounted while idle paints no assistant footer, so the reload falls back to the first
+// assistant entry row; a footer-anchored frame still uses it.
+const ASSISTANT_ENTRY = /(?:\+ Thought|Thought ·|✓ todo|◐ todo)/u;
+
+function paintOrder(frame, text) {
+  const anchored = replyOrder(frame, text);
+  if (anchored.replyIndex >= 0) return anchored;
+  const lines = frame.split("\n");
+  const user = lines.findIndex((line) => line.includes("┃") && line.replace(/[┃|]/gu, " ").trim().endsWith(text));
+  const entry = lines.findIndex((line) => ASSISTANT_ENTRY.test(line));
+  if (user < 0 || entry < 0) return { ordered: false, userIndex: user, replyIndex: entry };
+  return { ordered: user < entry, userIndex: user, replyIndex: entry };
+}
+
 function addedLines(before, after) {
   const known = new Set(paneLines(before));
   return paneLines(after).filter((line) => !known.has(line));
+}
+
+// What each direction serves, read from the same bridge the TUI just used. The client asks for
+// `order=desc` and reverses it; comparing the painted frame against these rows attributes a wrong
+// order to the pagination the server serves or to the client that assembles it.
+async function servedOrder(bridge, sessionID, order) {
+  const response = await fetch(
+    `${bridge.url}/api/session/${encodeURIComponent(sessionID)}/message?limit=50&order=${order}`,
+    { headers: bridge.headers },
+  );
+  const body = await response.json();
+  const data = Array.isArray(body?.data) ? body.data : [];
+  return {
+    status: response.status,
+    cursor: body?.cursor ?? null,
+    rows: data.map((message, index) => ({
+      index,
+      id: message.id,
+      type: message.type,
+      text: String(message.text ?? "").slice(0, 60),
+    })),
+  };
+}
+
+// Records the bridge's event stream for the whole run. The client's store is built from these
+// frames, so their order (and whether `session.inbox.*` ever arrives) is part of the evidence.
+function recordEvents(bridge) {
+  const controller = new AbortController();
+  const events = [];
+  const reading = (async () => {
+    try {
+      const response = await fetch(`${bridge.url}/api/event`, { headers: bridge.headers, signal: controller.signal });
+      if (!response.ok || response.body === null) return;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffered = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffered += decoder.decode(value, { stream: true });
+        let boundary = buffered.indexOf("\n\n");
+        while (boundary >= 0) {
+          const frame = buffered.slice(0, boundary);
+          buffered = buffered.slice(boundary + 2);
+          for (const line of frame.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const event = JSON.parse(line.slice(6));
+              if (typeof event?.type === "string") events.push({ at: Date.now(), type: event.type, data: event.data });
+            } catch {
+              // A truncated frame is not an event.
+            }
+          }
+          boundary = buffered.indexOf("\n\n");
+        }
+      }
+    } catch {
+      // Stopping the bridge closes the stream; that is how this recorder ends on every run.
+    }
+  })();
+  return { events, reading, stop: () => controller.abort() };
 }
 
 export function classify(before, after) {
@@ -52,7 +127,9 @@ export default {
     const started = Date.now();
     const evidence = ctx.evidenceDir;
     const bridge = await ctx.startBridge({ evidenceDir: evidence });
+    const recorder = recordEvents(bridge);
     const checks = { reply: false, error: false, idle: false, order: false };
+    let orderApi = { desc: null, asc: null };
     let outcome = "idle";
     let matched = "";
     let tui;
@@ -158,6 +235,13 @@ export default {
             assistant: assistant.length,
             lastText: String(assistant[0]?.text ?? "").slice(0, 200),
           };
+          const [desc, asc] = await Promise.all([
+            servedOrder(bridge, sessionID, "desc"),
+            servedOrder(bridge, sessionID, "asc"),
+          ]);
+          orderApi = { desc, asc };
+          await ctx.writeFile("messages-desc.json", JSON.stringify(desc, null, 2));
+          await ctx.writeFile("messages-asc.json", JSON.stringify(asc, null, 2));
         }
       } catch (error) {
         history = { total: 0, assistant: 0, lastText: `unavailable: ${String(error).slice(0, 80)}` };
@@ -170,12 +254,46 @@ export default {
         screenshot = { written: false, reason: String(error).slice(0, 160) };
       }
 
+      // A fresh mount reads the same session once and paints what the server serves. If that frame
+      // is ordered, the served order is sound and the live run's frame was assembled, not served.
+      let reload = { attempted: false, order: null, frame: null, error: null };
+      if (ctx.fault === undefined && sessionID !== undefined) {
+        reload.attempted = true;
+        await tui.stop();
+        let reopened;
+        try {
+          reopened = await ctx.startTui({ stateDir: bridge.stateDir, cols: 120, rows: 36, sessionID });
+          await reopened.waitFor((text) => text.includes("你好"), 60_000);
+          const reloadText = await reopened.text();
+          const written = await ctx.writeFile("frame-reload.txt", reloadText);
+          reload = { attempted: true, order: paintOrder(reloadText, "你好"), frame: written.path, error: null };
+        } catch (error) {
+          reload = { attempted: true, order: null, frame: null, error: String(error).slice(0, 160) };
+        } finally {
+          await reopened?.stop();
+        }
+        tui = undefined;
+      }
+
+      recorder.stop();
+      await recorder.reading;
+      const eventTypes = recorder.events.map((event) => event.type);
+      await ctx.writeFile("events.jsonl", recorder.events.map((event) => JSON.stringify(event)).join("\n"));
+      const events = {
+        total: eventTypes.length,
+        inbox: eventTypes.filter((type) => type.startsWith("session.inbox")),
+        types: eventTypes,
+      };
+
       const report = {
         scenario: "send-message",
         outcome,
         matched,
         checks,
         order,
+        orderApi,
+        reload,
+        events: { total: events.total, inbox: events.inbox, types: events.types.slice(0, 80) },
         ready,
         opened,
         submitted,
@@ -198,6 +316,7 @@ export default {
       await ctx.writeFile("report.json", JSON.stringify(report, null, 2));
       return { exitCode: report.exitCode, report };
     } finally {
+      recorder.stop();
       await tui?.stop();
       await bridge.stop();
     }
