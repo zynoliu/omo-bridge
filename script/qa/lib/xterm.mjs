@@ -43,6 +43,20 @@ window.__text = () => {
 };
 const ws = new WebSocket("ws://" + location.host + "/pty");
 ws.onmessage = (event) => term.write(event.data);
+window.__samples = null;
+window.__startSampling = (ms, needle) => {
+  window.__samples = [];
+  const t0 = performance.now();
+  window.__sampler = setInterval(() => {
+    const text = window.__text();
+    window.__samples.push({
+      t: Math.round(performance.now() - t0),
+      count: needle ? text.split(needle).length - 1 : 0,
+      length: text.length,
+    });
+  }, ms);
+};
+window.__stopSampling = () => clearInterval(window.__sampler);
 window.__send = (data) => ws.send(data);
 </script></body></html>`;
 }
@@ -141,8 +155,17 @@ export async function startXtermTui(options) {
       }
       return predicate(await this.text());
     },
-    async screenshot(path) {
-      mkdirSync(dirname(path), { recursive: true });
+    /** Records the rendered buffer inside the page every `intervalMs`, so paint cadence is measured
+     * without paying one round-trip per sample. */
+    async startSampling(intervalMs = 50, needle = "") {
+      await view.evaluate(`window.__startSampling(${Number(intervalMs)}, ${JSON.stringify(String(needle))})`);
+    },
+    async stopSampling() {
+      await view.evaluate("window.__stopSampling()");
+      const value = await view.evaluate("window.__samples ?? []");
+      return Array.isArray(value) ? value : [];
+    },
+    async screenshot(path) {      mkdirSync(dirname(path), { recursive: true });
       try {
         const png = await view.screenshot({ type: "png" });
         await Bun.write(path, png);

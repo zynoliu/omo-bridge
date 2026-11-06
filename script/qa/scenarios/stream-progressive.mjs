@@ -5,8 +5,8 @@
 // marker count can only grow when assistant text arrives, and tool cards cannot fake it. The user's
 // own bubble contributes exactly one occurrence, so growth is measured above that baseline.
 const MARKER = "流式测试";
-const PROMPT = `请原样重复输出下面这四个字 200 遍，不要调用任何工具，不要解释，直接输出：${MARKER}`;
-const PROMPT_PROBE = "200 遍";
+const PROMPT = `请输出 60 行，每行格式为「${MARKER} <序号>」，序号从 1 到 60，不要调用任何工具，不要解释。`;
+const PROMPT_PROBE = "60 行";
 const FOOTER = /Build · .+ · \d+(?:\.\d+)?s/u;
 
 function markerCount(frame) {
@@ -123,6 +123,7 @@ export default {
 
       await tui.write(PROMPT);
       await Bun.sleep(800);
+      await tui.startSampling(50, MARKER);
       await tui.press("Enter");
 
       const submitDeadline = Date.now() + 20_000;
@@ -148,8 +149,6 @@ export default {
       // Sample the pane until the TURN ends (the execution settles), not until a footer line appears:
       // a multi-step turn paints a footer at every step, so a footer is not the end of the reply.
       const deadline = Date.now() + 180_000;
-      const frameSubmitted = await tui.text();
-      const baseline = markerCount(frameSubmitted);
       let turnFooter = false;
       while (Date.now() < deadline) {
         const frame = await tui.text();
@@ -162,22 +161,32 @@ export default {
         await Bun.sleep(200);
       }
       await Bun.sleep(600);
+      const pageSamples = await tui.stopSampling();
       samples.push({ at: Date.now() - started, count: markerCount(await tui.text()), footer: true });
       await ctx.writeFile("samples.jsonl", samples.map((sample) => JSON.stringify(sample)).join("\n"));
+      await ctx.writeFile(
+        "samples-page.jsonl",
+        pageSamples.map((sample) => JSON.stringify({ t: sample.t, count: sample.count, length: sample.length })).join("\n"),
+      );
       const frameAfter = await tui.text();
       await ctx.writeFile("frame-after.txt", frameAfter);
       await ctx.writeFile("transcript.txt", await tui.transcript());
 
-      // Progressive means the painted marker count strictly grew above the submitted frame (which
-      // already holds the user's own bubble) before the turn's footer appeared.
+      // Progressive is measured inside the page (50ms) so the cadence is the terminal's, not the
+      // round-trip's: every distinct increase after the user's own bubble is one visible paint.
+      const submittedAt = pageSamples.findIndex((sample) => sample.count > 0);
+      const baseline = submittedAt < 0 ? 0 : pageSamples[submittedAt].count;
       let last = baseline;
-      for (const sample of samples.slice(0, -1)) {
+      const paints = [];
+      for (const sample of submittedAt < 0 ? [] : pageSamples.slice(submittedAt)) {
         if (sample.count > last) {
-          growth.push({ at: sample.at, count: sample.count });
+          growth.push({ at: sample.t, count: sample.count });
+          paints.push(sample.count);
           last = sample.count;
         }
       }
-      checks.progressive = growth.length >= 1 && last > baseline;
+      const streamingSpanMs = growth.length === 0 ? 0 : growth[growth.length - 1].at - growth[0].at;
+      checks.progressive = growth.length >= 2 && last > baseline;
 
       recorder.stop();
       await recorder.reading;
@@ -198,8 +207,9 @@ export default {
         const listed = await fetch(`${bridge.url}/api/session?limit=1`, { headers: bridge.headers }).then((r) => r.json());
         sessionID = listed?.data?.[0]?.id;
       }
+      let messages = [];
       if (sessionID !== undefined) {
-        const messages = await ctx.listMessages({ url: bridge.url, headers: bridge.headers, sessionID });
+        messages = await ctx.listMessages({ url: bridge.url, headers: bridge.headers, sessionID });
         const assistant = messages.filter((message) => message.type === "assistant");
         history = {
           assistant: assistant.length,
@@ -242,11 +252,25 @@ export default {
         rekeys.length === history.assistant &&
         rekeys.every((event) => history.ids.includes(event.data.assistantMessageID));
       checks.ids = contentIDs.every((id) => history.ids.includes(id) || liveIDs.has(id));
-      // What the pane painted must not exceed what history serves plus the user's own bubble: a
-      // duplicated reply would show every marker twice.
+      // No duplication and no loss: every step's streamed text must equal what history serves for the
+      // durable row that re-key named. The pane is a viewport (it scrolls), so it cannot be compared
+      // against the whole transcript; the identity it painted under is the thing that matters.
+      const streamedByLive = new Map();
+      for (const event of textDeltas) {
+        const id = event.data?.assistantMessageID;
+        streamedByLive.set(id, `${streamedByLive.get(id) ?? ""}${String(event.data?.delta ?? "")}`);
+      }
+      const historyByID = new Map(messages.map((message) => [message.id, message]));
+      const textMatches = rekeys.map((event) => {
+        const durable = event.data.assistantMessageID;
+        const row = historyByID.get(durable);
+        const streamed = streamedByLive.get(event.data.replaces) ?? "";
+        const served = row === undefined ? "" : assistantText([row]);
+        return { live: event.data.replaces, durable, streamed: streamed.length, served: served.length, equal: streamed === served };
+      });
       const frameMarkers = markerCount(frameAfter);
       const historyMarkers = markerCount(history.text);
-      checks.textOnce = historyMarkers > 0 && frameMarkers <= historyMarkers + 1;
+      checks.textOnce = textMatches.every((match) => match.equal);
 
       let screenshot = { written: false, reason: "not attempted" };
       try {
@@ -262,7 +286,11 @@ export default {
         perStep,
         baseline,
         growth,
+        paints: paints.length,
+        streamingSpanMs,
+        pageSamples: pageSamples.length,
         markers: { frame: frameMarkers, history: historyMarkers },
+        textMatches,
         samples: samples.length,
         turnFooter,
         streamed,
