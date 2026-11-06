@@ -95,9 +95,9 @@
       "POST /api/experimental/mcp/:server/connect",
       "POST /api/experimental/mcp/:server/disconnect"
     ],
-    "capability": false,
-    "tuiBehaviour": "The MCP dialog renders no rows, so connect and disconnect are unreachable, and devtools resource rows are empty (packages/tui/src/component/dialog-mcp.tsx:46,124; component/devtools-bar.tsx:204)",
-    "reason": "No MCP server registry or resource catalog exists; with zero servers a toggle is a no-op write."
+    "capability": true,
+    "tuiBehaviour": "/mcps lists one row per server named in the host's mcp.json plus the project's .opencode/mcp.json, each labelled with its last-known status: \"Connected ✓\" when the discovery cache holds an entry, \"Connecting …\" while pending, \"Disabled ○\" when the config disables it; the toggle sends disconnect on a connected row and connect on any other non-pending row, both answered 204 NoContent without changing the row, and devtools resource rows stay empty (packages/tui/src/component/dialog-mcp.tsx:21-33,46,124; component/devtools-bar.tsx:204)",
+    "reason": "The bridge projects the list from the host's mcp.json and the project's .opencode/mcp.json, merged by name, and reads each status from cache/mcp-cache.json without a live probe: connected only when the cache holds an entry, disabled when the config sets disabled: true, pending otherwise. There is no MCP connection lifecycle, so connect and disconnect are not routed and answer 204 NoContent, and /api/mcp/resource serves no catalog."
   },
   {
     "family": "plugins",

@@ -4,6 +4,7 @@ import { validateResponse } from "../../contract/validate";
 import { storedCredentialMethod } from "../../senpi/credentials";
 import type { SenpiModelInfo, SenpiTransport } from "../../senpi/transport";
 import { locationRef, type LocationPublicRef } from "./fs-location";
+import { listMcpServers } from "./mcp-config";
 import { listSavedPermissions } from "./permission";
 import { HandlerProblem, jsonResponse, noContent, respond } from "./problem";
 import { attachSessionTarget, getSessionManagementTransport, requireKnownSession } from "./session-write";
@@ -312,7 +313,14 @@ export async function handleReferenceList(_request: Request, url: URL): Promise<
 }
 
 export async function handleMcpList(_request: Request, url: URL): Promise<Response> {
-  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(url, async () => {
+    const location = locationFor(url);
+    const agentDir = transport?.agentDir;
+    // A caller without an agent directory has no configuration to report; the empty list is the
+    // truthful answer here, not an outage.
+    if (agentDir === undefined) return jsonResponse(200, { location, data: [] });
+    return jsonResponse(200, { location, data: listMcpServers(agentDir, location.directory) });
+  });
 }
 
 export async function handleMcpResourceCatalog(_request: Request, url: URL): Promise<Response> {
