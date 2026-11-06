@@ -18,7 +18,8 @@ Options:
 - `QA_REPLY_WAIT_MS` how long to wait for a painted reply (default 90000); raise it when the provider is slow
 
 Scenarios: `send-message` (L3: submit, reply, order), `models-dialog` (L4: the picker lists the host's
-models), `first-minute` (L4: seven first-screen surfaces, each content / explicit refusal / TUI-owned copy).
+models), `first-minute` (L4: seven first-screen surfaces, each content / explicit refusal / TUI-owned copy),
+`isolation` (L3: two sessions with synthetic markers never see each other's turns; no model call).
 - `--help` usage
 
 Exit code `0` means the scenario's assertions held; anything else means they did not, and the report says why.

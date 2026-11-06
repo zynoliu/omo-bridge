@@ -33,6 +33,7 @@ runs it. A row without both is not a test, it is an intention.
 | GAP-6 QA residue | a run leaves no state directory unless `--keep` | L3 | `qa:tui` cleanup (crash path writes `report.json`) | `bun run qa:tui -- --scenario does-not-exist` |
 | GAP-7 fake host invents | the fake's handshake equals the recording | L1 | `fake-host-fidelity.test.ts` | `bun test ./test/senpi` |
 | GAP-8 unknown fields allowed | a sample with one undeclared key is rejected | L0 | `opencode.test.ts` per-endpoint negative sample | `bun test ./test/contract` |
+| GAP-10 sessions not isolated | two sessions never see each other's turns | L3 | `isolation` (synthetic markers, no model) | `bun run qa:tui -- --scenario isolation` |
 | GAP-9 attribution lost | a provider failure keeps `provider/model/code/resetsAt/action` | L1 | `lifecycle.test.ts` | `bun test ./test/translate/lifecycle.test.ts` |
 
 ## Rules
