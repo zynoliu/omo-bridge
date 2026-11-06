@@ -11,12 +11,18 @@ import { setCatalogTransport } from "../../src/http/handlers/catalogs";
 import { SessionMap } from "../../src/model/session-map";
 
 // Drives the bridge with the real my-tui client instead of hand-written fetch calls: a wrong envelope,
-// a wrong status or an ignored request field fails here rather than in the user's terminal. Skipped
-// unless OMO_BRIDGE_E2E_TUI_DIR names the fork checkout, so a fresh clone still passes.
+// a wrong status or an ignored request field fails here rather than in the user's terminal. It runs by
+// default against the fork checkout; only a missing checkout turns it into a skip with the reason.
 
-const tuiDir = process.env.OMO_BRIDGE_E2E_TUI_DIR?.trim();
-const clientEntry = tuiDir === undefined ? undefined : join(tuiDir, "packages/client/src/promise/index.ts");
-const available = clientEntry !== undefined && existsSync(clientEntry);
+const DEFAULT_TUI_DIR = "/Users/zyno/OmO Projects/my-tui/opencode";
+const tuiDir = process.env.OMO_BRIDGE_E2E_TUI_DIR?.trim() || DEFAULT_TUI_DIR;
+const clientEntry = join(tuiDir, "packages/client/src/promise/index.ts");
+const available = existsSync(clientEntry);
+if (!available) {
+  console.warn(
+    `[real-client e2e] skipping: the my-tui client entry ${clientEntry} does not exist; set OMO_BRIDGE_E2E_TUI_DIR to the fork checkout to run it`,
+  );
+}
 const PASSWORD = "e2e-password";
 const WORK_DIR = "/tmp";
 
