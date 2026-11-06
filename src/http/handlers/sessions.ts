@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
 import { basename } from "node:path";
-import { emptySessionUsage, readTranscriptEntries, sessionKeyOf, toPublicSessionInfo, type SessionUsage } from "../../model/session-map";
+import { emptySessionUsage, readTranscriptEntries, resolveSessionAlias, sessionKeyOf, toPublicSessionInfo, type SessionUsage } from "../../model/session-map";
 import type { SenpiEntriesResult, SenpiMessages, SenpiTransport } from "../../senpi/transport";
 import { mediaUriFor, wantsMediaRefs } from "./media";
 import { getSessionManagementStore } from "./session-write";
@@ -273,6 +273,24 @@ function usageOf(row: SenpiEntriesRow): SessionUsage {
   return getSessionManagementStore()?.get(sessionKeyOf(row))?.usage ?? emptySessionUsage();
 }
 
+/**
+ * The host reports the name it holds; a session the bridge named itself carries that name only in the
+ * bridge's own map, so the map answers first and the directory name stays the last fallback.
+ */
+function titleOf(row: SenpiEntriesRow): string {
+  const store = getSessionManagementStore();
+  const own = store?.get(sessionKeyOf(row))?.name;
+  if (own !== undefined && own.length > 0) return own;
+  // The bridge files a session under the id its client minted, while the host row carries the host's
+  // own ids; the alias registry is what pairs them.
+  const alias =
+    resolveSessionAlias(row.sessionId) ??
+    (row.durableSessionId === undefined ? undefined : resolveSessionAlias(row.durableSessionId));
+  const named = alias === undefined ? undefined : store?.get(alias)?.name;
+  if (named !== undefined && named.length > 0) return named;
+  return row.name ?? basename(row.cwd);
+}
+
 function toMappedSession(row: SenpiEntriesRow): MappedSession {
   const id = sessionIdOf(row);
   const time = sessionTimes(id, row.sessionPath);
@@ -284,7 +302,7 @@ function toMappedSession(row: SenpiEntriesRow): MappedSession {
     cost: usage.cost,
     tokens: { ...usage.tokens, cache: { ...usage.tokens.cache } },
     time: { ...time, ...(archived === undefined ? {} : { archived }) },
-    title: row.name ?? basename(row.cwd),
+    title: titleOf(row),
     location: { directory: row.cwd },
   };
   return { id, routeId: row.sessionId, info };

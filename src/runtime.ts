@@ -1,3 +1,4 @@
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { classifyUiRequest } from "./bridge/ui-requests";
 import { resolveConfig, type Config } from "./config";
@@ -15,8 +16,9 @@ import {
 import { setSessionReadTransport, type SessionReadTransport } from "./http/handlers/sessions";
 import { setShellEventBus, setShellTransport, type ShellBashResult } from "./http/handlers/shell";
 import { createServer, type BridgeServer } from "./http/server";
-import { SessionMap, readSessionUsage, resolveSessionAlias, type SessionUsage } from "./model/session-map";
+import { SessionMap, readSessionUsage, readTranscriptEntries, resolveSessionAlias, type SessionUsage } from "./model/session-map";
 import { SenpiTransport, defaultKeyRoot } from "./senpi/transport";
+import { TITLE_WORKER_FILE, firstUserMessageText, titleFromEntries, titlePromptFor } from "./titles";
 import { createLifecycleProjector } from "./translate/lifecycle";
 import { createStreamProjector } from "./translate/stream";
 import { createToolProjector } from "./translate/tools";
@@ -258,7 +260,6 @@ function bashOverRaw(transport: SenpiTransport): (command: string) => Promise<Sh
 }
 
 export type ModelAvailability = { models: number; providers: number };
-
 export type ModelProbeOptions = {
   log?: (message: string) => void;
   warn?: (message: string) => void;
@@ -297,6 +298,9 @@ export async function probeModelAvailability(
 }
 
 const CATALOG_SESSION_FILE = "model-catalog.jsonl";
+
+/** A summarization turn that has not settled by now is not worth waiting on for a title. */
+const TITLE_TIMEOUT_MS = 30_000;
 
 /**
  * `get_available_models` is session-scoped on the senpi wire, so a connection that holds no session
@@ -440,6 +444,52 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
   });
   const unsubscribe = transport?.onEvent(dispatch.handle);
 
+  const titled = new Set<string>();
+  let titleQueue: Promise<void> = Promise.resolve();
+
+  /**
+   * Names a session the host left unnamed. The host's own auto-title never fires once the extension
+   * has injected its startup context, so the bridge asks for a title itself on a throwaway worker
+   * session in its own state directory and publishes the answer as the same `session.renamed` event
+   * the host would have produced.
+   */
+  const nameSession = async (clientID: string): Promise<void> => {
+    const record = sessionMap.get(clientID);
+    if (record === undefined || record.sessionPath === undefined) return;
+    if (record.name !== undefined && record.name.length > 0) return;
+    if (titled.has(clientID)) return;
+    const first = firstUserMessageText(readTranscriptEntries(record.sessionPath) ?? []);
+    if (first === undefined) return;
+    titled.add(clientID);
+    const workerPath = join(config.stateDir, TITLE_WORKER_FILE);
+    const worker = new SenpiTransport({ socketPath, keyRoot: agentDir });
+    try {
+      await worker.connect();
+      await worker.openSession({ sessionPath: workerPath, cwd: config.stateDir, retainOnDisconnect: false });
+      await worker.prompt(titlePromptFor(first));
+      await worker.waitForIdle(TITLE_TIMEOUT_MS);
+      const title = titleFromEntries((await worker.getEntries()).entries);
+      if (title === undefined) return;
+      sessionMap.rename(clientID, title);
+      sessionMap.flush();
+      sharedEventBus.publish({ type: "session.renamed", data: { sessionID: clientID, title } });
+    } catch (error) {
+      console.warn(`omo-bridge: could not title session ${clientID}: ${messageOf(error)}`);
+    } finally {
+      await worker.dispose().catch(() => undefined);
+      rmSync(workerPath, { force: true });
+    }
+  };
+
+  const unsubscribeTitles = transport?.onEvent((event) => {
+    const frame = asRecord(event);
+    if (frame === undefined || asString(frame.type) !== "agent_settled") return;
+    const routingID = frameSessionID(frame) ?? transport?.sessionId;
+    const clientID = resolveSessionID(routingID) ?? routingID;
+    if (clientID === undefined) return;
+    titleQueue = titleQueue.then(() => nameSession(clientID)).catch(() => undefined);
+  });
+
   setSessionReadTransport(createReadRouter(transport, readTransport, sessionMap));
   setSessionInboxTransport(transport);
   setSessionWriteTransport(transport);
@@ -465,6 +515,7 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
       if (closed) return;
       closed = true;
       unsubscribe?.();
+      unsubscribeTitles?.();
       await readTransport?.dispose().catch(() => undefined);
       setSessionReadTransport(undefined);
       setSessionInboxTransport(undefined);

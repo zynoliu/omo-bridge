@@ -255,6 +255,29 @@ describe("GET /api/session", () => {
     expect(body.cursor).toEqual({});
   });
 
+  test("reports the name the bridge gave a session the host left unnamed", async () => {
+    const transport = new FakeTransport({
+      sessions: [session({ sessionId: "rpc-1", durableSessionId: "durable-1", cwd: "/work/alpha" })],
+    });
+    setSessionReadTransport(transport);
+    const records = new Map([["durable-1", { name: "Bridge Named" }]]);
+    setSessionManagementStore({
+      get: (key) => records.get(key) as never,
+      list: () => ({ data: [], cursor: {} }),
+      rename: () => undefined,
+      archive: () => undefined,
+      remove: () => false,
+      upsert: () => ({}) as never,
+      update: () => undefined,
+    });
+
+    const response = await handleSessionList(get("/api/session"), url("/api/session"));
+    const body = await bodyOf(response);
+    const data = body.data as Array<Record<string, unknown>>;
+    expect(data[0]?.title).toBe("Bridge Named");
+    setSessionManagementStore(undefined);
+  });
+
   test("keeps projectID stable across calls for the same directory", async () => {
     const transport = new FakeTransport({ sessions: [session({ cwd: "/work/alpha" })] });
     setSessionReadTransport(transport);

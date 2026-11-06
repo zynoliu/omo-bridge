@@ -18,6 +18,8 @@ export interface FakeConnectionSummary {
 
 export interface FakeHostOptions {
   rejectAuth?: boolean;
+  /** Emit a turn's open and settle frames right after answering a prompt, so a client can wait for idle. */
+  autoFinishTurns?: boolean;
   enforceInteractiveUserForStop?: boolean;
   /** The `inputs` of a `get_pending_inputs` answer; defaults to two queued inputs. */
   pendingInputs?: readonly Record<string, unknown>[];
@@ -393,6 +395,15 @@ export class FakeSenpiHost {
       return;
     }
     this.write(socket, { type: "response", id, command: type, success: true });
+    if (type === "prompt" && this.options.autoFinishTurns === true) {
+      const sessionId = state.sessionId ?? "rpc-1";
+      setTimeout(() => {
+        this.write(socket, { type: "agent_start", sessionId, runId: "run_fake_auto" });
+        this.write(socket, { type: "agent_end", sessionId, runId: "run_fake_auto", messages: [], willRetry: false });
+        this.write(socket, { type: "agent_settled", sessionId });
+        this.write(socket, { type: "agent_idle", sessionId });
+      }, 5);
+    }
   }
 
   /**
