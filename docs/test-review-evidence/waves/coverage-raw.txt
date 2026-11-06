@@ -1,0 +1,1058 @@
+bun test v1.3.14 (d1632b29)
+
+test/launcher.test.ts:
+(pass) launch spec > the shipped launch spec declares OMO_NATIVE and exactly one extension [0.46ms]
+(pass) private host agent directory > defaults to the real user's ~/.omo/agent even under an isolated HOME [0.10ms]
+(pass) private host agent directory > OMO_BRIDGE_AGENT_DIR overrides every other setting and reaches the host and runtime [11.07ms]
+(pass) private host agent directory > the private host gets the real agent dir when nothing overrides it [2.33ms]
+(pass) private host agent directory > the shared daemon socket is still refused [0.45ms]
+(pass) model catalog probe > a fake host with zero models logs the counts and warns about OMO_BRIDGE_AGENT_DIR [0.21ms]
+(pass) model catalog probe > a populated catalog counts models and distinct providers without a warning [0.08ms]
+(pass) start > the installed proxy serves the inbox family instead of the 503 fallback [4.98ms]
+(pass) start > a stale bridge.json from a dead pid is replaced with this process's record [2.38ms]
+(pass) start > hosts are started with a sanitized environment and the bridge's key root [1.82ms]
+(pass) stop > ends the recorded pid and asks the host to stop only the recorded private socket [53.27ms]
+(pass) stop > refuses a record that names the shared daemon socket [1.05ms]
+(pass) session recovery > a transport_gone transition answers 503 until the host is reattached and the session reopened [4.91ms]
+
+test/tui-session.test.ts:
+(pass) tui session bootstrap > injects --session when the caller did not name one [0.03ms]
+(pass) tui session bootstrap > keeps a session the caller already named [0.01ms]
+(pass) tui session bootstrap > reuses the most recent session instead of opening a new one [0.32ms]
+(pass) tui session bootstrap > creates a session with a client id when the bridge has none [0.12ms]
+(pass) tui session bootstrap > reports the bridge's refusal instead of launching on a session that does not exist [0.09ms]
+
+test/scaffold.test.ts:
+(pass) scaffold > package name and pinned senpi version [0.90ms]
+
+test/tui-launch.test.ts:
+(pass) tui launch isolation > gives each bridge state directory its own channel [0.07ms]
+(pass) tui launch isolation > keeps the channel short enough for a state directory name [0.04ms]
+(pass) tui launch inputs > reads the TUI checkout from OMO_BRIDGE_TUI_DIR and falls back to the documented fork [0.03ms]
+(pass) tui launch inputs > reads the TUI bun from OMO_BRIDGE_TUI_BUN and falls back to a standalone bun on PATH [0.08ms]
+(pass) tui launch inputs > never hands the TUI the OmO runtime wrapper [0.03ms]
+
+test/runtime-usage.test.ts:
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+(pass) session usage composition > two executions through the real dispatch path sum into the session row [15.43ms]
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+(pass) session usage composition > a reconnect re-seeds from the host transcript without double counting [10.30ms]
+
+test/runtime.test.ts:
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+(pass) runtime composition > the inbox family is wired by createRuntime and serves the host's queue [1.56ms]
+(pass) runtime composition > interrupt is served by the same transport instead of the 503 fallback [0.59ms]
+
+test/contract/event-shapes.test.ts:
+(pass) event shapes > the fixture transcribes the client's required data fields exactly [29.72ms]
+(pass) event shapes > every fixture entry names an emitter this suite drives [0.05ms]
+(pass) event shapes > form.cancelled carries the data fields the TUI requires [0.04ms]
+(pass) event shapes > form.created carries the data fields the TUI requires
+(pass) event shapes > form.replied carries the data fields the TUI requires
+(pass) event shapes > permission.asked carries the data fields the TUI requires
+(pass) event shapes > permission.replied carries the data fields the TUI requires
+(pass) event shapes > server.connected carries the data fields the TUI requires
+(pass) event shapes > session.archived carries the data fields the TUI requires
+(pass) event shapes > session.compaction.ended carries the data fields the TUI requires
+(pass) event shapes > session.compaction.started carries the data fields the TUI requires
+(pass) event shapes > session.deleted carries the data fields the TUI requires
+(pass) event shapes > session.execution.failed carries the data fields the TUI requires
+(pass) event shapes > session.execution.interrupted carries the data fields the TUI requires
+(pass) event shapes > session.execution.started carries the data fields the TUI requires
+(pass) event shapes > session.execution.succeeded carries the data fields the TUI requires
+(pass) event shapes > session.inbox.cancelled carries the data fields the TUI requires
+(pass) event shapes > session.inbox.delivery.changed carries the data fields the TUI requires
+(pass) event shapes > session.inbox.enqueued carries the data fields the TUI requires
+(pass) event shapes > session.metadata.updated carries the data fields the TUI requires
+(pass) event shapes > session.moved carries the data fields the TUI requires
+(pass) event shapes > session.permissions carries the data fields the TUI requires
+(pass) event shapes > session.reasoning.delta carries the data fields the TUI requires
+(pass) event shapes > session.reasoning.ended carries the data fields the TUI requires
+(pass) event shapes > session.reasoning.started carries the data fields the TUI requires
+(pass) event shapes > session.renamed carries the data fields the TUI requires
+(pass) event shapes > session.shell.ended carries the data fields the TUI requires
+(pass) event shapes > session.shell.started carries the data fields the TUI requires
+(pass) event shapes > session.step.ended carries the data fields the TUI requires
+(pass) event shapes > session.step.started carries the data fields the TUI requires
+(pass) event shapes > session.step.streamed carries the data fields the TUI requires
+(pass) event shapes > session.text.delta carries the data fields the TUI requires
+(pass) event shapes > session.text.ended carries the data fields the TUI requires
+(pass) event shapes > session.text.started carries the data fields the TUI requires
+(pass) event shapes > session.tool.called carries the data fields the TUI requires
+(pass) event shapes > session.tool.failed carries the data fields the TUI requires
+(pass) event shapes > session.tool.input.delta carries the data fields the TUI requires
+(pass) event shapes > session.tool.input.ended carries the data fields the TUI requires
+(pass) event shapes > session.tool.input.started carries the data fields the TUI requires
+(pass) event shapes > session.tool.progress carries the data fields the TUI requires
+(pass) event shapes > session.tool.success carries the data fields the TUI requires
+(pass) event shapes > session.unarchived carries the data fields the TUI requires
+(pass) event shapes > session.usage.updated carries the data fields the TUI requires
+(pass) event shapes > the bus emitter publishes no type the fixture omits [0.06ms]
+(pass) event shapes > the form emitter publishes no type the fixture omits [0.02ms]
+(pass) event shapes > the inbox emitter publishes no type the fixture omits [0.03ms]
+(pass) event shapes > the lifecycle emitter publishes no type the fixture omits [0.02ms]
+(pass) event shapes > the permission emitter publishes no type the fixture omits [0.01ms]
+(pass) event shapes > the session-write emitter publishes no type the fixture omits [0.02ms]
+(pass) event shapes > the shell emitter publishes no type the fixture omits [0.02ms]
+(pass) event shapes > the stream emitter publishes no type the fixture omits [0.02ms]
+(pass) event shapes > the tools emitter publishes no type the fixture omits [0.02ms]
+
+test/contract/check.test.ts:
+(pass) contracts:check > passes on the checked-in contracts [746.16ms]
+(pass) contracts:check > fails on a tampered opencode schema and names opencode [534.69ms]
+(pass) contracts:check > fails on a tampered sample and names the endpoint [533.61ms]
+(pass) contracts:check > fails on a tampered senpi fixture and names senpi [500.87ms]
+
+test/contract/senpi.test.ts:
+(pass) senpi contracts > all six commands were recorded live [0.05ms]
+(pass) senpi contracts > response get_protocol_info is accepted [196.32ms]
+(pass) senpi contracts > response list_sessions is accepted [0.76ms]
+(pass) senpi contracts > response open_session is accepted [0.26ms]
+(pass) senpi contracts > response get_state is accepted [0.61ms]
+(pass) senpi contracts > response get_entries is accepted [3.19ms]
+(pass) senpi contracts > response close_session is accepted [0.28ms]
+(pass) senpi contracts > event message_update (text_start) is accepted [3.83ms]
+(pass) senpi contracts > event message_update (text_delta) is accepted [0.01ms]
+(pass) senpi contracts > event message_update (text_end) is accepted [0.01ms]
+(pass) senpi contracts > event message_update (thinking_start) is accepted
+(pass) senpi contracts > event message_update (thinking_delta) is accepted
+(pass) senpi contracts > event message_update (thinking_end) is accepted
+(pass) senpi contracts > event message_update (toolcall_start) is accepted [0.01ms]
+(pass) senpi contracts > event message_update (toolcall_delta) is accepted [0.01ms]
+(pass) senpi contracts > event message_update (toolcall_end) is accepted [0.01ms]
+(pass) senpi contracts > event tool_execution_start () is accepted [0.53ms]
+(pass) senpi contracts > event tool_execution_update () is accepted [0.63ms]
+(pass) senpi contracts > event tool_execution_end () is accepted [0.52ms]
+(pass) senpi contracts > event agent_start () is accepted [0.21ms]
+(pass) senpi contracts > event agent_end () is accepted [0.34ms]
+(pass) senpi contracts > event queue_update () is accepted [0.37ms]
+(pass) senpi contracts > event extension_ui_request (select) is accepted [4.36ms]
+(pass) senpi contracts > event extension_ui_request (question) is accepted [0.02ms]
+(pass) senpi contracts > event message_start () is accepted [0.27ms]
+(pass) senpi contracts > event message_update (thinking_start) is accepted
+(pass) senpi contracts > event message_update (thinking_delta) is accepted
+(pass) senpi contracts > event message_update (thinking_delta) is accepted
+(pass) senpi contracts > event message_update (thinking_end) is accepted
+(pass) senpi contracts > event message_update (text_start) is accepted
+(pass) senpi contracts > event message_update (text_delta) is accepted
+(pass) senpi contracts > event message_update (text_delta) is accepted
+(pass) senpi contracts > event message_update (text_end) is accepted
+(pass) senpi contracts > event message_update (text_start) is accepted
+(pass) senpi contracts > event message_update (text_delta) is accepted
+(pass) senpi contracts > event message_update (text_end) is accepted
+(pass) senpi contracts > event message_end () is accepted [0.19ms]
+(pass) senpi contracts > event message_start () is accepted
+(pass) senpi contracts > event message_update (toolcall_start) is accepted
+(pass) senpi contracts > event message_update (toolcall_delta) is accepted
+(pass) senpi contracts > event message_update (toolcall_delta) is accepted [0.01ms]
+(pass) senpi contracts > event message_update (toolcall_end) is accepted [0.02ms]
+(pass) senpi contracts > event message_end () is accepted
+(pass) senpi contracts > event tool_execution_start () is accepted
+(pass) senpi contracts > event tool_execution_update () is accepted
+(pass) senpi contracts > event tool_execution_update () is accepted
+(pass) senpi contracts > event tool_execution_end () is accepted
+(pass) senpi contracts > event message_update (toolcall_start) is accepted
+(pass) senpi contracts > event message_update (toolcall_delta) is accepted
+(pass) senpi contracts > event message_update (toolcall_end) is accepted [0.01ms]
+(pass) senpi contracts > event tool_execution_start () is accepted
+(pass) senpi contracts > event tool_execution_end () is accepted
+(pass) senpi contracts > all nine streaming delta kinds are covered [0.06ms]
+(pass) senpi contracts > derived fixtures are marked as such [0.04ms]
+(pass) senpi contracts > unknown event type is rejected by validateEvent and isKnownEventType [0.02ms]
+(pass) senpi contracts > tampered event type is rejected [0.06ms]
+(pass) senpi contracts > event frame with a mismatched type field is rejected [0.02ms]
+(pass) senpi contracts > message_update without usage is rejected [0.03ms]
+(pass) senpi contracts > response with a foreign command is rejected [0.03ms]
+(pass) senpi contracts > response missing a required data field is rejected [0.05ms]
+(pass) senpi contracts > failed response must carry an error string [0.02ms]
+
+test/contract/opencode.test.ts:
+(pass) opencode contracts > every endpoint has a sample [1.35ms]
+(pass) opencode contracts > no sample is left without an endpoint [0.20ms]
+(pass) opencode contracts > agent.list: valid sample is accepted [0.77ms]
+(pass) opencode contracts > agent.list: a sample missing a required field is rejected [0.21ms]
+(pass) opencode contracts > command.list: valid sample is accepted [0.13ms]
+(pass) opencode contracts > command.list: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > config.get: valid sample is accepted [4.45ms]
+(pass) opencode contracts > config.get: a sample missing a required field is rejected [0.15ms]
+(pass) opencode contracts > error.envelope: valid sample is accepted [0.07ms]
+(pass) opencode contracts > error.envelope: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > event.form.cancelled: valid sample is accepted [0.09ms]
+(pass) opencode contracts > event.form.cancelled: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.form.created: valid sample is accepted [1.27ms]
+(pass) opencode contracts > event.form.created: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > event.form.replied: valid sample is accepted [0.19ms]
+(pass) opencode contracts > event.form.replied: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.permission.asked: valid sample is accepted [0.22ms]
+(pass) opencode contracts > event.permission.asked: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.permission.replied: valid sample is accepted [0.10ms]
+(pass) opencode contracts > event.permission.replied: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.server.connected: valid sample is accepted [0.07ms]
+(pass) opencode contracts > event.server.connected: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.session.archived: valid sample is accepted [0.07ms]
+(pass) opencode contracts > event.session.archived: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.session.compaction.started: valid sample is accepted [0.09ms]
+(pass) opencode contracts > event.session.compaction.started: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.session.deleted: valid sample is accepted [0.07ms]
+(pass) opencode contracts > event.session.deleted: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.execution.failed: valid sample is accepted [0.16ms]
+(pass) opencode contracts > event.session.execution.failed: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.execution.interrupted: valid sample is accepted [0.09ms]
+(pass) opencode contracts > event.session.execution.interrupted: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.session.execution.started: valid sample is accepted [0.07ms]
+(pass) opencode contracts > event.session.execution.started: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.session.execution.succeeded: valid sample is accepted [0.07ms]
+(pass) opencode contracts > event.session.execution.succeeded: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.session.inbox.cancelled: valid sample is accepted [0.21ms]
+(pass) opencode contracts > event.session.inbox.cancelled: a sample missing a required field is rejected [0.09ms]
+(pass) opencode contracts > event.session.inbox.delivery.changed: valid sample is accepted [0.16ms]
+(pass) opencode contracts > event.session.inbox.delivery.changed: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > event.session.inbox.enqueued: valid sample is accepted [0.90ms]
+(pass) opencode contracts > event.session.inbox.enqueued: a sample missing a required field is rejected [0.10ms]
+(pass) opencode contracts > event.session.metadata.updated: valid sample is accepted [0.14ms]
+(pass) opencode contracts > event.session.metadata.updated: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > event.session.moved: valid sample is accepted [0.15ms]
+(pass) opencode contracts > event.session.moved: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > event.session.permissions: valid sample is accepted [0.17ms]
+(pass) opencode contracts > event.session.permissions: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > event.session.reasoning.delta: valid sample is accepted [0.15ms]
+(pass) opencode contracts > event.session.reasoning.delta: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > event.session.reasoning.ended: valid sample is accepted [0.13ms]
+(pass) opencode contracts > event.session.reasoning.ended: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > event.session.reasoning.started: valid sample is accepted [0.12ms]
+(pass) opencode contracts > event.session.reasoning.started: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.renamed: valid sample is accepted [0.09ms]
+(pass) opencode contracts > event.session.renamed: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.session.shell.ended: valid sample is accepted [0.34ms]
+(pass) opencode contracts > event.session.shell.ended: a sample missing a required field is rejected [0.06ms]
+(pass) opencode contracts > event.session.shell.started: valid sample is accepted [0.25ms]
+(pass) opencode contracts > event.session.shell.started: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.step.ended: valid sample is accepted [0.28ms]
+(pass) opencode contracts > event.session.step.ended: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.step.started: valid sample is accepted [0.18ms]
+(pass) opencode contracts > event.session.step.started: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.step.streamed: valid sample is accepted [0.08ms]
+(pass) opencode contracts > event.session.step.streamed: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.text.delta: valid sample is accepted [0.12ms]
+(pass) opencode contracts > event.session.text.delta: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.text.ended: valid sample is accepted [0.14ms]
+(pass) opencode contracts > event.session.text.ended: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > event.session.text.started: valid sample is accepted [0.12ms]
+(pass) opencode contracts > event.session.text.started: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.tool.input.delta: valid sample is accepted [0.11ms]
+(pass) opencode contracts > event.session.tool.input.delta: a sample missing a required field is rejected [0.03ms]
+(pass) opencode contracts > event.session.tool.input.ended: valid sample is accepted [0.10ms]
+(pass) opencode contracts > event.session.tool.input.ended: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.tool.input.started: valid sample is accepted [0.10ms]
+(pass) opencode contracts > event.session.tool.input.started: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > event.session.unarchived: valid sample is accepted [0.08ms]
+(pass) opencode contracts > event.session.unarchived: a sample missing a required field is rejected [0.04ms]
+(pass) opencode contracts > event.session.usage.updated: valid sample is accepted [0.18ms]
+(pass) opencode contracts > event.session.usage.updated: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > form.info: valid sample is accepted [1.46ms]
+(pass) opencode contracts > form.info: a sample missing a required field is rejected [0.14ms]
+(pass) opencode contracts > form.list: valid sample is accepted [1.49ms]
+(pass) opencode contracts > form.list: a sample missing a required field is rejected [0.14ms]
+(pass) opencode contracts > form.session.list: valid sample is accepted [1.37ms]
+(pass) opencode contracts > form.session.list: a sample missing a required field is rejected [0.10ms]
+(pass) opencode contracts > fs.find: valid sample is accepted [0.16ms]
+(pass) opencode contracts > fs.find: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > fs.list: valid sample is accepted [0.13ms]
+(pass) opencode contracts > fs.list: a sample missing a required field is rejected [0.06ms]
+(pass) opencode contracts > integration.list: valid sample is accepted [4.88ms]
+(pass) opencode contracts > integration.list: a sample missing a required field is rejected [0.17ms]
+(pass) opencode contracts > location.get: valid sample is accepted [0.14ms]
+(pass) opencode contracts > location.get: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > location.publicInfo: valid sample is accepted [0.11ms]
+(pass) opencode contracts > location.publicInfo: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > mcp.list: valid sample is accepted [0.30ms]
+(pass) opencode contracts > mcp.list: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > mcp.resourceCatalog: valid sample is accepted [0.24ms]
+(pass) opencode contracts > mcp.resourceCatalog: a sample missing a required field is rejected [0.06ms]
+(pass) opencode contracts > migration.status: valid sample is accepted [0.19ms]
+(pass) opencode contracts > migration.status: a sample missing a required field is rejected [0.08ms]
+(pass) opencode contracts > model.info: valid sample is accepted [0.92ms]
+(pass) opencode contracts > model.info: a sample missing a required field is rejected [0.11ms]
+(pass) opencode contracts > model.list: valid sample is accepted [0.98ms]
+(pass) opencode contracts > model.list: a sample missing a required field is rejected [0.11ms]
+(pass) opencode contracts > permission.list: valid sample is accepted [0.38ms]
+(pass) opencode contracts > permission.list: a sample missing a required field is rejected [0.16ms]
+(pass) opencode contracts > permission.request: valid sample is accepted [0.29ms]
+(pass) opencode contracts > permission.request: a sample missing a required field is rejected [0.21ms]
+(pass) opencode contracts > persistentPty.list: valid sample is accepted [0.48ms]
+(pass) opencode contracts > persistentPty.list: a sample missing a required field is rejected [0.17ms]
+(pass) opencode contracts > plugin.list: valid sample is accepted [0.41ms]
+(pass) opencode contracts > plugin.list: a sample missing a required field is rejected [0.14ms]
+(pass) opencode contracts > project.list: valid sample is accepted [0.31ms]
+(pass) opencode contracts > project.list: a sample missing a required field is rejected [0.08ms]
+(pass) opencode contracts > reference.list: valid sample is accepted [0.25ms]
+(pass) opencode contracts > reference.list: a sample missing a required field is rejected [0.11ms]
+(pass) opencode contracts > server.info: valid sample is accepted [0.15ms]
+(pass) opencode contracts > server.info: a sample missing a required field is rejected [0.08ms]
+(pass) opencode contracts > session.active: valid sample is accepted [0.11ms]
+(pass) opencode contracts > session.active: a sample missing a required field is rejected [0.11ms]
+(pass) opencode contracts > session.create: valid sample is accepted [0.68ms]
+(pass) opencode contracts > session.create: a sample missing a required field is rejected [0.11ms]
+(pass) opencode contracts > session.diff: valid sample is accepted [0.17ms]
+(pass) opencode contracts > session.diff: a sample missing a required field is rejected [0.26ms]
+(pass) opencode contracts > session.fork: valid sample is accepted [0.64ms]
+(pass) opencode contracts > session.fork: a sample missing a required field is rejected [0.08ms]
+(pass) opencode contracts > session.get: valid sample is accepted [0.62ms]
+(pass) opencode contracts > session.get: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > session.inbox.list: valid sample is accepted [1.07ms]
+(pass) opencode contracts > session.inbox.list: a sample missing a required field is rejected [0.10ms]
+(pass) opencode contracts > session.list: valid sample is accepted [0.79ms]
+(pass) opencode contracts > session.list: a sample missing a required field is rejected [0.08ms]
+(pass) opencode contracts > session.message.get: valid sample is accepted [3.40ms]
+(pass) opencode contracts > session.message.get: a sample missing a required field is rejected [0.17ms]
+(pass) opencode contracts > session.messages: valid sample is accepted [3.74ms]
+(pass) opencode contracts > session.messages: a sample missing a required field is rejected [0.18ms]
+(pass) opencode contracts > session.publicInfo: valid sample is accepted [0.66ms]
+(pass) opencode contracts > session.publicInfo: a sample missing a required field is rejected [0.09ms]
+(pass) opencode contracts > session.v1Info: valid sample is accepted [0.57ms]
+(pass) opencode contracts > session.v1Info: a sample missing a required field is rejected [0.09ms]
+(pass) opencode contracts > shell.get: valid sample is accepted [0.24ms]
+(pass) opencode contracts > shell.get: a sample missing a required field is rejected [0.06ms]
+(pass) opencode contracts > shell.list: valid sample is accepted [0.24ms]
+(pass) opencode contracts > shell.list: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > shell.output: valid sample is accepted [0.14ms]
+(pass) opencode contracts > shell.output: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > skill.list: valid sample is accepted [0.15ms]
+(pass) opencode contracts > skill.list: a sample missing a required field is rejected [0.05ms]
+(pass) opencode contracts > usage.limits: valid sample is accepted [0.53ms]
+(pass) opencode contracts > usage.limits: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > vcs.base: valid sample is accepted [0.20ms]
+(pass) opencode contracts > vcs.base: a sample missing a required field is rejected [0.08ms]
+(pass) opencode contracts > vcs.diff: valid sample is accepted [0.21ms]
+(pass) opencode contracts > vcs.diff: a sample missing a required field is rejected [0.08ms]
+(pass) opencode contracts > vcs.get: valid sample is accepted [0.12ms]
+(pass) opencode contracts > vcs.get: a sample missing a required field is rejected [0.06ms]
+(pass) opencode contracts > worktree.list: valid sample is accepted [0.09ms]
+(pass) opencode contracts > worktree.list: a sample missing a required field is rejected [0.07ms]
+(pass) opencode contracts > unknown endpoint is rejected [0.03ms]
+(pass) opencode contracts > non-object sample is rejected [0.01ms]
+(pass) opencode contracts > negative control: assistant message without agent is rejected [0.21ms]
+(pass) opencode contracts > negative control: ISO timestamp instead of epoch millis is rejected [0.16ms]
+(pass) opencode contracts > negative control: project time as ISO strings is rejected [0.06ms]
+(pass) opencode contracts > negative control: a location.get body wrapped in a location envelope is rejected [0.06ms]
+(pass) opencode contracts > error envelope carries _tag and message [0.04ms]
+(pass) opencode contracts > error envelope without _tag fails [0.06ms]
+(pass) opencode contracts > error envelope without message fails [0.03ms]
+(pass) opencode contracts > error envelope with a non-string message fails [0.02ms]
+
+test/contract/session-messages-content.test.ts:
+(pass) session.messages assistant content > array of content blocks is accepted [0.13ms]
+(pass) session.messages assistant content > empty content array is accepted [0.03ms]
+(pass) session.messages assistant content > single content block object is rejected [0.08ms]
+(pass) session.messages assistant content > array with an unknown block type is rejected [0.06ms]
+(pass) session.messages assistant content > extractor derives assistant content as an array of blocks [71.51ms]
+
+test/translate/tools.test.ts:
+(pass) tool projector > projects one bash tool call from the derived event fixtures [0.26ms]
+(pass) tool projector > keeps execution frames on the assistant message that ended before them [0.08ms]
+(pass) tool projector > announces a call that is first discovered at execution time [0.06ms]
+(pass) tool projector > forwards the cumulative progress snapshot unchanged [0.07ms]
+(pass) tool projector > routes a successful execution to tool.success with content and details [0.05ms]
+(pass) tool projector > routes an errored execution to tool.failed instead of success [0.07ms]
+(pass) tool projector > fails a plain-string error against the structured error shape [0.06ms]
+(pass) tool projector > messages the failure with the first text block, or a fallback when there is none [0.06ms]
+(pass) tool projector > exposes pending tool calls from input start until execution end [2.56ms]
+(pass) tool projector > ignores frames it does not own and counts the unknown ones [0.06ms]
+session.tool.input.started {"sessionID":"ses_tools","assistantMessageID":"msg_events_1","id":"call_abc123","name":"bash"}
+session.tool.input.delta {"sessionID":"ses_tools","assistantMessageID":"msg_events_1","id":"call_abc123","delta":"{\"command\":"}
+session.tool.input.ended {"sessionID":"ses_tools","assistantMessageID":"msg_events_1","id":"call_abc123","text":"{\"command\":\"ls -la\"}"}
+session.tool.called {"sessionID":"ses_tools","assistantMessageID":"msg_events_1","id":"call_abc123","input":{"command":"ls -la"},"executed":true}
+session.tool.progress {"sessionID":"ses_tools","assistantMessageID":"msg_events_1","id":"call_abc123","metadata":{"content":[{"type":"text","text":"partial output so far..."}],"details":{"truncation":null,"fullOutputPath":null}}}
+session.tool.success {"sessionID":"ses_tools","assistantMessageID":"msg_events_1","id":"call_abc123","content":[{"type":"text","text":"total 48\n..."}],"metadata":{"truncation":null,"fullOutputPath":null},"executed":true}
+(pass) tool projector > prints the emitted sequence for one bash tool call [0.07ms]
+
+test/translate/stream.test.ts:
+(pass) stream projector > projects one assistant turn from the derived stream fixture [0.30ms]
+(pass) stream projector > gives the two text blocks ordinals 0 and 1 [0.12ms]
+(pass) stream projector > replays the recorded delta fixtures onto text and reasoning events [0.24ms]
+(pass) stream projector > drops deltas that arrive after the block ended [0.08ms]
+(pass) stream projector > maps finish reasons, tokens and cost, then clears the current message [0.07ms]
+(pass) stream projector > defaults missing usage and unknown stop reasons [0.05ms]
+(pass) stream projector > falls back to the wire content for a block that streamed no deltas [0.03ms]
+session.step.started {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","agent":"build","model":{"id":"claude-sonnet-4","providerID":"anthropic"},"started":1718000000000}
+session.reasoning.started {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":0}
+session.reasoning.delta {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":0,"delta":"Let me "}
+session.reasoning.delta {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":0,"delta":"think."}
+session.reasoning.ended {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":0,"text":"Let me think."}
+session.text.started {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":0}
+session.text.delta {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":0,"delta":"First "}
+session.text.delta {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":0,"delta":"block"}
+session.text.ended {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":0,"text":"First block"}
+session.text.started {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":1}
+session.text.delta {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":1,"delta":"Second block"}
+session.text.ended {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","ordinal":1,"text":"Second block"}
+session.step.ended {"sessionID":"ses_stream","assistantMessageID":"msg_stream_1","finish":"stop","tokens":{"input":100,"output":40,"reasoning":0,"cache":{"read":10,"write":5}},"cost":0.02}
+(pass) stream projector > prints the emitted sequence for one assistant turn [0.07ms]
+(pass) stream projector > ignores unknown frames and counts them [0.03ms]
+
+test/translate/lifecycle.test.ts:
+(pass) lifecycle projector > lifecycle projects started then succeeded [0.23ms]
+(pass) lifecycle projector > lifecycle projects started then failed with the provider failure [0.05ms]
+(pass) lifecycle projector > lifecycle defaults a failure without category or reason [0.04ms]
+(pass) lifecycle projector > lifecycle maps abortSource to an interruption reason [0.13ms]
+(pass) lifecycle projector > lifecycle ignores a duplicate agent_start [0.05ms]
+(pass) lifecycle projector > lifecycle emits usage once at agent_end with summed tokens [0.06ms]
+(pass) lifecycle projector > lifecycle projects compaction start and end [0.09ms]
+(pass) lifecycle projector > lifecycle keeps a manual compaction manual [0.05ms]
+(pass) lifecycle projector > lifecycle omits a non-record native and forwards a real one [0.07ms]
+(pass) lifecycle projector > lifecycle native assertion rejects boolean and string values [0.07ms]
+(pass) lifecycle projector > lifecycle emits step.streamed on turn_start inside a run [0.06ms]
+(pass) lifecycle projector > lifecycle counts unknown frames and never throws [0.04ms]
+(pass) lifecycle projector > lifecycle survives malformed handled frames [0.03ms]
+lifecycle succeeded
+session.execution.started {"sessionID":"ses_lifecycle"}
+session.usage.updated {"sessionID":"ses_lifecycle","cost":0.02,"tokens":{"input":100,"output":40,"reasoning":0,"cache":{"read":10,"write":5}}}
+session.execution.succeeded {"sessionID":"ses_lifecycle"}
+lifecycle failed
+session.execution.started {"sessionID":"ses_lifecycle"}
+session.execution.failed {"sessionID":"ses_lifecycle","error":{"type":"rate_limit","message":"the provider is rate limiting requests","status":429}}
+lifecycle interrupted
+session.execution.started {"sessionID":"ses_lifecycle"}
+session.execution.interrupted {"sessionID":"ses_lifecycle","reason":"user"}
+(pass) lifecycle projector > lifecycle prints the emitted sequences for the three terminal paths [0.09ms]
+
+test/bridge/ui-requests.test.ts:
+(pass) classifyUiRequest permissions > the recorded permission prompt classifies as a permission [0.23ms]
+(pass) classifyUiRequest permissions > the title decides, so a permission prompt without a tool call id stays a permission [0.03ms]
+(pass) classifyUiRequest permissions > a select whose title merely mentions the prefix later is a form [0.02ms]
+(pass) classifyUiRequest permissions > a select with a non-string title is still a form [0.01ms]
+(pass) classifyUiRequest question > the recorded question dialog classifies as a question [0.09ms]
+(pass) classifyUiRequest question > a question without a request id or a questions array is not a question [0.02ms]
+(pass) classifyUiRequest forms > input, confirm and editor are forms [0.04ms]
+(pass) classifyUiRequest forms > a question-shaped dialog stays a form when its method is select [0.01ms]
+(pass) classifyUiRequest status > every fire-and-forget method is status [0.02ms]
+(pass) classifyUiRequest status > a permission-shaped select under another frame type is status [0.01ms]
+(pass) classifyUiRequest status > shapes that carry no usable method are status and never throw [0.06ms]
+
+test/http/shell.test.ts:
+(pass) session.shell > echo hi runs through bash and its output is retained [4.42ms]
+(pass) session.shell > publishes started before ended with the running row and merged output [0.45ms]
+(pass) session.shell > a failed bash call still settles the record and publishes ended [0.36ms]
+(pass) session.shell > answers 503 when no transport is wired [0.15ms]
+(pass) session.shell > answers 503 when the transport has no bash command [0.07ms]
+(pass) session.shell > rejects a payload without a command [0.07ms]
+(pass) shell registry > pages output by absolute byte cursor [0.35ms]
+(pass) shell registry > defaults to a 64KiB page and reports the full size [0.29ms]
+(pass) shell registry > lists and gets the retained record inside a location envelope [0.25ms]
+(pass) shell registry > records retained for another location stay out of the list [0.13ms]
+(pass) shell registry > unknown ids answer 404 ShellNotFoundError [0.14ms]
+(pass) shell registry > remove drops the record so later reads answer 404 [0.23ms]
+(pass) shell registry > rejects a malformed cursor [0.13ms]
+
+test/http/inbox.test.ts:
+(pass) POST /api/session/:sessionID/interrupt > sends abort with intent stop, never a bare abort [0.28ms]
+(pass) POST /api/session/:sessionID/interrupt > accepts an absent body and a resume query [0.08ms]
+(pass) POST /api/session/:sessionID/interrupt > resumes when the body asks for it [0.08ms]
+(pass) POST /api/session/:sessionID/interrupt > maps a refused user Stop to 409 [0.15ms]
+(pass) POST /api/session/:sessionID/interrupt > 404s an unknown session before touching the host [0.08ms]
+(pass) POST /api/session/:sessionID/interrupt > 400s a malformed body [0.09ms]
+(pass) POST /api/session/:sessionID/background > marks the session and leaves the turn alone [0.11ms]
+(pass) POST /api/session/:sessionID/background > 404s an unknown session [0.05ms]
+(pass) GET /api/session/:sessionID/inbox > answers an empty list when the transport has no pending-input ledger [0.06ms]
+(pass) GET /api/session/:sessionID/inbox > normalizes the host pending-input snapshot [0.11ms]
+(pass) GET /api/session/:sessionID/inbox > keeps the first-seen creation time across reads [0.11ms]
+(pass) DELETE /api/session/:sessionID/inbox/:inboxID > dequeues exactly the addressed entry by its queued id [0.36ms]
+(pass) DELETE /api/session/:sessionID/inbox/:inboxID > resolves a client message id to the host queued id [0.08ms]
+(pass) DELETE /api/session/:sessionID/inbox/:inboxID > 404s an id the host queue does not hold, without sending clear_queue [0.09ms]
+(pass) DELETE /api/session/:sessionID/inbox/:inboxID > 404s when the host says the entry was already delivered [0.09ms]
+(pass) PATCH /api/session/:sessionID/inbox/:inboxID > moves a queued input to steer by dequeue plus re-enqueue in place [0.24ms]
+(pass) PATCH /api/session/:sessionID/inbox/:inboxID > moves a steered input back to the queue [0.09ms]
+(pass) PATCH /api/session/:sessionID/inbox/:inboxID > is a no-op when the input already has that delivery [0.06ms]
+(pass) PATCH /api/session/:sessionID/inbox/:inboxID > 404s an unknown input and 400s an unknown delivery [0.12ms]
+(pass) PATCH /api/session/:sessionID/inbox/:inboxID > reports a lost input when the re-enqueue is refused [0.17ms]
+(pass) mounted session inbox routes > the router reaches all five routes and the list is the real projection, not the stub [0.23ms]
+(pass) translateQueueUpdate > emits enqueued, delivery.changed and cancelled by diffing the last queue [0.09ms]
+(pass) translateQueueUpdate > streams events to the emit sink and ignores frames without an ordered list [0.03ms]
+(pass) translateQueueUpdate > drops malformed entries instead of emitting half-read events [0.09ms]
+
+test/http/prompt.test.ts:
+(pass) POST /api/session > opens a retained session and answers the mapped public info [1.32ms]
+(pass) POST /api/session > falls back to the raw set_session_name frame when the facade has no rename [0.32ms]
+(pass) POST /api/session > defaults the location to the process cwd and skips an absent title [0.28ms]
+(pass) POST /api/session > files the session under the id the client minted [0.29ms]
+(pass) POST /api/session > is idempotent when the client re-creates the id it already minted [0.41ms]
+(pass) POST /api/session > answers 503 when no transport is wired [0.32ms]
+(pass) POST /api/session/:sessionID/prompt > joins every text part into one message [0.90ms]
+(pass) POST /api/session/:sessionID/prompt > maps a data: file part onto a senpi image block [0.52ms]
+(pass) POST /api/session/:sessionID/prompt > sends a repeated clientMessageId exactly once and replays its admission [0.37ms]
+(pass) POST /api/session/:sessionID/prompt > takes metadata.clientMessageId when the body has no id [0.49ms]
+(pass) POST /api/session/:sessionID/prompt > reports state completed when the host handled the input without a run [0.22ms]
+(pass) POST /api/session/:sessionID/prompt > steers a streaming session when delivery is steer [0.25ms]
+(pass) POST /api/session/:sessionID/prompt > queues a follow-up on a streaming session for the default delivery [0.21ms]
+(pass) POST /api/session/:sessionID/prompt > prompts an idle session even when delivery asks for steer [0.18ms]
+(pass) POST /api/session/:sessionID/prompt > re-attaches by path when the transport holds another session [0.20ms]
+(pass) POST /api/session/:sessionID/prompt > refuses a different held session that has no path to reopen [0.20ms]
+(pass) POST /api/session/:sessionID/prompt > answers 404 for an unknown session and 400 for an empty prompt [0.23ms]
+(pass) POST /api/session/:sessionID/synthetic > prompts with the synthetic text and its client message id [0.64ms]
+(pass) POST /api/session/:sessionID/command > sends /name plus its arguments as the prompt text [0.48ms]
+(pass) POST /api/session/:sessionID/command > accepts a leading slash and empty arguments [0.33ms]
+(pass) POST /api/session/:sessionID/command > refuses a command the host does not list, without sending anything [0.39ms]
+(pass) POST /api/session/:sessionID/command > passes the command through when the host cannot list its surface [0.36ms]
+
+test/http/degraded.test.ts:
+(pass) worktree degradation > list answers a contract-valid empty Worktree.List [0.15ms]
+(pass) worktree degradation > refresh is an idempotent no-op write [0.07ms]
+(pass) worktree degradation > create answers the declared WorktreeError instead of pretending to create one [0.10ms]
+(pass) persistent terminal degradation > list answers the endpoint's {data:[]} shape, not a location envelope [0.05ms]
+(pass) persistent terminal degradation > create answers the declared InvalidRequestError without a 5xx [0.06ms]
+(pass) persistent terminal degradation > snapshot answers PtyNotFoundError carrying the requested ptyID [0.10ms]
+(pass) persistent terminal degradation > connect answers the same PtyNotFoundError as snapshot, carrying the requested ptyID [0.06ms]
+(pass) persistent terminal degradation > connectToken answers PtyNotFoundError carrying the requested ptyID [0.05ms]
+(pass) migration degradation > v1 status is already completed so the overlay never opens [0.05ms]
+(pass) integration degradation > key connect answers IntegrationNotFoundError [0.08ms]
+(pass) integration degradation > external connect answers IntegrationNotFoundError [0.11ms]
+(pass) integration degradation > oauth connect cannot start an attempt [0.15ms]
+(pass) integration degradation > oauth status reports the missing attempt [0.11ms]
+(pass) integration degradation > oauth complete reports the missing attempt [0.07ms]
+(pass) integration degradation > oauth cancel is an idempotent no-op for an attempt that never existed [0.04ms]
+(pass) integration degradation > command connect cannot start an attempt [0.05ms]
+(pass) integration degradation > command status reports the missing attempt [0.06ms]
+(pass) integration degradation > command cancel reports the missing attempt [0.06ms]
+(pass) credential degradation > activate answers InvalidRequestError instead of a no-op 204 [0.06ms]
+(pass) credential degradation > update answers InvalidRequestError instead of a no-op 204 [0.02ms]
+(pass) credential degradation > remove answers InvalidRequestError instead of a no-op 204 [0.02ms]
+(pass) server pairing degradation > pair answers InvalidRequestError instead of a pairing code [0.05ms]
+(pass) usage limits degradation > answers a null budget with a valid location envelope [0.22ms]
+(pass) usage limits degradation > a missing location directory is a 404 FileNotFoundError, not a fabricated location [0.09ms]
+(pass) experimental MCP degradation > connect accepts the request without changing state [0.03ms]
+(pass) experimental MCP degradation > disconnect accepts the request without changing state [0.03ms]
+(pass) catalog-backed degradation families > /api/skill answers an empty list through catalogs.ts [0.15ms]
+(pass) catalog-backed degradation families > /api/reference answers an empty list through catalogs.ts [0.06ms]
+(pass) catalog-backed degradation families > /api/websearch/provider answers an empty list through catalogs.ts [0.07ms]
+(pass) catalog-backed degradation families > /api/integration answers an empty list through catalogs.ts [0.12ms]
+(pass) catalog-backed degradation families > /api/mcp answers an empty list through catalogs.ts [0.06ms]
+(pass) catalog-backed degradation families > /api/permission/saved answers an empty list through catalogs.ts [0.10ms]
+(pass) catalog-backed degradation families > /api/form answers an empty list through catalogs.ts [0.09ms]
+(pass) catalog-backed degradation families > /api/mcp/resource answers an empty resource catalog through catalogs.ts [0.11ms]
+(pass) degradation sweep > worktree.list never answers 5xx [0.06ms]
+(pass) degradation sweep > worktree.refresh never answers 5xx [0.01ms]
+(pass) degradation sweep > worktree.create never answers 5xx [0.01ms]
+(pass) degradation sweep > persistentPty.list never answers 5xx
+(pass) degradation sweep > persistentPty.create never answers 5xx [0.02ms]
+(pass) degradation sweep > persistentPty.snapshot never answers 5xx [0.01ms]
+(pass) degradation sweep > persistentPty.connect never answers 5xx [0.01ms]
+(pass) degradation sweep > persistentPty.connectToken never answers 5xx [0.02ms]
+(pass) degradation sweep > migration.v1.status never answers 5xx
+(pass) degradation sweep > integration.connect.key never answers 5xx [0.01ms]
+(pass) degradation sweep > integration.connect.external never answers 5xx [0.01ms]
+(pass) degradation sweep > integration.oauth.connect never answers 5xx [0.01ms]
+(pass) degradation sweep > integration.oauth.status never answers 5xx [0.02ms]
+(pass) degradation sweep > integration.oauth.complete never answers 5xx [0.02ms]
+(pass) degradation sweep > integration.oauth.cancel never answers 5xx
+(pass) degradation sweep > integration.command.connect never answers 5xx [0.01ms]
+(pass) degradation sweep > integration.command.status never answers 5xx [0.02ms]
+(pass) degradation sweep > integration.command.cancel never answers 5xx [0.03ms]
+(pass) degradation sweep > credential.activate never answers 5xx [0.02ms]
+(pass) degradation sweep > credential.update never answers 5xx
+(pass) degradation sweep > credential.remove never answers 5xx [0.01ms]
+(pass) degradation sweep > server.pair never answers 5xx
+(pass) degradation sweep > usage.limits never answers 5xx [0.04ms]
+(pass) degradation sweep > experimental.mcp.connect never answers 5xx
+(pass) degradation sweep > experimental.mcp.disconnect never answers 5xx
+
+test/http/mount.test.ts:
+(pass) mounted permission routes > create, list and reply over real HTTP [1.64ms]
+(pass) mounted permission routes > replying to an unknown request answers the handler's 404, not the router's [0.28ms]
+(pass) mounted form routes > create, list, reply and cancel over real HTTP [1.53ms]
+(pass) mounted session inbox routes > interrupt, background, list, cancel and delivery update answer over HTTP [0.86ms]
+(pass) mounted session management routes > PATCH renames and DELETE removes [1.12ms]
+(pass) mounted session management routes > fork, move, compact, revert and environment answer their declared statuses [2.71ms]
+(pass) mounted session management routes > GET /api/session/active still wins over the :sessionID pattern [0.30ms]
+(pass) mounted shell routes > session.shell records a command that list, get, output and remove serve [1.03ms]
+(pass) mounted catalog routes > the model catalog, empty families and switches answer over HTTP [2.92ms]
+(pass) mounted location and plugin routes > GET /api/location answers a bare Location.PublicInfo, not a location envelope [0.32ms]
+(pass) mounted location and plugin routes > GET /api/plugin answers the empty location envelope the TUI reads [0.19ms]
+(pass) mounted media route > a stored blob is served by hash and an unknown hash is a handler 404 [1.29ms]
+(pass) mounted degradation routes > GET /api/worktree answers 200 [0.18ms]
+(pass) mounted degradation routes > POST /api/worktree/refresh answers 204 [0.10ms]
+(pass) mounted degradation routes > POST /api/worktree answers 400 [2.01ms]
+(pass) mounted degradation routes > GET /api/experimental/session/ses_mount_1/terminal answers 200 [0.31ms]
+(pass) mounted degradation routes > POST /api/experimental/session/ses_mount_1/terminal answers 400 [0.19ms]
+(pass) mounted degradation routes > GET /api/experimental/persistent-pty/pty_1/snapshot answers 404 [0.22ms]
+(pass) mounted degradation routes > GET /api/experimental/persistent-pty/x/connect answers 404 [0.13ms]
+(pass) mounted degradation routes > POST /api/experimental/persistent-pty/pty_1/connect-token answers 404 [0.16ms]
+(pass) mounted degradation routes > GET /api/experimental/migration/v1 answers 200 [0.14ms]
+(pass) mounted degradation routes > POST /api/integration/int_1/connect/key answers 404 [0.14ms]
+(pass) mounted degradation routes > POST /api/integration/int_1/connect/external answers 404 [0.16ms]
+(pass) mounted degradation routes > POST /api/integration/int_1/connect/oauth answers 404 [0.20ms]
+(pass) mounted degradation routes > GET /api/integration/int_1/connect/oauth/att_1 answers 404 [0.15ms]
+(pass) mounted degradation routes > POST /api/integration/int_1/connect/oauth/att_1/complete answers 404 [0.15ms]
+(pass) mounted degradation routes > DELETE /api/integration/int_1/connect/oauth/att_1 answers 204 [0.13ms]
+(pass) mounted degradation routes > POST /api/integration/int_1/connect/command answers 404 [0.11ms]
+(pass) mounted degradation routes > GET /api/integration/int_1/connect/command/att_1 answers 404 [0.15ms]
+(pass) mounted degradation routes > DELETE /api/integration/int_1/connect/command/att_1 answers 404 [0.12ms]
+(pass) mounted degradation routes > POST /api/credential/cred_1/activate answers 400 [0.14ms]
+(pass) mounted degradation routes > PATCH /api/credential/cred_1 answers 400 [0.11ms]
+(pass) mounted degradation routes > DELETE /api/credential/cred_1 answers 400 [0.15ms]
+(pass) mounted degradation routes > POST /api/pair answers 400 [0.11ms]
+(pass) mounted degradation routes > GET /api/experimental/usage/limits answers 200 [0.20ms]
+(pass) mounted degradation routes > POST /api/experimental/mcp/demo/connect answers 204 [0.12ms]
+(pass) mounted degradation routes > POST /api/experimental/mcp/demo/disconnect answers 204 [0.11ms]
+(pass) mounted degradation routes > GET /api/worktree returns a bare empty array [0.20ms]
+(pass) mounted degradation routes > GET /api/experimental/migration/v1 reports completed [0.18ms]
+(pass) mounted degradation routes > GET /api/experimental/persistent-pty/:ptyID/connect answers the PtyNotFoundError envelope [0.18ms]
+(pass) runtime frame dispatch > permission, question and translated frames reach the shared event bus [0.69ms]
+(pass) runtime frame dispatch > holds frames until the durable entry names the step, then replays them under its id [0.29ms]
+(pass) runtime frame dispatch > a projector error is reported and the subscription keeps consuming frames [0.12ms]
+
+test/http/form.test.ts:
+(pass) form injection endpoint > create files a pending form and publishes form.created [0.77ms]
+(pass) form injection endpoint > create rejects a payload without a title, without fields, or with an unknown field type [0.21ms]
+(pass) form injection endpoint > the session list is scoped and the global list keeps insertion order [0.36ms]
+(pass) form injection endpoint > a reply to an injected form sends nothing on the wire but publishes form.replied [0.30ms]
+(pass) real question frames > the recorded question dialog becomes a form mirroring questions[] [0.38ms]
+(pass) real question frames > a multi-question reply maps back positionally onto questions[].id [0.26ms]
+(pass) real question frames > a partial answer maps only the questions it answers [0.09ms]
+(pass) real question frames > an answer that leaves every question unanswered is refused and keeps the form pending [0.16ms]
+(pass) dialog frames > an input frame becomes a one-field string form and answers with value [0.19ms]
+(pass) dialog frames > a confirm frame answers with confirmed [0.08ms]
+(pass) dialog frames > a select frame carries its options and answers with value [0.13ms]
+(pass) dialog frames > a permission prompt is not filed as a form and an answer type mismatch is refused [0.24ms]
+(pass) form cancel > cancel answers the frame with cancelled:true and publishes form.cancelled [0.22ms]
+(pass) form cancel > cancelling an injected form sends nothing and still settles it [0.10ms]
+(pass) form cancel > an unknown form id answers 404 FormNotFoundError [0.06ms]
+(pass) status frames and failures > status frames are dropped and counted [0.12ms]
+(pass) status frames and failures > a question frame with no questions is not filed [0.05ms]
+(pass) status frames and failures > a frame without an id or a session is not filed [0.08ms]
+(pass) status frames and failures > a form filed by another session is not answerable [0.13ms]
+(pass) status frames and failures > replying without a transport answers 503 and keeps the frame-backed form pending [0.13ms]
+(pass) status frames and failures > an answer naming an unknown field is refused and keeps the form pending [0.11ms]
+
+test/http/session-read.test.ts:
+(pass) GET /api/session > maps list rows onto the opencode public session shape [0.99ms]
+(pass) GET /api/session > keeps projectID stable across calls for the same directory [0.25ms]
+(pass) GET /api/session > returns an empty list with an empty cursor [0.20ms]
+(pass) GET /api/session > pages with limit and an opaque cursor [0.36ms]
+(pass) GET /api/session > rejects a limit that is not a positive integer [0.21ms]
+(pass) GET /api/session > rejects a cursor it did not issue [0.22ms]
+(pass) GET /api/session > serves epoch-millis time.archived and filters by the archived query [0.63ms]
+(pass) GET /api/session/active > reports streaming sessions and skips ones whose state cannot be read [0.57ms]
+(pass) GET /api/session/active > returns an empty record when the transport holds no state [0.24ms]
+(pass) GET /api/session/:id > returns the mapped session for a durable id and for the routing id [0.28ms]
+(pass) GET /api/session/:id > unknown id returns 404 SessionNotFoundError [0.23ms]
+(pass) session messages > honours order=desc for the first page and keeps it across the cursor [0.99ms]
+(pass) session messages > rejects an order it does not declare [0.21ms]
+(pass) session messages > maps user, assistant and tool parts with stable entry ids [0.35ms]
+(pass) session messages > marks a tool call without a result as running [0.23ms]
+(pass) session messages > falls back to projected messages when the host refuses entries [0.30ms]
+(pass) session messages > pages messages and rejects an unknown session [0.25ms]
+(pass) session messages > GET /api/session/:id/message/:messageID returns one message or 404 [0.36ms]
+(pass) session messages > a completed turn returns its assistant text block when the transport is attached elsewhere [0.48ms]
+(pass) session messages > a fetch after a reconnect still returns the conversation once, not the attached notices [0.68ms]
+(pass) empty read clusters > inbox and diff return empty arrays for a known session [0.34ms]
+(pass) empty read clusters > unknown session still 404s on inbox and diff [0.37ms]
+(pass) POST session wait, view and log > wait returns 204 immediately when the transport cannot wait [0.38ms]
+(pass) POST session wait, view and log > wait passes a bounded timeout and returns 204 once idle [0.32ms]
+(pass) POST session wait, view and log > wait never outlives its deadline when the transport never settles [52.82ms]
+(pass) POST session wait, view and log > wait 404s for an unknown session [0.54ms]
+(pass) POST session wait, view and log > view records the idle timestamp and returns 204 [0.59ms]
+(pass) POST session wait, view and log > view rejects a payload without an idle timestamp [0.23ms]
+(pass) POST session wait, view and log > log serves a minimal SSE stream that closes [0.29ms]
+(pass) transport wiring > answers 503 ServiceUnavailableError when no transport is wired [0.42ms]
+
+test/http/wiring.test.ts:
+(pass) mounted fs/location handlers > GET /api/fs/list lists a real directory with location and data [0.97ms]
+(pass) mounted fs/location handlers > GET /api/vcs answers a valid empty branch for a directory outside a repository [30.90ms]
+(pass) mounted fs/location handlers > GET /api/fs/list without credentials is rejected before routing [0.39ms]
+(pass) mounted session handlers > GET /api/session returns the mapped session list with a cursor [0.37ms]
+(pass) mounted session handlers > GET /api/session/active is not swallowed by the :sessionID route [0.26ms]
+(pass) mounted session handlers > GET /api/session/:sessionID returns one session [0.22ms]
+(pass) mounted session handlers > GET /api/session/nope returns a 404 SessionNotFoundError [0.23ms]
+(pass) mounted session handlers > POST /api/session/:sessionID/view records the idle timestamp [0.26ms]
+
+test/http/fs-location.test.ts:
+(pass) handleFsList > lists direct children with the location envelope [0.64ms]
+(pass) handleFsList > accepts path as an alias for the location directory [0.16ms]
+(pass) handleFsList > prefers location[directory] over path [0.15ms]
+(pass) handleFsList > non-existent directory returns 404 FileNotFoundError [0.13ms]
+(pass) handleFsList > a file path returns 400 InvalidRequestError [0.05ms]
+(pass) handleFsFind > matches names recursively and keeps entry paths relative to the location [1.11ms]
+(pass) handleFsFind > matches directory names as directories [0.71ms]
+(pass) handleFsFind > matching is case-insensitive [0.64ms]
+(pass) handleFsFind > skips .git internals [0.63ms]
+(pass) handleFsFind > honours limit and clamps it to the maximum [0.77ms]
+(pass) handleFsFind > rejects a missing query and a non-positive limit [0.18ms]
+(pass) handleFsFind > non-existent directory returns 404 FileNotFoundError [0.06ms]
+(pass) handleLocationGet > returns the requested location as a bare Location.PublicInfo [0.09ms]
+(pass) handleLocationGet > defaults to the process working directory [0.10ms]
+(pass) handleProjectList > returns the working directory project with epoch-millis time and sandboxes [0.21ms]
+(pass) handleConfigGet > returns an empty configuration list [0.09ms]
+(pass) handleVcsGet > reports the current and default branch inside a repository [43.03ms]
+(pass) handleVcsGet > returns a valid empty branch outside a repository instead of null [86.02ms]
+(pass) handleVcsBase > returns a null base with the location envelope [0.37ms]
+(pass) handleVcsDiff > parses the unified diff into file diffs with patch text and status [17.64ms]
+(pass) handleVcsDiff > marks a newly added file [38.33ms]
+(pass) handleVcsDiff > returns an empty array outside a repository [14.47ms]
+(pass) gitRead > returns stdout on success and null instead of throwing on failure [44.27ms]
+
+test/http/event.test.ts:
+(pass) GET /api/event > first frame is server.connected and the response is an SSE stream [0.86ms]
+(pass) GET /api/event > a published event arrives as the next data frame [0.19ms]
+(pass) GET /api/event > ?types= filters events but always sends server.connected first [0.16ms]
+(pass) GET /api/event > a heartbeat comment is sent on the configured interval [21.74ms]
+(pass) GET /api/event > a slow subscriber is dropped and closed instead of buffering without bound [0.19ms]
+(pass) router > matches :params and reports allowed methods on a path match [0.22ms]
+(pass) server mounting > GET /api/event is mounted behind basic auth and streams live events [3.35ms]
+
+test/http/session-sibling-read.test.ts:
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+(pass) a read of a sibling session during a running turn > leaves the running session's deltas and execution event intact [8.68ms]
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+(pass) a read of a sibling session during a running turn > refuses a sibling with no transcript path instead of attaching it mid-run [7.07ms]
+
+test/http/catalogs.test.ts:
+(pass) handleModelList > projects senpi models into the catalog shape with the location envelope [0.47ms]
+(pass) handleModelList > the old contextWindow-shaped item no longer satisfies the model contract [0.04ms]
+(pass) handleModelList > an empty model list stays an empty array [0.13ms]
+(pass) handleModelList > answers 503 when no transport is wired [0.11ms]
+(pass) handleModelList > a transport failure becomes a 503 error envelope [0.08ms]
+(pass) handleModelList > an unknown location directory answers 404 FileNotFoundError [0.10ms]
+(pass) handleProviderList > dedupes providers from the model list in first-seen order [0.11ms]
+(pass) handleProviderList > no models means no providers, not null [0.08ms]
+(pass) handleIntegrationList > reports the provider the host serves and the store holds a credential for [0.88ms]
+(pass) handleIntegrationList > keeps a provider out of the list when the store holds no credential for it [0.64ms]
+(pass) handleIntegrationList > reports nothing when the host serves no models even if a credential exists [0.38ms]
+(pass) handleIntegrationList > reports nothing when the store has an entry without key material [0.37ms]
+(pass) handleIntegrationList > reads a pooled credential whose flat fields are empty through its account slot [0.37ms]
+(pass) handleIntegrationList > names an oauth credential as such and reports nothing without a credential store [0.44ms]
+(pass) handleAgentList > serves one primary agent the TUI can select without a transport [0.14ms]
+(pass) handleAgentList > keeps the agent id and order stable across reads [0.12ms]
+(pass) empty catalogs > /api/skill answers an empty array [0.10ms]
+(pass) empty catalogs > /api/reference answers an empty array [0.06ms]
+(pass) empty catalogs > /api/mcp answers an empty array [0.04ms]
+(pass) empty catalogs > /api/integration answers an empty array [0.04ms]
+(pass) empty catalogs > /api/websearch/provider answers an empty array [0.04ms]
+(pass) empty catalogs > /api/permission/saved answers an empty array [0.12ms]
+(pass) empty catalogs > /api/plugin answers an empty array [0.06ms]
+(pass) empty catalogs > /api/form answers an empty array [0.05ms]
+(pass) empty catalogs > /api/command answers an empty array [0.06ms]
+(pass) empty catalogs > /api/mcp/resource answers an Mcp.ResourceCatalog, not a bare list [0.13ms]
+(pass) empty catalogs > /api/plugin answers the empty plugin.list envelope the TUI reads at startup [0.10ms]
+(pass) handleCommandList > maps the senpi command surface and omits an absent description [0.19ms]
+(pass) handleCommandList > a transport without a command surface answers an empty array [0.10ms]
+(pass) handleSessionSwitchModel > calls setModel with the TUI's nested Model.Ref and answers 204 [0.12ms]
+(pass) handleSessionSwitchModel > accepts a flat provider/id body [0.05ms]
+(pass) handleSessionSwitchModel > rejects an incomplete selection before touching the transport [0.08ms]
+(pass) handleSessionSwitchModel > answers 503 without a transport [0.09ms]
+(pass) handleSessionSwitchAgent > records the agent and answers a no-op 204 [0.07ms]
+(pass) handleSessionSwitchAgent > requires an agent name [0.05ms]
+(pass) handleSessionSwitchAgent > requires a session id in the path [0.06ms]
+(pass) handleSessionSwitchAgent > works without a transport because nothing goes on the wire [0.04ms]
+
+test/http/surface.test.ts:
+(pass) TUI surface fixture > covers every client endpoint the TUI calls [0.15ms]
+(pass) TUI surface fixture > is current with the fork's client and TUI call sites [420.86ms]
+(pass) TUI surface mounts > the router mounts every endpoint the TUI calls [0.91ms]
+(pass) TUI surface responses > GET /api/agent [2.88ms]
+(pass) TUI surface responses > GET /api/command [0.45ms]
+(pass) TUI surface responses > GET /api/config [0.21ms]
+(pass) TUI surface responses > POST /api/credential/:credentialID/activate [0.18ms]
+(pass) TUI surface responses > DELETE /api/credential/:credentialID [0.22ms]
+(pass) TUI surface responses > PATCH /api/credential/:credentialID [0.19ms]
+(pass) TUI surface responses > GET /api/event [0.42ms]
+(pass) TUI surface responses > POST /api/experimental/mcp/:server/connect [0.35ms]
+(pass) TUI surface responses > POST /api/experimental/mcp/:server/disconnect [0.18ms]
+(pass) TUI surface responses > GET /api/experimental/media/:hash [0.27ms]
+(pass) TUI surface responses > GET /api/experimental/migration/v1 [0.18ms]
+(pass) TUI surface responses > POST /api/experimental/persistent-pty/:ptyID/connect-token [0.19ms]
+(pass) TUI surface responses > POST /api/experimental/session/:sessionID/terminal [0.18ms]
+(pass) TUI surface responses > GET /api/experimental/session/:sessionID/terminal [0.22ms]
+(pass) TUI surface responses > GET /api/experimental/persistent-pty/:ptyID/snapshot [0.14ms]
+(pass) TUI surface responses > GET /api/experimental/session/:sessionID/export [0.42ms]
+(pass) TUI surface responses > GET /api/experimental/session/:sessionID/log [0.19ms]
+(pass) TUI surface responses > GET /api/experimental/session/stats [0.15ms]
+(pass) TUI surface responses > POST /api/experimental/session/:sessionID/wait [0.16ms]
+(pass) TUI surface responses > GET /api/experimental/usage/limits [0.19ms]
+(pass) TUI surface responses > GET /api/fs/find [0.13ms]
+(pass) TUI surface responses > GET /api/fs/list [0.32ms]
+(pass) TUI surface responses > GET /api/fs/read/:path [0.41ms]
+(pass) TUI surface responses > GET /api/form [0.23ms]
+(pass) TUI surface responses > DELETE /api/integration/:integrationID/connect/command/:attemptID [0.14ms]
+(pass) TUI surface responses > POST /api/integration/:integrationID/connect/command [0.19ms]
+(pass) TUI surface responses > GET /api/integration/:integrationID/connect/command/:attemptID [0.13ms]
+(pass) TUI surface responses > POST /api/integration/:integrationID/connect/external [0.13ms]
+(pass) TUI surface responses > POST /api/integration/:integrationID/connect/key [0.12ms]
+(pass) TUI surface responses > GET /api/integration [0.19ms]
+(pass) TUI surface responses > DELETE /api/integration/:integrationID/connect/oauth/:attemptID [0.15ms]
+(pass) TUI surface responses > POST /api/integration/:integrationID/connect/oauth/:attemptID/complete [0.14ms]
+(pass) TUI surface responses > POST /api/integration/:integrationID/connect/oauth [0.19ms]
+(pass) TUI surface responses > GET /api/integration/:integrationID/connect/oauth/:attemptID [0.16ms]
+(pass) TUI surface responses > GET /api/location [0.23ms]
+(pass) TUI surface responses > POST /api/location/reload [0.18ms]
+(pass) TUI surface responses > GET /api/mcp [0.17ms]
+(pass) TUI surface responses > GET /api/mcp/resource [0.17ms]
+(pass) TUI surface responses > GET /api/session/:sessionID/message [0.20ms]
+(pass) TUI surface responses > GET /api/model/default [0.20ms]
+(pass) TUI surface responses > GET /api/model [0.23ms]
+(pass) TUI surface responses > GET /api/session/:sessionID/permission [0.22ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/permission/:requestID/reply [0.19ms]
+(pass) TUI surface responses > GET /api/permission/saved [0.17ms]
+(pass) TUI surface responses > POST /api/plugin/check [0.24ms]
+(pass) TUI surface responses > GET /api/plugin [0.19ms]
+(pass) TUI surface responses > POST /api/plugin/update [0.13ms]
+(pass) TUI surface responses > GET /api/project [0.21ms]
+(pass) TUI surface responses > GET /api/provider [0.16ms]
+(pass) TUI surface responses > GET /api/reference [0.17ms]
+(pass) TUI surface responses > POST /api/rpc/:rpcID/:method [0.18ms]
+(pass) TUI surface responses > GET /api/info [0.22ms]
+(pass) TUI surface responses > POST /api/pair [0.12ms]
+(pass) TUI surface responses > GET /api/session/active [0.15ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/background [0.19ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/command [0.16ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/compact [0.18ms]
+(pass) TUI surface responses > POST /api/session [0.67ms]
+(pass) TUI surface responses > GET /api/session/:sessionID/diff [0.17ms]
+(pass) TUI surface responses > PUT /api/session/:sessionID/environment [0.19ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/fork [0.64ms]
+(pass) TUI surface responses > DELETE /api/session/:sessionID/form/:formID [0.18ms]
+(pass) TUI surface responses > GET /api/session/:sessionID/form [0.15ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/form/:formID/reply [0.14ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/generate [0.15ms]
+(pass) TUI surface responses > GET /api/session/:sessionID [0.15ms]
+(pass) TUI surface responses > DELETE /api/session/:sessionID/inbox/:inboxID [0.18ms]
+(pass) TUI surface responses > GET /api/session/:sessionID/inbox [0.20ms]
+(pass) TUI surface responses > PATCH /api/session/:sessionID/inbox/:inboxID [0.17ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/interrupt [0.21ms]
+(pass) TUI surface responses > GET /api/session [0.23ms]
+(pass) TUI surface responses > GET /api/session/:sessionID/message/:messageID [0.18ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/move [0.15ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/prompt [0.15ms]
+(pass) TUI surface responses > DELETE /api/session/:sessionID [0.48ms]
+(pass) TUI surface responses > DELETE /api/session/:sessionID/revert [0.14ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/revert/commit [2.29ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/revert/stage [0.31ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/shell [0.14ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/agent [0.14ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/model [0.12ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/synthetic [0.53ms]
+(pass) TUI surface responses > PATCH /api/session/:sessionID [0.12ms]
+(pass) TUI surface responses > POST /api/session/:sessionID/view [0.25ms]
+(pass) TUI surface responses > GET /api/shell/:id [0.16ms]
+(pass) TUI surface responses > GET /api/shell [0.22ms]
+(pass) TUI surface responses > GET /api/shell/:id/output [0.14ms]
+(pass) TUI surface responses > DELETE /api/shell/:id [0.13ms]
+(pass) TUI surface responses > GET /api/skill [0.18ms]
+(pass) TUI surface responses > GET /api/vcs/base [0.16ms]
+(pass) TUI surface responses > GET /api/vcs/branch [16.38ms]
+(pass) TUI surface responses > GET /api/vcs/diff [16.75ms]
+(pass) TUI surface responses > GET /api/vcs [31.73ms]
+(pass) TUI surface responses > GET /api/vcs/status [14.82ms]
+(pass) TUI surface responses > GET /api/websearch/provider [0.40ms]
+(pass) TUI surface responses > POST /api/worktree [0.20ms]
+(pass) TUI surface responses > GET /api/worktree [0.19ms]
+(pass) TUI surface responses > POST /api/worktree/refresh [0.14ms]
+(pass) TUI surface responses > DELETE /api/worktree [0.18ms]
+
+test/http/permission.test.ts:
+(pass) permission injection endpoint > create files a pending request and publishes permission.asked [0.78ms]
+(pass) permission injection endpoint > create rejects a payload without an action or with non-string resources [0.19ms]
+(pass) permission injection endpoint > the list is scoped to the session and keeps insertion order [0.17ms]
+(pass) permission injection endpoint > a reply to an injected request sends nothing on the wire but publishes permission.replied [0.33ms]
+(pass) real permission frames > a recorded frame is filed with its call id and prompt options [0.33ms]
+(pass) real permission frames > a routed frame may name its own session [0.20ms]
+(pass) real permission frames > a frame without a session or a frame id is ignored, and non-permission frames never file [0.21ms]
+(pass) real permission frames > once answers the prompt's first option [0.24ms]
+(pass) real permission frames > always answers the prompt's second option and records the saved patterns [0.15ms]
+(pass) real permission frames > reject answers Deny and parks no feedback [0.20ms]
+(pass) real permission frames > reject with a message answers the deny branch, then the feedback input carries the text [0.15ms]
+(pass) real permission frames > a feedback input for another tool call is left alone [0.11ms]
+(pass) reply failures > an unknown request id answers 404 PermissionNotFoundError [0.06ms]
+(pass) reply failures > a request filed by another session is not answerable [0.15ms]
+(pass) reply failures > an unknown decision answers 400 and keeps the request pending [0.16ms]
+(pass) reply failures > replying without a transport answers 503 and keeps the request pending [0.14ms]
+
+test/http/config.test.ts:
+(pass) resolveConfig > missing password throws the documented message [1.46ms]
+(pass) resolveConfig > empty password is treated as missing [0.03ms]
+(pass) resolveConfig > defaults apply when only the password is set [0.02ms]
+(pass) resolveConfig > environment overrides are honoured [0.02ms]
+(pass) resolveConfig > port 0 is accepted for an ephemeral bind [0.01ms]
+(pass) resolveConfig > invalid port values are rejected [0.04ms]
+(pass) resolveConfig > defaults are documented once
+
+test/http/integration.test.ts:
+(pass) mounted integration route > GET /api/integration reports a connection when the transport reports models [0.85ms]
+(pass) mounted integration route > GET /api/integration reports none when the host reports no models [0.45ms]
+(pass) mounted integration route > the connect and credential writes still answer their declared errors [0.50ms]
+
+test/http/session-write.test.ts:
+(pass) PATCH /api/session/:sessionID > rename calls setSessionName, publishes session.renamed and persists the title [1.71ms]
+(pass) PATCH /api/session/:sessionID > rename re-attaches the target session when the transport holds another one [0.87ms]
+(pass) PATCH /api/session/:sessionID > archive publishes session.archived and restore publishes session.unarchived [1.06ms]
+(pass) PATCH /api/session/:sessionID > metadata and permissions are stored bridge-side and published [1.69ms]
+(pass) PATCH /api/session/:sessionID > a malformed patch is refused before anything is written [0.44ms]
+(pass) PATCH /api/session/:sessionID > an unknown session answers 404 SessionNotFoundError [0.34ms]
+(pass) PATCH /api/session/:sessionID > a transport that cannot rename answers 400 rather than a fake 204 [0.32ms]
+(pass) DELETE /api/session/:sessionID > unloads, removes the record, publishes session.deleted and 404s afterwards [0.95ms]
+(pass) DELETE /api/session/:sessionID > delete of an unknown session answers 404 [0.41ms]
+(pass) POST /api/session/:sessionID/move > updates the map cwd, persists it and publishes session.moved [0.71ms]
+(pass) POST /api/session/:sessionID/move > a relative directory is refused [0.26ms]
+(pass) POST /api/session/:sessionID/compact > drives the transport and answers the compaction receipt [0.41ms]
+(pass) POST /api/session/:sessionID/compact > a transport without compact answers 400 [0.24ms]
+(pass) POST /api/session/:sessionID/fork > forks before a message and returns the new PublicSessionInfo [0.66ms]
+(pass) POST /api/session/:sessionID/fork > a full-history fork uses clone [0.62ms]
+(pass) POST /api/session/:sessionID/fork > a cancelled fork answers 409 ConflictError [0.25ms]
+(pass) POST /api/session/:sessionID/fork > a transport without fork answers 400 [0.23ms]
+(pass) session revert > stage, clear and commit report the declared InvalidRequestError when unsupported [0.30ms]
+(pass) session revert > stage returns {data} when the transport can express it [0.22ms]
+(pass) PUT /api/session/:sessionID/environment > stores the variables in the session map metadata [0.56ms]
+(pass) PUT /api/session/:sessionID/environment > rejects a non-string value and a non-shell name [0.29ms]
+
+test/http/server.test.ts:
+(pass) GET /api/info > valid credentials return a 200 body that satisfies the server.info contract [0.61ms]
+(pass) GET /api/info > missing Authorization header returns 401 [0.26ms]
+(pass) GET /api/info > wrong password returns 401 [0.16ms]
+(pass) GET /api/info > wrong username returns 401 even with the right password [0.21ms]
+(pass) GET /api/info > non-Basic authorization scheme returns 401 [0.11ms]
+(pass) GET /api/info > wrong method on the known path returns 405 [0.15ms]
+(pass) X-Omo-Bridge-Version > every response carries the package version, including router errors and 401s [0.47ms]
+(pass) routing > unknown path returns 404 with an error envelope [0.13ms]
+(pass) routing > paths are matched exactly, so a trailing slash is not the info route [0.10ms]
+(pass) routing > authentication is enforced before routing [0.10ms]
+
+test/http/media.test.ts:
+(pass) content-addressed media store > serves stored bytes under their sha256 with the recorded content type [1.65ms]
+(pass) content-addressed media store > stores the same bytes once and keeps the first recorded content type [0.97ms]
+(pass) content-addressed media store > unknown hash answers 404 FileNotFoundError [1.17ms]
+(pass) content-addressed media store > malformed hash answers 400 InvalidRequestError without touching the filesystem [0.75ms]
+(pass) content-addressed media store > a blob whose bytes no longer match its hash is not served [1.08ms]
+(pass) media-uri capability negotiation on message reads > with the capability, image data becomes a media ref and the bytes are fetchable [1.31ms]
+(pass) media-uri capability negotiation on message reads > the capability is read from a comma-separated header list [0.89ms]
+(pass) media-uri capability negotiation on message reads > without the capability, image data stays inline and nothing is stored [0.28ms]
+(pass) media-uri capability negotiation on message reads > session.message.get negotiates the same way [0.89ms]
+(pass) media-uri capability negotiation on message reads > inbox.list accepts the capability header [0.23ms]
+
+test/http/session-errors.test.ts:
+(pass) unknown session over the mounted router > switch model answers 404 SessionNotFoundError instead of 503 [0.71ms]
+(pass) unknown session over the mounted router > switch agent answers 404 SessionNotFoundError [0.27ms]
+(pass) unknown session over the mounted router > prompt answers 404 SessionNotFoundError [0.22ms]
+(pass) unknown session over the mounted router > permission create answers 404 SessionNotFoundError [0.18ms]
+(pass) unknown session over the mounted router > form create answers 404 SessionNotFoundError [0.16ms]
+(pass) unknown session over the mounted router > the known session still answers its own statuses [0.29ms]
+(pass) a host that reports the session itself as unknown > the transport's session_not_found answers 404 with the path's session id [0.25ms]
+(pass) a genuinely disconnected transport > switch model still answers 503 ServiceUnavailableError [0.21ms]
+
+test/http/message-restart.test.ts:
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+(pass) session messages across a restart > a completed turn answers with the assistant text block, not the attached catalog notices [4.69ms]
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+(pass) session messages across a restart > closing and reopening the runtime over the same state still answers with the conversation [7.20ms]
+omo-bridge: could not read the model catalog from the private host: undefined is not an object (evaluating 'this.getData(response).models')
+(pass) session messages across a restart > a message read during a running turn leaves the attachment and the stream alone [5.18ms]
+
+test/model/message-projection.test.ts:
+(pass) projectEntries > maps user text and images onto the opencode user message [0.38ms]
+(pass) projectEntries > maps assistant text, thinking and completed tool calls [0.16ms]
+(pass) projectEntries > marks failed tool calls as error and unanswered calls as running [0.07ms]
+(pass) projectEntries > maps bash execution, compaction and model switches [0.10ms]
+(pass) projectEntries > marks a cancelled bash execution as killed [0.03ms]
+(pass) projectEntries > skips unknown entry types, senpi-only roles and malformed entries with a count [0.08ms]
+(pass) projectEntries > keeps entry ids stable as the only message ids [0.03ms]
+
+test/model/session-map.test.ts:
+(pass) durable keys > prefers durableSessionId, then sessionPath, and never keys on the routing id [1.05ms]
+(pass) durable keys > drops senpi-only fields from the record and from the persisted file [0.62ms]
+(pass) durable keys > preserves the archive flag while refreshing routing identity [0.22ms]
+(pass) corrupt state > warns and rebuilds from disk when sessions.json is not JSON [1.54ms]
+(pass) corrupt state > warns and rebuilds when sessions.json is valid JSON of the wrong shape [0.92ms]
+(pass) corrupt state > counts unparseable lines and skips files with no session header [1.45ms]
+(pass) flush > writes sessions.json atomically with mode 0600 and no temp file [0.59ms]
+(pass) flush > creates a missing state directory and round-trips through open() [0.60ms]
+(pass) list > orders by lastSeenAt desc then key asc and pages with opaque cursors [0.40ms]
+(pass) list > emits a previous cursor for later pages and ignores an invalid cursor [0.27ms]
+(pass) list > hides archived sessions unless asked [0.23ms]
+(pass) project identity > is stable across symlinked paths and trailing separators [0.51ms]
+(pass) project identity > maps a record onto the opencode public session shape [0.25ms]
+(pass) project identity > archived records carry time.archived in epoch millis [0.20ms]
+(pass) project identity > falls back to the directory name as the title [0.18ms]
+(pass) mutations > get returns copies so callers cannot corrupt the map [0.20ms]
+(pass) mutations > rename trims the title and remove drops the record [0.19ms]
+
+test/e2e/real-client.test.ts:
+(skip) the real my-tui client against the bridge > (unnamed)
+(skip) the real my-tui client against the bridge > a session created with a client-minted id answers every later call
+(skip) the real my-tui client against the bridge > location.get parses as a bare location
+(skip) the real my-tui client against the bridge > integration.list reports a connected provider the client predicate accepts
+
+test/senpi/transport.test.ts:
+(pass) error mapping > a missing private socket maps to socket_missing, and no ENOENT escapes the process [0.34ms]
+(pass) error mapping > a host authentication refusal maps to auth_failed [1.36ms]
+(pass) error mapping > a host refusal for a session it does not hold maps to session_not_found [0.06ms]
+(pass) error mapping > a lost transport maps to transport_gone [1.27ms]
+(pass) client declaration > the first set_client_info frame declares interactive_user and question [0.80ms]
+(pass) client declaration > abort with intent stop without interactive_user maps to stop_requires_interactive_client [1.07ms]
+(pass) run boundary > streaming follows the attached session's agent_start and agent_end [0.89ms]
+(pass) queue and idle facade > exposes the four methods at runtime [0.03ms]
+(pass) queue and idle facade > answers the host's pending-input ledger and command surface [3.53ms]
+(pass) queue and idle facade > the inbox handler lists two enqueued inputs through the real transport [1.30ms]
+(pass) queue and idle facade > waitForIdle resolves within 100ms of the turn ending [1.08ms]
+(pass) queue and idle facade > the new calls refuse a transport that never connected [0.18ms]
+(pass) module surface > AttachClient is reachable from the resolved package root [0.03ms]
+(pass) module surface > importing the transport emits no extension_ui_request on stdout [0.04ms]
+
+test/senpi/integration.test.ts:
+(skip) private host integration > connect, open session, list, state, dispose
+
+5 tests skipped:
+(skip) the real my-tui client against the bridge > (unnamed)
+(skip) the real my-tui client against the bridge > a session created with a client-minted id answers every later call
+(skip) the real my-tui client against the bridge > location.get parses as a bare location
+(skip) the real my-tui client against the bridge > integration.list reports a connected provider the client predicate accepts
+(skip) private host integration > connect, open session, list, state, dispose
+------------------------------------|---------|---------|-------------------
+File                                | % Funcs | % Lines | Uncovered Line #s
+------------------------------------|---------|---------|-------------------
+All files                           |   93.39 |   91.77 |
+ scripts/contracts-extract.ts       |   85.45 |   87.24 | 678-679,746-747,838,897-898,905-906,923-928,936-940,953-954,961-962,978-982,990,1024-1031,1037-1038,1053,1062-1063,1068,1080-1084,1090-1098,1104-1108,1148,1166,1174,1188-1191,1193,1209-1218,1242-1243,1247-1248,1261-1274,1318,1345,1440,1478-1480,1484-1512,1516-1539,1543-1546,1551-1561,1563-1565
+ scripts/surface-extract.ts         |  100.00 |   91.33 | 193-205
+ src/bridge/ui-requests.ts          |  100.00 |  100.00 | 
+ src/config.ts                      |  100.00 |  100.00 | 
+ src/contract/senpi-schema.ts       |  100.00 |  100.00 | 
+ src/contract/validate.ts           |   91.67 |   98.44 | 
+ src/git.ts                         |  100.00 |   90.48 | 27-28
+ src/http/events.ts                 |  100.00 |  100.00 | 
+ src/http/handlers/catalogs.ts      |   98.33 |   95.85 | 108,152,185-186,230-232,332-334
+ src/http/handlers/degraded.ts      |  100.00 |   97.95 | 36-37
+ src/http/handlers/form.ts          |   94.74 |   90.82 | 132,198,208,223,230,247-249,498-503,578,602-603,630-636,653,713-724,730-733,736-739
+ src/http/handlers/fs-location.ts   |   93.48 |   85.40 | 91,137-138,167-168,181,239-240,298,352-353,359,364,368,374,384-385,390-392,396-410,419-428
+ src/http/handlers/inbox.ts         |   95.45 |   88.72 | 95,107,115-116,158-160,212-213,228,238,247,310-315,319-321,344-348,372-380,393-400
+ src/http/handlers/media.ts         |  100.00 |   96.43 | 85-87
+ src/http/handlers/permission.ts    |   98.18 |   98.25 | 78,132,142,150
+ src/http/handlers/problem.ts       |  100.00 |  100.00 | 
+ src/http/handlers/prompt.ts        |   94.12 |   87.66 | 76,123,143,176-186,233,243-246,253,283-284,292-296,308-311,345-346,380,387,400,426,464,466,487,555,560-567
+ src/http/handlers/session-write.ts |  100.00 |   89.50 | 110-111,168-173,180-182,189-191,241,251,271,278-279,294,346-348,355-356,371,374,415,419,423,428,482-484,487,508,528,532,566,588,596-598,602-604,619
+ src/http/handlers/sessions.ts      |   96.77 |   96.62 | 41,138,148,161,198,322-329,356-357,381
+ src/http/handlers/shell.ts         |   94.44 |   96.48 | 81,121,131,147,166,170
+ src/http/router.ts                 |  100.00 |   98.36 | 
+ src/http/routes/events.ts          |  100.00 |   97.18 | 86-87
+ src/http/routes/index.ts           |  100.00 |  100.00 | 
+ src/http/server.ts                 |  100.00 |   98.75 | 
+ src/launcher.ts                    |   75.00 |   69.84 | 95,204,209,214,217,226,237,243,255,285,293,326,380,385,405,411,439-440,443,469-487,492-500,515,518-519,522-527,562,566-576,663-666,696-697,711-713,717-719,732-734,748,763-764,778-779,834-835,884-934,943,950-953,967,974,993-1025,1029-1056
+ src/model/message-projection.ts    |  100.00 |   92.56 | 110-112,284-285,298-299,311-312,345-346,352-358
+ src/model/session-map.ts           |   91.80 |   96.44 | 138,350-356,476-485
+ src/runtime.ts                     |   80.56 |   93.58 | 49-51,106,192-199,295-296,307,312
+ src/senpi/credentials.ts           |  100.00 |   91.67 | 38
+ src/senpi/errors.ts                |  100.00 |  100.00 | 
+ src/senpi/raw.ts                   |   68.18 |   76.98 | 80-83,126-128,152,156-159,163-167,171-175,179-185
+ src/senpi/socket-path.ts           |  100.00 |   80.95 | 31-34
+ src/senpi/transport.ts             |   80.33 |   83.98 | 118-129,151-155,225-240,262,266,301
+ src/translate/lifecycle.ts         |   95.83 |   98.67 | 145-147
+ src/translate/stream.ts            |   79.17 |   90.91 | 28-30,146-147,157-158,187,227-228,234-240,251-253
+ src/translate/tools.ts             |   95.24 |   93.72 | 64-65,114-115,145-146,157-158,163-164,185-186,227-228
+ src/tui-launch.ts                  |   81.82 |   50.00 | 57-73,113,119-153
+ test/senpi/fake-host.ts            |   94.44 |   99.58 | 
+ test/senpi/surface-harness.ts      |   57.14 |   74.78 | 83-94,103-106,111-115,131-134,147-150,155-177,193-194,217-220
+------------------------------------|---------|---------|-------------------
+
+ 874 pass
+ 5 skip
+ 0 fail
+ 2992 expect() calls
+Ran 879 tests across 41 files. [6.09s]
