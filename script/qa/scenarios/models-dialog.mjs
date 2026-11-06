@@ -4,6 +4,10 @@
 // paints after the slash command.
 
 const DIALOG_TITLE = "Select model";
+// Under the `new-designs` experiment the dialog gives its header row to the search input
+// (`dialog-select.tsx:688,715`), so the connected picker paints this placeholder instead of its
+// title (`dialog-model.tsx:208,215`). Only one of the two is ever on screen.
+const CONNECTED_DIALOG_TITLE = "Search models";
 const FREE_DIALOG_TITLE = "Free models";
 const EMPTY_VIEW = /No (results found|items available)/iu;
 
@@ -66,7 +70,8 @@ export default {
       await tui.press("Enter");
 
       const opened = await tui.waitFor(
-        (text) => text.includes(DIALOG_TITLE) || text.includes(FREE_DIALOG_TITLE),
+        (text) =>
+          text.includes(DIALOG_TITLE) || text.includes(CONNECTED_DIALOG_TITLE) || text.includes(FREE_DIALOG_TITLE),
         15_000,
         250,
       );
@@ -74,7 +79,13 @@ export default {
       const frameAfter = await tui.text();
       const visible = visibleModels(frameAfter, names);
       const emptyView = EMPTY_VIEW.test(frameAfter);
-      const dialogTitle = frameAfter.includes(FREE_DIALOG_TITLE) ? FREE_DIALOG_TITLE : frameAfter.includes(DIALOG_TITLE) ? DIALOG_TITLE : null;
+      const dialogTitle = frameAfter.includes(FREE_DIALOG_TITLE)
+        ? FREE_DIALOG_TITLE
+        : frameAfter.includes(CONNECTED_DIALOG_TITLE)
+          ? CONNECTED_DIALOG_TITLE
+          : frameAfter.includes(DIALOG_TITLE)
+            ? DIALOG_TITLE
+            : null;
       const outcome = !opened ? "no-dialog" : dialogTitle === FREE_DIALOG_TITLE ? (emptyView ? "free-empty" : "free") : visible.length > 0 ? "models" : emptyView ? "empty" : "unpopulated";
 
       const afterPath = await ctx.writeFile("frame-after.txt", frameAfter);

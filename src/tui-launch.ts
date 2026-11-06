@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { BRIDGE_BASIC_USERNAME, resolveStateDir } from "./launcher";
 
@@ -47,6 +47,42 @@ export function tuiBunFrom(env: NodeJS.ProcessEnv = process.env): string {
   return process.execPath;
 }
 
+/**
+ * `process.cwd()` answers the physical path, so a directory the launcher compares against it has to be
+ * physical too: a symlinked checkout would otherwise answer a different string for the same folder.
+ */
+function physicalPath(directory: string): string {
+  try {
+    return realpathSync(directory);
+  } catch {
+    return directory;
+  }
+}
+
+function devScriptOf(dir: string): string | undefined {
+  try {
+    const parsed = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as { scripts?: Record<string, unknown> };
+    const script = parsed.scripts?.dev;
+    return typeof script === "string" ? script : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The directory a launched TUI reports as its project. The app reads its default location from its own
+ * process cwd (`packages/tui/src/app.tsx:228`), and `tui` runs the checkout's `dev` script, so the
+ * answer is the `--cwd` that script gives its child - the fork's `dev` is `bun run --cwd packages/cli
+ * src/index.ts` - not the directory the launcher itself was started in. A session filed elsewhere
+ * answers another `location.directory`, which the client turns into its catalog key: the sync lands on
+ * one key and dialogs read another, which emptied `/models`.
+ */
+export function tuiProjectDir(dir: string): string {
+  const script = devScriptOf(dir);
+  const match = script === undefined ? null : /--cwd[= ]+([^\s'"]+)/.exec(script);
+  return physicalPath(match === null ? dir : resolve(dir, match[1]!));
+}
+
 export class TuiLaunchError extends Error {
   constructor(message: string) {
     super(message);
@@ -83,7 +119,7 @@ export function tuiArgs(argv: readonly string[], sessionID: string | undefined):
   return [...argv, "--session", sessionID];
 }
 
-type SessionListBody = { data?: Array<{ id?: unknown }> };
+type SessionListBody = { data?: Array<{ id?: unknown; location?: { directory?: unknown } }> };
 
 export type EnsureTuiSessionOptions = {
   readonly url: string;
@@ -92,17 +128,35 @@ export type EnsureTuiSessionOptions = {
   fetch?: typeof fetch;
 };
 
-/** Reuses the session the TUI opened last, or creates one, so the app lands with a live session. */
+/** How many recent sessions a launch looks through for one filed at the TUI's project directory. */
+const REUSE_SCAN_LIMIT = 50;
+
+function sessionFiledIn(body: SessionListBody, directory: string): string | undefined {
+  const rows = Array.isArray(body.data) ? body.data : [];
+  for (const row of rows) {
+    const id = row?.id;
+    if (typeof id !== "string" || id.length === 0) continue;
+    if (row.location?.directory === directory) return id;
+  }
+  return undefined;
+}
+
+/**
+ * Reuses the session the TUI opened last, or creates one, so the app lands with a live session. It
+ * must be filed in the directory the app runs in: that directory is both the session's
+ * `location.directory` and the app's default location, and the client keys every location catalog by
+ * it. Reusing a session filed elsewhere lands the app on the other key, where `/models` reads nothing.
+ */
 export async function ensureTuiSession(options: EnsureTuiSessionOptions): Promise<string> {
   const call = options.fetch ?? fetch;
   const auth = `Basic ${Buffer.from(`${BRIDGE_BASIC_USERNAME}:${options.password}`, "utf8").toString("base64")}`;
-  const listed = await call(`${options.url}/api/session?limit=1`, { headers: { authorization: auth } });
+  const listed = await call(`${options.url}/api/session?limit=${REUSE_SCAN_LIMIT}`, { headers: { authorization: auth } });
   if (!listed.ok) {
     throw new TuiLaunchError(`the bridge refused to list sessions: ${listed.status}`);
   }
   const list = (await listed.json()) as SessionListBody;
-  const existing = Array.isArray(list.data) ? list.data[0]?.id : undefined;
-  if (typeof existing === "string" && existing.length > 0) return existing;
+  const existing = sessionFiledIn(list, options.cwd);
+  if (existing !== undefined) return existing;
   const id = `ses_tui_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   const created = await call(`${options.url}/api/session`, {
     method: "POST",
@@ -128,7 +182,7 @@ export async function runTui(argv: readonly string[]): Promise<void> {  const st
   const bun = tuiBunFrom();
   const sessionID = argv.includes("--session")
     ? undefined
-    : await ensureTuiSession({ url: state.url, password: state.password, cwd: process.cwd() });
+    : await ensureTuiSession({ url: state.url, password: state.password, cwd: tuiProjectDir(dir) });
   // Any child the TUI spawns resolves `bun` from PATH; the OmO runtime wrapper cannot dlopen the
   // fork's ad-hoc-signed libopentui, so the TUI's own bun has to come first.
   const bunDir = dirname(bun);

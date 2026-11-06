@@ -1,6 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DEFAULT_TUI_DIR, channelForStateDir, isOmoRuntimeBun, tuiBunFrom, tuiDirFrom } from "../src/tui-launch";
+import {
+  DEFAULT_TUI_DIR,
+  channelForStateDir,
+  isOmoRuntimeBun,
+  tuiBunFrom,
+  tuiDirFrom,
+  tuiProjectDir,
+} from "../src/tui-launch";
 
 describe("tui launch isolation", () => {
   test("gives each bridge state directory its own channel", () => {
@@ -40,5 +49,42 @@ describe("tui launch inputs", () => {
     const skipped = tuiBunFrom({ PATH: "/Applications/OmO.app/bin:/opt/homebrew/bin" });
     expect(skipped === "/opt/homebrew/bin/bun" || skipped === process.execPath).toBe(true);
     expect(skipped).not.toContain("OmO.app");
+  });
+});
+
+describe("tui project directory", () => {
+  // The TUI derives its default location from its process cwd, and the session the launcher hands it
+  // must answer the same directory or the two location keys split and /models reads an empty key.
+  test("follows the dev script's --cwd, which is the directory the app runs in", () => {
+    const root = mkdtempSync(join(tmpdir(), "tui-launch-dev-"));
+    try {
+      mkdirSync(join(root, "packages", "cli"), { recursive: true });
+      writeFileSync(
+        join(root, "package.json"),
+        JSON.stringify({ scripts: { dev: "bun run --cwd packages/cli src/index.ts" } }),
+      );
+      expect(tuiProjectDir(root)).toBe(realpathSync(join(root, "packages", "cli")));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("stays at the checkout root when the dev script does not change directory", () => {
+    const root = mkdtempSync(join(tmpdir(), "tui-launch-root-"));
+    try {
+      writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { dev: "bun run src/index.ts" } }));
+      expect(tuiProjectDir(root)).toBe(realpathSync(root));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("falls back to the checkout root when the dev script is unreadable", () => {
+    const root = mkdtempSync(join(tmpdir(), "tui-launch-bare-"));
+    try {
+      expect(tuiProjectDir(root)).toBe(realpathSync(root));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

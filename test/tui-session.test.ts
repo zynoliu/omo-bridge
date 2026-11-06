@@ -31,13 +31,44 @@ describe("tui session bootstrap", () => {
   });
 
   test("reuses the most recent session instead of opening a new one", async () => {
-    const rec = recorder(() => Response.json({ data: [{ id: "ses_recent" }], cursor: {} }));
+    const rec = recorder(() =>
+      Response.json({ data: [{ id: "ses_recent", location: { directory: "/tmp" } }], cursor: {} }),
+    );
     const id = await ensureTuiSession({ url: BASE, password: "secret", fetch: rec.fetch, cwd: "/tmp" });
     expect(id).toBe("ses_recent");
     expect(rec.calls).toHaveLength(1);
     expect(rec.calls[0]?.method).toBe("GET");
     expect(rec.calls[0]?.url).toContain("/api/session");
     expect(rec.calls[0]?.auth).toBe(AUTH);
+  });
+
+  // The TUI publishes every location catalog under the session's `location.directory` and reads it
+  // back under its own default location, which comes from the app's process cwd. Landing the launch
+  // on a session filed elsewhere splits those keys and empties /models, so a session only counts as
+  // reusable when it is filed where the app runs.
+  test("skips a more recent session filed outside the TUI's project directory", async () => {
+    const rec = recorder(() =>
+      Response.json({
+        data: [
+          { id: "ses_elsewhere", location: { directory: "/tmp/other" } },
+          { id: "ses_project", location: { directory: "/tmp/project" } },
+        ],
+      }),
+    );
+    const id = await ensureTuiSession({ url: BASE, password: "secret", fetch: rec.fetch, cwd: "/tmp/project" });
+    expect(id).toBe("ses_project");
+    expect(rec.calls).toHaveLength(1);
+  });
+
+  test("creates a session in the project directory when no listed session is filed there", async () => {
+    const rec = recorder((call) =>
+      call.method === "POST"
+        ? Response.json({ data: { id: (call.body as { id: string }).id } })
+        : Response.json({ data: [{ id: "ses_elsewhere", location: { directory: "/tmp/other" } }] }),
+    );
+    const id = await ensureTuiSession({ url: BASE, password: "secret", fetch: rec.fetch, cwd: "/tmp/project" });
+    expect(rec.calls.map((call) => call.method)).toEqual(["GET", "POST"]);
+    expect(rec.calls[1]?.body).toMatchObject({ id, location: { directory: "/tmp/project" } });
   });
 
   test("creates a session with a client id when the bridge has none", async () => {
