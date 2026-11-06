@@ -23,6 +23,8 @@ function option(name: string, fallback: string): string {
 const quiet = flag("quiet");
 const minLines = Number(option("min-lines", "90"));
 const minFuncs = Number(option("min-funcs", "92"));
+// Process entry points: qa:tui drives them end to end, unit tests never import them.
+const ENTRY_POINTS = new Set(["src/index.ts", "src/launcher.ts", "src/tui-launch.ts"]);
 // Two stages derive their fixtures from the fork checkout; one missing checkout is one skip, not two failures.
 const forkDir = option("fork", process.env.OMO_BRIDGE_OPENCODE_FORK ?? "/Users/zyno/OmO Projects/my-tui/opencode");
 const forkPresent = existsSync(join(forkDir, "packages", "client"));
@@ -136,7 +138,7 @@ if (!forkPresent && flag("allow-missing-fork")) {
   record(
     "test",
     !under,
-    `src funcs ${coverage.funcs}% (min ${minFuncs}) lines ${coverage.lines}% (min ${minLines}); ${counts}`,
+    `src funcs ${coverage.funcs}% (min ${minFuncs}) lines ${coverage.lines}% (min ${minLines}); ${coverage.excluded} entry point(s) excluded; ${counts}`,
   );
   if (under) finish();
 }
@@ -156,7 +158,7 @@ finish();
  * src-only coverage: the floor protects shipped code, not test helpers or the extractor scripts
  * that only a gate run loads.
  */
-function readSrcCoverage(file: string): { lines: number; funcs: number } | undefined {
+function readSrcCoverage(file: string): { lines: number; funcs: number; excluded: number } | undefined {
   let report: string;
   try {
     report = readFileSync(file, "utf8");
@@ -167,16 +169,21 @@ function readSrcCoverage(file: string): { lines: number; funcs: number } | undef
   let lh = 0;
   let fnf = 0;
   let fnh = 0;
+  let excluded = 0;
   for (const block of report.split("end_of_record")) {
     const source = block.match(/^SF:(.+)$/m)?.[1]?.trim();
     if (source === undefined || !source.startsWith("src/")) continue;
+    if (ENTRY_POINTS.has(source)) {
+      excluded += 1;
+      continue;
+    }
     for (const match of block.matchAll(/^LF:(\d+)$/gm)) lf += Number(match[1]);
     for (const match of block.matchAll(/^LH:(\d+)$/gm)) lh += Number(match[1]);
     for (const match of block.matchAll(/^FNF:(\d+)$/gm)) fnf += Number(match[1]);
     for (const match of block.matchAll(/^FNH:(\d+)$/gm)) fnh += Number(match[1]);
   }
   if (lf === 0 || fnf === 0) return undefined;
-  return { lines: round2((100 * lh) / lf), funcs: round2((100 * fnh) / fnf) };
+  return { lines: round2((100 * lh) / lf), funcs: round2((100 * fnh) / fnf), excluded };
 }
 
 function round2(value: number): number {
