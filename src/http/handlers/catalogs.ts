@@ -21,7 +21,24 @@ const DEFAULT_CONTEXT_LIMIT = 200_000;
 const DEFAULT_OUTPUT_LIMIT = 32_000;
 
 /** Shape of the slash-command surface senpi reports (`RpcSlashCommand` keeps more source detail). */
-export type CatalogCommand = { name: string; description?: string };
+export type CatalogCommand = {
+  name: string;
+  description?: string;
+  /** `RpcSlashCommand.sourceInfo`: the file backing the command, e.g. a skill's SKILL.md. */
+  sourceInfo?: { path?: string };
+};
+
+/** One row of GET /api/skill: the TUI decodes it as `Skill.Info` (`packages/schema/src/skill.ts`). */
+export type CatalogSkill = {
+  id: string;
+  name: string;
+  description?: string;
+  path: string;
+  content: string;
+};
+
+/** senpi names a skill command `skill:<name>` on the slash-command surface. */
+const SKILL_COMMAND_PREFIX = "skill:";
 
 export type CatalogTransport = Pick<SenpiTransport, "getAvailableModels" | "setModel"> & {
   getCommands?: () => Promise<readonly CatalogCommand[]>;
@@ -265,8 +282,29 @@ export async function handleCommandList(_request: Request, url: URL): Promise<Re
   });
 }
 
+function publicSkill(command: CatalogCommand): CatalogSkill {
+  const name = command.name.slice(SKILL_COMMAND_PREFIX.length);
+  return {
+    id: name,
+    name,
+    ...(command.description === undefined ? {} : { description: command.description }),
+    // The surface names the skill's file, not its body: an invocation loads the body host-side, and
+    // `skill://<id>/SKILL.md` is the URI upstream uses for a skill the surface carries no file for.
+    path: command.sourceInfo?.path ?? `skill://${name}/SKILL.md`,
+    content: "",
+  };
+}
+
 export async function handleSkillList(_request: Request, url: URL): Promise<Response> {
-  return respond(url, async () => jsonResponse(200, { location: locationFor(url), data: [] }));
+  return respond(url, async () => {
+    // Skills are the command surface's `skill:` namespace: one read path instead of a second registry.
+    const caller = transport;
+    const listed = caller?.getCommands === undefined ? [] : await caller.getCommands();
+    const data = listed
+      .filter((command) => command.name.length > SKILL_COMMAND_PREFIX.length && command.name.startsWith(SKILL_COMMAND_PREFIX))
+      .map(publicSkill);
+    return jsonResponse(200, { location: locationFor(url), data });
+  });
 }
 
 export async function handleReferenceList(_request: Request, url: URL): Promise<Response> {
