@@ -22,6 +22,16 @@ function paneHasUserMessage(frame, text) {
   return composer < 0 || index < composer;
 }
 
+// The user's first complaint: the answer must render below the message it answers. A turn that paints
+// its reply above the user's own bubble is a defect even though both are present.
+function replyOrder(frame, text) {
+  const lines = frame.split("\n");
+  const user = lines.findIndex((line) => line.includes("┃") && line.replace(/[┃|]/gu, " ").trim().endsWith(text));
+  const reply = lines.findIndex((line) => ASSISTANT_FOOTER.test(line));
+  if (user < 0 || reply < 0) return { ordered: false, userIndex: user, replyIndex: reply };
+  return { ordered: user < reply, userIndex: user, replyIndex: reply };
+}
+
 function addedLines(before, after) {
   const known = new Set(paneLines(before));
   return paneLines(after).filter((line) => !known.has(line));
@@ -42,7 +52,7 @@ export default {
     const started = Date.now();
     const evidence = ctx.evidenceDir;
     const bridge = await ctx.startBridge({ evidenceDir: evidence });
-    const checks = { reply: false, error: false, idle: false };
+    const checks = { reply: false, error: false, idle: false, order: false };
     let outcome = "idle";
     let matched = "";
     let tui;
@@ -129,6 +139,8 @@ export default {
       checks.reply = outcome === "reply";
       checks.error = outcome === "error";
       checks.idle = outcome === "idle";
+      const order = replyOrder(frameAfter, "你好");
+      checks.order = order.ordered;
 
       const afterPath = await ctx.writeFile("frame-after.txt", frameAfter);
       await ctx.writeFile("transcript.txt", await tui.transcript());
@@ -163,6 +175,7 @@ export default {
         outcome,
         matched,
         checks,
+        order,
         ready,
         opened,
         submitted,
@@ -171,7 +184,7 @@ export default {
         sessionID,
         history,
         durations: { totalMs: Date.now() - started, replyWaitMs: Date.now() - sentAt },
-        exitCode: outcome === "reply" && !checks.error ? 0 : 1,
+        exitCode: outcome === "reply" && !checks.error && checks.order ? 0 : 1,
         renderMode: screenshot.written ? "webview" : "text",
         screenshot: screenshot.written ? screenshot.path : `none (${screenshot.reason})`,
         evidence: {
