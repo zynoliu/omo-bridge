@@ -16,6 +16,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "directory"
       ]
@@ -55,6 +56,7 @@
                     "type": "boolean"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type",
                   "path"
@@ -79,6 +81,7 @@
                     "type": "boolean"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type",
                   "repository"
@@ -87,6 +90,7 @@
             ]
           }
         },
+        "additionalProperties": false,
         "required": [
           "name",
           "path",
@@ -94,5 +98,6 @@
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

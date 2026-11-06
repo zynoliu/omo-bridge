@@ -63,6 +63,7 @@
                 ]
               }
             },
+            "additionalProperties": false,
             "required": [
               "additions",
               "deletions"
@@ -70,6 +71,7 @@
           }
         }
       },
+      "additionalProperties": false,
       "required": [
         "additions",
         "deletions",
@@ -101,12 +103,14 @@
               "type": "number"
             }
           },
+          "additionalProperties": false,
           "required": [
             "read",
             "write"
           ]
         }
       },
+      "additionalProperties": false,
       "required": [
         "input",
         "output",
@@ -121,6 +125,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "url"
       ]
@@ -144,6 +149,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "id",
         "providerID"
@@ -175,6 +181,7 @@
           "type": "number"
         }
       },
+      "additionalProperties": false,
       "required": [
         "created",
         "updated"
@@ -199,6 +206,7 @@
             ]
           }
         },
+        "additionalProperties": false,
         "required": [
           "permission",
           "pattern",
@@ -222,11 +230,13 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "messageID"
       ]
     }
   },
+  "additionalProperties": false,
   "required": [
     "id",
     "slug",

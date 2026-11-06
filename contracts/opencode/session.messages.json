@@ -26,6 +26,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -40,6 +41,7 @@
                 "type": "string"
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -64,6 +66,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -84,6 +87,7 @@
                     "type": "string"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "id",
                   "providerID"
@@ -102,12 +106,14 @@
                     "type": "string"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "id",
                   "providerID"
                 ]
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -132,6 +138,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -152,6 +159,7 @@
                     "type": "string"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "directory"
                 ]
@@ -166,6 +174,7 @@
                         "type": "string"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "directory"
                     ]
@@ -177,11 +186,13 @@
                     "type": "string"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "location"
                 ]
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -206,6 +217,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -233,6 +245,7 @@
                               "const": "inline"
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "type"
                           ]
@@ -247,6 +260,7 @@
                               "type": "string"
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "type",
                             "uri"
@@ -273,6 +287,7 @@
                           "type": "string"
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "start",
                         "end",
@@ -280,6 +295,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "data",
                     "mime",
@@ -308,6 +324,7 @@
                           "type": "string"
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "start",
                         "end",
@@ -315,6 +332,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "name"
                   ]
@@ -347,6 +365,7 @@
                           "type": "string"
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "start",
                         "end",
@@ -354,6 +373,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "id",
                     "name"
@@ -364,6 +384,7 @@
                 "const": "user"
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -388,6 +409,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -402,6 +424,7 @@
                 "const": "synthetic"
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -426,6 +449,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -440,6 +464,7 @@
                 "type": "string"
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -464,6 +489,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -481,6 +507,7 @@
                 "type": "string"
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -510,6 +537,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -552,6 +580,7 @@
                     "type": "boolean"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "output",
                   "cursor",
@@ -560,6 +589,7 @@
                 ]
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -592,6 +622,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -615,6 +646,7 @@
                     "type": "string"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "id",
                   "providerID"
@@ -638,6 +670,7 @@
                           "additionalProperties": {}
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "type",
                         "text"
@@ -666,11 +699,13 @@
                               "type": "number"
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "created"
                           ]
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "type",
                         "text"
@@ -707,6 +742,7 @@
                                   "type": "string"
                                 }
                               },
+                              "additionalProperties": false,
                               "required": [
                                 "status",
                                 "input"
@@ -727,6 +763,7 @@
                                   "additionalProperties": {}
                                 }
                               },
+                              "additionalProperties": false,
                               "required": [
                                 "status",
                                 "input",
@@ -757,6 +794,7 @@
                                             "type": "string"
                                           }
                                         },
+                                        "additionalProperties": false,
                                         "required": [
                                           "type",
                                           "text"
@@ -778,6 +816,7 @@
                                             "type": "string"
                                           }
                                         },
+                                        "additionalProperties": false,
                                         "required": [
                                           "type",
                                           "uri",
@@ -793,6 +832,7 @@
                                   "additionalProperties": {}
                                 }
                               },
+                              "additionalProperties": false,
                               "required": [
                                 "status",
                                 "input",
@@ -828,6 +868,7 @@
                                           "type": "string"
                                         }
                                       },
+                                      "additionalProperties": false,
                                       "required": [
                                         "body"
                                       ]
@@ -837,6 +878,7 @@
                                       "minimum": 0
                                     }
                                   },
+                                  "additionalProperties": false,
                                   "required": [
                                     "type",
                                     "message"
@@ -856,6 +898,7 @@
                                             "type": "string"
                                           }
                                         },
+                                        "additionalProperties": false,
                                         "required": [
                                           "type",
                                           "text"
@@ -877,6 +920,7 @@
                                             "type": "string"
                                           }
                                         },
+                                        "additionalProperties": false,
                                         "required": [
                                           "type",
                                           "uri",
@@ -892,6 +936,7 @@
                                   "additionalProperties": {}
                                 }
                               },
+                              "additionalProperties": false,
                               "required": [
                                 "status",
                                 "input",
@@ -913,11 +958,13 @@
                               "type": "number"
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "created"
                           ]
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "type",
                         "id",
@@ -944,7 +991,8 @@
                       "type": "string"
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "finish": {
                 "enum": [
@@ -988,12 +1036,14 @@
                         "type": "number"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "read",
                       "write"
                     ]
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "input",
                   "output",
@@ -1020,6 +1070,7 @@
                         "type": "string"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "body"
                     ]
@@ -1029,6 +1080,7 @@
                     "minimum": 0
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type",
                   "message"
@@ -1063,6 +1115,7 @@
                             "type": "string"
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "body"
                         ]
@@ -1072,12 +1125,14 @@
                         "minimum": 0
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "type",
                       "message"
                     ]
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "attempt",
                   "at",
@@ -1085,6 +1140,7 @@
                 ]
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -1116,6 +1172,7 @@
                         "type": "number"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "created"
                     ]
@@ -1133,6 +1190,7 @@
                     "type": "string"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type",
                   "id",
@@ -1162,6 +1220,7 @@
                         "type": "number"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "created"
                     ]
@@ -1188,6 +1247,7 @@
                         "type": "string"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "id",
                       "providerID"
@@ -1225,12 +1285,14 @@
                             "type": "number"
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "read",
                           "write"
                         ]
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "input",
                       "output",
@@ -1239,6 +1301,7 @@
                     ]
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type",
                   "id",
@@ -1268,6 +1331,7 @@
                         "type": "number"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "created"
                     ]
@@ -1300,6 +1364,7 @@
                             "type": "string"
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "body"
                         ]
@@ -1309,6 +1374,7 @@
                         "minimum": 0
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "type",
                       "message"
@@ -1339,12 +1405,14 @@
                             "type": "number"
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "read",
                           "write"
                         ]
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "input",
                       "output",
@@ -1353,6 +1421,7 @@
                     ]
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type",
                   "id",
@@ -1381,6 +1450,7 @@
                     "type": "number"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "created"
                 ]
@@ -1414,6 +1484,7 @@
                         "type": "string"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "body"
                     ]
@@ -1423,12 +1494,14 @@
                     "minimum": 0
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type",
                   "message"
                 ]
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "time",
@@ -1448,9 +1521,11 @@
         "next": {
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
+  "additionalProperties": false,
   "required": [
     "data",
     "cursor"

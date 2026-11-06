@@ -37,11 +37,13 @@
           ]
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "requestID",
         "reply"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

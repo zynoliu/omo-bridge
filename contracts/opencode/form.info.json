@@ -68,6 +68,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "key",
                     "op",
@@ -118,6 +119,7 @@
                       "type": "string"
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "value",
                     "label"
@@ -128,6 +130,7 @@
                 "type": "boolean"
               }
             },
+            "additionalProperties": false,
             "required": [
               "key",
               "type"
@@ -179,6 +182,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "key",
                     "op",
@@ -199,6 +203,7 @@
                 "type": "number"
               }
             },
+            "additionalProperties": false,
             "required": [
               "key",
               "type"
@@ -250,6 +255,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "key",
                     "op",
@@ -270,6 +276,7 @@
                 "type": "number"
               }
             },
+            "additionalProperties": false,
             "required": [
               "key",
               "type"
@@ -321,6 +328,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "key",
                     "op",
@@ -335,6 +343,7 @@
                 "type": "boolean"
               }
             },
+            "additionalProperties": false,
             "required": [
               "key",
               "type"
@@ -386,6 +395,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "key",
                     "op",
@@ -411,6 +421,7 @@
                       "type": "string"
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "value",
                     "label"
@@ -435,6 +446,7 @@
                 }
               }
             },
+            "additionalProperties": false,
             "required": [
               "key",
               "type",
@@ -460,6 +472,7 @@
                 "type": "string"
               }
             },
+            "additionalProperties": false,
             "required": [
               "key",
               "type",
@@ -471,6 +484,7 @@
       "minItems": 1
     }
   },
+  "additionalProperties": false,
   "required": [
     "id",
     "sessionID",

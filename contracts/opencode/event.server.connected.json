@@ -22,7 +22,9 @@
     },
     "data": {
       "type": "object",
-      "properties": {}
+      "properties": {},
+      "additionalProperties": false
     }
-  }
+  },
+  "additionalProperties": false
 }

@@ -16,6 +16,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "directory"
       ]
@@ -44,6 +45,7 @@
             "type": "string"
           }
         },
+        "additionalProperties": false,
         "required": [
           "id",
           "name",
@@ -52,5 +54,6 @@
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

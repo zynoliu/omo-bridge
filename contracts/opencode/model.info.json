@@ -94,7 +94,8 @@
             "root"
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "package": {
       "type": "string"
@@ -111,6 +112,7 @@
                   "const": "summary"
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "type"
               ]
@@ -122,6 +124,7 @@
                   "const": "native"
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "type"
               ]
@@ -155,11 +158,13 @@
                     "duration": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "encoding": {
           "enum": [
@@ -203,6 +208,7 @@
           "type": "boolean"
         }
       },
+      "additionalProperties": false,
       "required": [
         "tools",
         "input",
@@ -229,6 +235,7 @@
                         "const": "summary"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "type"
                     ]
@@ -240,6 +247,7 @@
                         "const": "native"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "type"
                     ]
@@ -253,7 +261,8 @@
                   "none"
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "headers": {
             "type": "object",
@@ -266,6 +275,7 @@
             "additionalProperties": {}
           }
         },
+        "additionalProperties": false,
         "required": [
           "id"
         ]
@@ -278,6 +288,7 @@
           "type": "number"
         }
       },
+      "additionalProperties": false,
       "required": [
         "released"
       ]
@@ -297,6 +308,7 @@
                 "type": "integer"
               }
             },
+            "additionalProperties": false,
             "required": [
               "type",
               "size"
@@ -318,12 +330,14 @@
                 "type": "number"
               }
             },
+            "additionalProperties": false,
             "required": [
               "read",
               "write"
             ]
           }
         },
+        "additionalProperties": false,
         "required": [
           "input",
           "output",
@@ -355,12 +369,14 @@
           "type": "integer"
         }
       },
+      "additionalProperties": false,
       "required": [
         "context",
         "output"
       ]
     }
   },
+  "additionalProperties": false,
   "required": [
     "id",
     "modelID",

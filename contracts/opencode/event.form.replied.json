@@ -52,11 +52,13 @@
           }
         }
       },
+      "additionalProperties": false,
       "required": [
         "id",
         "sessionID",
         "answer"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

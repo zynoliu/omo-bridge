@@ -16,6 +16,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "directory"
       ]
@@ -70,11 +71,13 @@
               "type": "number"
             }
           },
+          "additionalProperties": false,
           "required": [
             "started"
           ]
         }
       },
+      "additionalProperties": false,
       "required": [
         "id",
         "status",
@@ -86,5 +89,6 @@
         "time"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

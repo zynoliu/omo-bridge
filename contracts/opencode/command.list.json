@@ -16,6 +16,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "directory"
       ]
@@ -32,10 +33,12 @@
             "type": "string"
           }
         },
+        "additionalProperties": false,
         "required": [
           "name"
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

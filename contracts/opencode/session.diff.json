@@ -38,6 +38,7 @@
             "const": true
           }
         },
+        "additionalProperties": false,
         "required": [
           "file",
           "patch",
@@ -47,5 +48,6 @@
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

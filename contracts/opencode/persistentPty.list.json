@@ -80,6 +80,7 @@
                 "minimum": 1
               }
             },
+            "additionalProperties": false,
             "required": [
               "cols",
               "rows"
@@ -97,12 +98,14 @@
                 "minimum": 0
               }
             },
+            "additionalProperties": false,
             "required": [
               "head",
               "tail"
             ]
           }
         },
+        "additionalProperties": false,
         "required": [
           "id",
           "title",
@@ -119,5 +122,6 @@
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

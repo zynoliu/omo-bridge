@@ -34,11 +34,13 @@
           "minimum": 0
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "assistantMessageID",
         "ordinal"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

@@ -71,12 +71,14 @@
                   "type": "number"
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "read",
                 "write"
               ]
             }
           },
+          "additionalProperties": false,
           "required": [
             "input",
             "output",
@@ -94,6 +96,7 @@
           }
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "assistantMessageID",
@@ -102,5 +105,6 @@
         "tokens"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

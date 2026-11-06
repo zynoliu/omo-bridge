@@ -45,6 +45,7 @@
                 ]
               }
             },
+            "additionalProperties": false,
             "required": [
               "action",
               "resource",
@@ -53,10 +54,12 @@
           }
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "permissions"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

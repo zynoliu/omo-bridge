@@ -16,6 +16,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "directory"
       ]
@@ -37,6 +38,7 @@
                     "const": "builtin"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type"
                 ]
@@ -60,6 +62,7 @@
                     "const": true
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type",
                   "target"
@@ -75,6 +78,7 @@
                     "type": "string"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type",
                   "path"
@@ -87,6 +91,7 @@
                     "const": "sdk"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "type"
                 ]
@@ -108,7 +113,8 @@
               "gui": {
                 "const": true
               }
-            }
+            },
+            "additionalProperties": false
           },
           "state": {
             "anyOf": [
@@ -119,6 +125,7 @@
                     "const": "active"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "status"
                 ]
@@ -136,6 +143,7 @@
                     "type": "string"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "status",
                   "error"
@@ -144,6 +152,7 @@
             ]
           }
         },
+        "additionalProperties": false,
         "required": [
           "source",
           "features",
@@ -151,5 +160,6 @@
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

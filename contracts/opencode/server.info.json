@@ -27,6 +27,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "tmp"
       ]
@@ -37,9 +38,11 @@
         "persistentPty": {
           "type": "boolean"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
+  "additionalProperties": false,
   "required": [
     "version",
     "pid",

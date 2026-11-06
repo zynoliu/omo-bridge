@@ -36,11 +36,13 @@
           ]
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "inboxID",
         "delivery"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

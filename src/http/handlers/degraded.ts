@@ -1,6 +1,6 @@
 import { statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import { locationInfo, type LocationPublicInfo } from "./fs-location";
+import { locationRef, type LocationPublicRef } from "./fs-location";
 
 // Degradation shims for endpoint families that have no senpi capability (plan D3).
 // Graded rule: reads answer a contract-valid empty value, idempotent writes with nothing to change
@@ -60,7 +60,7 @@ function requestedDirectory(url: URL): string {
 }
 
 // Matches the catalog handlers: a location that does not exist is a 404, never a 5xx.
-function locationFor(url: URL): Response | LocationPublicInfo {
+function locationFor(url: URL): Response | LocationPublicRef {
   const directory = requestedDirectory(url);
   let stats;
   try {
@@ -71,7 +71,7 @@ function locationFor(url: URL): Response | LocationPublicInfo {
   if (!stats.isDirectory()) {
     return errorResponse(400, "InvalidRequestError", `not a directory: ${directory}`, { field: "location.directory" });
   }
-  return locationInfo(directory);
+  return locationRef(directory);
 }
 
 export async function handleWorktreeList(_request: Request, _url: URL): Promise<Response> {

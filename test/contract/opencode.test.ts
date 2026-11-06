@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { assertErrorEnvelope, ContractError, validateResponse } from "../../src/contract/validate";
 
-const CONTRACTS = join(import.meta.dir, "..", "..", "contracts", "opencode");
+const CONTRACTS = process.env.OMO_BRIDGE_CONTRACTS_OPENCODE_DIR ?? join(import.meta.dir, "..", "..", "contracts", "opencode");
 const SCHEMA_DIR = CONTRACTS;
 const SAMPLE_DIR = join(CONTRACTS, "samples");
 
@@ -13,6 +13,7 @@ type JsonSchema = {
   items?: JsonSchema;
   properties?: Record<string, JsonSchema>;
   anyOf?: JsonSchema[];
+  additionalProperties?: boolean | JsonSchema;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -74,6 +75,35 @@ function removeOneRequired(value: unknown, schema: JsonSchema): boolean {
   return false;
 }
 
+// A generated struct is closed, so a body that grows a key no declaration names must fail. The walk
+// follows the sample beside its schema and stamps the first object the schema closes; an empty
+// collection exposes no object to stamp, and a record (`additionalProperties` as a schema) accepts
+// its own keys by declaration, so those endpoints report nothing to stamp rather than a pass.
+function addUnknownField(value: unknown, schema: JsonSchema, key: string): boolean {
+  if (Array.isArray(schema.anyOf)) {
+    for (const member of schema.anyOf) {
+      if (addUnknownField(value, member, key)) return true;
+    }
+    return false;
+  }
+  if (Array.isArray(value)) {
+    const item = schema.items;
+    if (value.length === 0 || item === undefined) return false;
+    return addUnknownField(value[0], item, key);
+  }
+  if (!isRecord(value)) return false;
+  if (schema.additionalProperties === false) {
+    value[key] = "unexpected";
+    return true;
+  }
+  for (const [property, nested] of Object.entries(value)) {
+    if (!isRecord(nested) && !Array.isArray(nested)) continue;
+    const child = schema.properties?.[property];
+    if (child !== undefined && addUnknownField(nested, child, key)) return true;
+  }
+  return false;
+}
+
 describe("opencode contracts", () => {
   test("every endpoint has a sample", () => {
     expect(ids.length).toBeGreaterThanOrEqual(70);
@@ -106,6 +136,37 @@ describe("opencode contracts", () => {
       if (!result.ok) expect(result.errors.length).toBeGreaterThan(0);
     });
   }
+
+  // Which endpoints have a closed object in their own sample to stamp, computed once so the summary
+  // below never depends on test execution order.
+  function unknownFieldSample(id: string): unknown | null {
+    const sample = structuredClone(sampleOf(id));
+    const schema = read(join(SCHEMA_DIR, `${id}.json`)) as JsonSchema;
+    return addUnknownField(sample, schema, "undeclaredField") ? sample : null;
+  }
+
+  const stampable = new Set(ids.filter((id) => unknownFieldSample(id) !== null));
+
+  for (const id of ids) {
+    test(`${id}: a sample with an unknown field is rejected`, () => {
+      const sample = unknownFieldSample(id);
+      if (sample === null) return;
+      const result = validateResponse(id, sample);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        const errors = result.errors.join("\n");
+        expect(errors).toContain("additionalProperty");
+        expect(errors).toContain("undeclaredField");
+      }
+    });
+  }
+
+  test("an unknown field is exercised on nearly every endpoint", () => {
+    const skipped = ids.filter((id) => !stampable.has(id));
+    // Only a sample with no closed object to stamp can be skipped: a bare array with no rows, or a
+    // body whose keys are declared by its own additionalProperties schema.
+    expect(skipped.sort()).toEqual(["config.get", "error.envelope", "worktree.list"]);
+  });
 
   test("unknown endpoint is rejected", () => {
     const result = validateResponse("session.nonexistent", {});

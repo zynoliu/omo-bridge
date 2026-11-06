@@ -36,6 +36,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "assistantMessageID",
@@ -43,5 +44,6 @@
         "text"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

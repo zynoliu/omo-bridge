@@ -1,6 +1,6 @@
 import { isAbsolute, resolve } from "node:path";
 import { eventBus as sharedEventBus, type EventBus } from "../events";
-import { locationInfo } from "./fs-location";
+import { locationRef } from "./fs-location";
 import { HandlerProblem, jsonResponse, noContent, respond } from "./problem";
 
 // Shell endpoints map the TUI's shell surface onto senpi's one-shot `bash()`.
@@ -288,7 +288,7 @@ export async function handleShellList(_request: Request, url: URL): Promise<Resp
       .filter((record) => record.cwd === directory)
       .sort((left, right) => right.startedAt - left.startedAt)
       .map(toShellInfo);
-    return jsonResponse(200, { location: locationInfo(directory), data });
+    return jsonResponse(200, { location: locationRef(directory), data });
   });
 }
 
@@ -297,7 +297,7 @@ export async function handleShellGet(_request: Request, url: URL): Promise<Respo
     const id = shellIdFromPath(url);
     const record = shells.get(id);
     if (record === undefined) throw shellNotFound(id);
-    return jsonResponse(200, { location: locationInfo(locationDirectory(url)), data: toShellInfo(record) });
+    return jsonResponse(200, { location: locationRef(locationDirectory(url)), data: toShellInfo(record) });
   });
 }
 
@@ -309,7 +309,7 @@ export async function handleShellOutput(_request: Request, url: URL): Promise<Re
     const cursor = readCursor(url);
     const limit = readLimit(url);
     return jsonResponse(200, {
-      location: locationInfo(locationDirectory(url)),
+      location: locationRef(locationDirectory(url)),
       data: pageOutput(record, cursor, limit),
     });
   });

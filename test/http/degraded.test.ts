@@ -306,8 +306,8 @@ describe("usage limits degradation", () => {
     expect(response.headers.get("content-type")).toContain("application/json");
     const body = (await response.json()) as { location: { directory: string }; data: unknown };
     expect(body.data).toBeNull();
-    expect(body.location.directory).toBe(WORK_DIR);
-    expect(validateResponse("location.publicInfo", body.location)).toEqual({ ok: true });
+    expect(body.location).toEqual({ directory: WORK_DIR });
+    expect(validateResponse("usage.limits", body)).toEqual({ ok: true });
   });
 
   test("a missing location directory is a 404 FileNotFoundError, not a fabricated location", async () => {

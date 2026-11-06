@@ -18,6 +18,7 @@ import {
   type FileDiff,
   type FileEntry,
   type LocationPublicInfo,
+  type LocationPublicRef,
   type PublicProject,
 } from "../../src/http/handlers/fs-location";
 
@@ -48,7 +49,7 @@ function projectId(directory: string): string {
   return createHash("sha256").update(realpathSync(directory)).digest("hex").slice(0, 16);
 }
 
-type ListBody = { location: LocationPublicInfo; data: FileEntry[] };
+type ListBody = { location: LocationPublicRef; data: FileEntry[] };
 
 beforeAll(() => {
   base = mkdtempSync(join(tmpdir(), "omo-bridge-fs-"));
@@ -81,17 +82,13 @@ describe("handleFsList", () => {
     expect(response.headers.get("content-type")).toContain("application/json");
 
     const body = (await response.json()) as ListBody;
-    expect(body.location.directory).toBe(repo);
-    expect(body.location.project).toEqual({
-      id: projectId(repo),
-      directory: repo,
-      canonical: realpathSync(repo),
-    });
-    expect(body.data.map((entry) => entry.name)).toEqual([".git", "alpha.txt", "bulk", "empty", "nested", "src"]);
+    // The envelope carries `Location.PublicRef`: the directory and nothing else.
+    expect(body.location).toEqual({ directory: repo });
+    expect(validateResponse("fs.list", body)).toEqual({ ok: true });
+    expect(body.data.map((entry) => entry.path)).toEqual([".git", "alpha.txt", "bulk", "empty", "nested", "src"]);
 
-    const alpha = body.data.find((entry) => entry.name === "alpha.txt");
-    expect(alpha).toEqual({ name: "alpha.txt", path: "alpha.txt", type: "file", size: 6 });
-    expect(body.data.find((entry) => entry.name === "src")).toEqual({ name: "src", path: "src", type: "directory" });
+    expect(body.data.find((entry) => entry.path === "alpha.txt")).toEqual({ path: "alpha.txt", type: "file" });
+    expect(body.data.find((entry) => entry.path === "src")).toEqual({ path: "src", type: "directory" });
   });
 
   test("accepts path as an alias for the location directory", async () => {
@@ -131,20 +128,18 @@ describe("handleFsFind", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as ListBody;
     expect(body.location.directory).toBe(repo);
-    expect(body.data).toEqual([
-      { name: "gamma.ts", path: "src/gamma.ts", type: "file", size: Buffer.byteLength("export const gamma = 1;\n") },
-    ]);
+    expect(body.data).toEqual([{ path: "src/gamma.ts", type: "file" }]);
   });
 
   test("matches directory names as directories", async () => {
     const response = await handleFsFind(request("/api/fs/find"), requestUrl("/api/fs/find", { "location[directory]": repo, query: "deep" }));
     const body = (await response.json()) as ListBody;
-    expect(body.data).toEqual([{ name: "deep", path: "nested/deep", type: "directory" }]);
+    expect(body.data).toEqual([{ path: "nested/deep", type: "directory" }]);
   });
 
   test("matching is case-insensitive", async () => {
     const response = await handleFsFind(request("/api/fs/find"), requestUrl("/api/fs/find", { "location[directory]": repo, query: "GAMMA" }));
-    expect(((await response.json()) as ListBody).data.map((entry) => entry.name)).toEqual(["gamma.ts"]);
+    expect(((await response.json()) as ListBody).data.map((entry) => entry.path)).toEqual(["src/gamma.ts"]);
   });
 
   test("skips .git internals", async () => {
@@ -241,7 +236,7 @@ describe("handleVcsGet", () => {
     const response = await handleVcsGet(request("/api/vcs"), requestUrl("/api/vcs", { "location[directory]": repo }));
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
-      location: LocationPublicInfo;
+      location: LocationPublicRef;
       data: { branch: { current?: string; default?: string } };
     };
     expect(body.location.directory).toBe(repo);
@@ -262,8 +257,8 @@ describe("handleVcsBase", () => {
   test("returns a null base with the location envelope", async () => {
     const response = await handleVcsBase(request("/api/vcs/base"), requestUrl("/api/vcs/base", { "location[directory]": repo }));
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { location: LocationPublicInfo; data: null };
-    expect(body.location.project.id).toBe(projectId(repo));
+    const body = (await response.json()) as { location: LocationPublicRef; data: null };
+    expect(body.location).toEqual({ directory: repo });
     expect(body.data).toBeNull();
   });
 });
@@ -273,7 +268,7 @@ describe("handleVcsDiff", () => {
     appendFileSync(join(repo, "alpha.txt"), "beta\n");
     const response = await handleVcsDiff(request("/api/vcs/diff"), requestUrl("/api/vcs/diff", { "location[directory]": repo }));
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { location: LocationPublicInfo; data: FileDiff[] };
+    const body = (await response.json()) as { location: LocationPublicRef; data: FileDiff[] };
     expect(body.data).toHaveLength(1);
     const [diff] = body.data;
     expect(diff).toMatchObject({ file: "alpha.txt", additions: 1, deletions: 0, status: "modified" });

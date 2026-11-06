@@ -36,10 +36,12 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "reason"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

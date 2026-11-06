@@ -76,11 +76,13 @@
                   "type": "number"
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "started"
               ]
             }
           },
+          "additionalProperties": false,
           "required": [
             "id",
             "status",
@@ -93,10 +95,12 @@
           ]
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "shell"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

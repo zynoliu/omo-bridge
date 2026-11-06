@@ -1001,7 +1001,9 @@ function buildStruct(fields: Field[], ctx: Ctx): JsonSchema {
     properties[field.name] = result.schema;
     if (!field.optional && !result.optional && !required.includes(field.name)) required.push(field.name);
   }
-  const schema: JsonSchema = { type: "object", properties };
+  // A declared struct is closed: a response that grows a field the fork's schema does not declare
+  // is drift, and the contract test proves it by rejecting a sample with one extra key.
+  const schema: JsonSchema = { type: "object", properties, additionalProperties: false };
   if (required.length > 0) schema.required = required;
   return schema;
 }
@@ -1335,21 +1337,28 @@ function applyWrap(inner: JsonSchema, wrap: Wrap | undefined): JsonSchema {
   if (wrap === undefined) return inner;
   const location = locationRefSchema();
   const array = { type: "array", items: inner };
+  // The envelope is closed for the same reason its payload is: an endpoint that answers `{data}`
+  // says so, and an extra sibling key is an undeclared shape rather than a tolerant one.
   switch (wrap) {
     case "data":
-      return { type: "object", required: ["data"], properties: { data: inner } };
+      return { type: "object", required: ["data"], properties: { data: inner }, additionalProperties: false };
     case "dataArray":
-      return { type: "object", required: ["data"], properties: { data: array } };
+      return { type: "object", required: ["data"], properties: { data: array }, additionalProperties: false };
     case "recordData":
-      return { type: "object", required: ["data"], properties: { data: { type: "object", additionalProperties: inner } } };
+      return { type: "object", required: ["data"], properties: { data: { type: "object", additionalProperties: inner } }, additionalProperties: false };
     case "locationOnly":
-      return { type: "object", required: ["location"], properties: { location } };
+      return { type: "object", required: ["location"], properties: { location }, additionalProperties: false };
     case "locationData":
-      return { type: "object", required: ["location", "data"], properties: { location, data: inner } };
+      return { type: "object", required: ["location", "data"], properties: { location, data: inner }, additionalProperties: false };
     case "locationDataArray":
-      return { type: "object", required: ["location", "data"], properties: { location, data: array } };
+      return { type: "object", required: ["location", "data"], properties: { location, data: array }, additionalProperties: false };
     case "locationDataNullable":
-      return { type: "object", required: ["location", "data"], properties: { location, data: { anyOf: [inner, { type: "null" }] } } };
+      return {
+        type: "object",
+        required: ["location", "data"],
+        properties: { location, data: { anyOf: [inner, { type: "null" }] } },
+        additionalProperties: false,
+      };
     case "array":
       return array;
   }
@@ -1405,8 +1414,9 @@ function findEventDefinition(rel: string, type: string): { schema: ts.Expression
 }
 
 // The frame the TUI reads off GET /api/event: `{ id, type, created, data }`
-// (packages/tui/src/context/event.ts switches on `type` and reads `data`). The fork's durable
-// events also carry `durable`, which the bridge does not emit, so the envelope stays open to it.
+// (packages/tui/src/context/event.ts switches on `type` and reads `data`). The fork's own durable
+// envelope additionally carries `durable`; the bridge does not serve that key, so the envelope is
+// closed to it and a frame that grows it is drift the contract test rejects.
 function deriveEvent(rel: string, type: string): { schema: JsonSchema; line: number } {
   const definition = findEventDefinition(rel, type);
   if (!definition) throw new Error(`${rel}: event definition for ${type} not found`);
@@ -1423,6 +1433,7 @@ function deriveEvent(rel: string, type: string): { schema: JsonSchema; line: num
         created: { type: "number" },
         data: buildStruct(fields, ctx),
       },
+      additionalProperties: false,
     },
     line: lineOf(rel, definition.node),
   };

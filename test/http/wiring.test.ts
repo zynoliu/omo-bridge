@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveConfig } from "../../src/config";
+import { validateResponse } from "../../src/contract/validate";
 import { setSessionReadTransport, type SessionReadTransport } from "../../src/http/handlers/sessions";
 import { BASIC_USERNAME, createServer, type BridgeServer } from "../../src/http/server";
 import type {
@@ -112,11 +113,11 @@ describe("mounted fs/location handlers", () => {
     expect(response.status).toBe(200);
     const body = await json(response);
     const location = body.location as Record<string, unknown>;
-    expect(location.directory).toBe(workdir);
-    expect(typeof (location.project as Record<string, unknown>).id).toBe("string");
+    expect(location).toEqual({ directory: workdir });
     const data = body.data as Array<Record<string, unknown>>;
     expect(Array.isArray(data)).toBe(true);
-    expect(data.map((entry) => entry.name)).toContain("alpha.txt");
+    expect(data.map((entry) => entry.path)).toContain("alpha.txt");
+    expect(validateResponse("fs.list", body)).toEqual({ ok: true });
   });
 
   test("GET /api/vcs answers a valid empty branch for a directory outside a repository", async () => {

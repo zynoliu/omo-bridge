@@ -31,7 +31,8 @@
           "color": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "commands": {
         "type": "object",
@@ -39,7 +40,8 @@
           "start": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "time": {
         "type": "object",
@@ -61,6 +63,7 @@
             "minimum": 0
           }
         },
+        "additionalProperties": false,
         "required": [
           "created",
           "updated",
@@ -74,6 +77,7 @@
         }
       }
     },
+    "additionalProperties": false,
     "required": [
       "id",
       "canonical",

@@ -9,11 +9,11 @@ export const MAX_FIND_RESULTS = 100;
 
 export type FileEntryType = "file" | "directory";
 
+// `FileSystem.Entry` (`packages/schema/src/filesystem.ts:18`) is exactly `{path, type}` and the TUI
+// decodes those two keys, so a `name` or `size` here would be an undeclared field on the wire.
 export type FileEntry = {
-  name: string;
   path: string;
   type: FileEntryType;
-  size?: number;
 };
 
 export type ProjectInfo = {
@@ -81,6 +81,15 @@ export function locationInfo(directory: string): LocationPublicInfo {
   };
 }
 
+// An enveloped response carries `Location.PublicRef` as its `location` — `directory` and nothing more
+// (`packages/schema/src/location.ts:10`, `Location.response` at :37). `Location.PublicInfo`, which
+// also carries the project, is the bare body of GET /api/location only.
+export type LocationPublicRef = { directory: string };
+
+export function locationRef(directory: string): LocationPublicRef {
+  return { directory };
+}
+
 // Project.Time values are epoch millis, so read them from the directory itself instead of inventing
 // one shared clock value per response. A filesystem without birth times falls back to its mtime.
 function projectTimeOf(canonical: string): ProjectTime {
@@ -131,11 +140,9 @@ function entryFor(root: string, directory: string, dirent: Dirent): FileEntry {
   const absolute = join(directory, dirent.name);
   const path = relativePath(root, absolute);
   try {
-    const stats = statSync(absolute);
-    if (stats.isDirectory()) return { name: dirent.name, path, type: "directory" };
-    return { name: dirent.name, path, type: "file", size: stats.size };
+    return { path, type: statSync(absolute).isDirectory() ? "directory" : "file" };
   } catch {
-    return { name: dirent.name, path, type: "file" };
+    return { path, type: "file" };
   }
 }
 
@@ -257,7 +264,7 @@ export async function handleFsList(_request: Request, url: URL): Promise<Respons
   const directory = requestedDirectory(url, true);
   const listed = readDirectory(directory);
   if (!listed.ok) return listed.response;
-  return jsonResponse(200, { location: locationInfo(directory), data: listed.entries });
+  return jsonResponse(200, { location: locationRef(directory), data: listed.entries });
 }
 
 export async function handleFsFind(_request: Request, url: URL): Promise<Response> {
@@ -272,7 +279,7 @@ export async function handleFsFind(_request: Request, url: URL): Promise<Respons
   }
   const failure = directoryError(directory);
   if (failure !== null) return failure;
-  return jsonResponse(200, { location: locationInfo(directory), data: findEntries(directory, query, limit) });
+  return jsonResponse(200, { location: locationRef(directory), data: findEntries(directory, query, limit) });
 }
 
 // `location.get` declares `success: Location.PublicInfo` with no `Location.response(...)` wrapper
@@ -316,13 +323,13 @@ async function vcsBranch(directory: string): Promise<{ current?: string; default
 export async function handleVcsGet(_request: Request, url: URL): Promise<Response> {
   const directory = requestedDirectory(url, false);
   return jsonResponse(200, {
-    location: locationInfo(directory),
+    location: locationRef(directory),
     data: { branch: await vcsBranch(directory) },
   });
 }
 
 export async function handleVcsBase(_request: Request, url: URL): Promise<Response> {
-  return jsonResponse(200, { location: locationInfo(requestedDirectory(url, false)), data: null });
+  return jsonResponse(200, { location: locationRef(requestedDirectory(url, false)), data: null });
 }
 
 // `fs.read` declares `/api/fs/read/*` with a `LocationQuery`; the fork's client puts the file path in
@@ -415,7 +422,7 @@ export async function handleVcsStatus(_request: Request, url: URL): Promise<Resp
   const directory = requestedDirectory(url, false);
   const output = await gitRead(directory, ["status", "--porcelain=v1"]);
   if (output === null) {
-    return jsonResponse(200, { location: locationInfo(directory), data: [] });
+    return jsonResponse(200, { location: locationRef(directory), data: [] });
   }
   const [unstaged, staged] = await Promise.all([numstat(directory, false), numstat(directory, true)]);
   const data: Array<{ file: string; additions: number; deletions: number; status: string }> = [];
@@ -426,7 +433,7 @@ export async function handleVcsStatus(_request: Request, url: URL): Promise<Resp
     const counts = unstaged.get(path) ?? staged.get(path) ?? { additions: 0, deletions: 0 };
     data.push({ file: path, additions: counts.additions, deletions: counts.deletions, status: statusFromPorcelain(code) });
   }
-  return jsonResponse(200, { location: locationInfo(directory), data });
+  return jsonResponse(200, { location: locationRef(directory), data });
 }
 
 export async function handleVcsBranch(_request: Request, url: URL): Promise<Response> {
@@ -443,7 +450,7 @@ export async function handleVcsBranch(_request: Request, url: URL): Promise<Resp
     .map((name) => name.trim())
     .filter((name) => name.length > 0 && !name.endsWith("/HEAD"))
     .filter((name) => search.length === 0 || name.toLowerCase().includes(search));
-  return jsonResponse(200, { location: locationInfo(directory), data: [...new Set(branches)].slice(0, limit) });
+  return jsonResponse(200, { location: locationRef(directory), data: [...new Set(branches)].slice(0, limit) });
 }
 
 export async function handleLocationReload(_request: Request, _url: URL): Promise<Response> {
@@ -455,7 +462,7 @@ export async function handleVcsDiff(_request: Request, url: URL): Promise<Respon
   const directory = requestedDirectory(url, false);
   const output = await gitRead(directory, ["diff", "--no-color"]);
   return jsonResponse(200, {
-    location: locationInfo(directory),
+    location: locationRef(directory),
     data: output === null ? [] : parseUnifiedDiff(output),
   });
 }

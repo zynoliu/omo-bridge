@@ -45,6 +45,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "required": [
             "id",
             "providerID"
@@ -58,6 +59,7 @@
           "minimum": 0
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "assistantMessageID",
@@ -66,5 +68,6 @@
         "started"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

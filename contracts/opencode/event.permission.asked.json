@@ -63,6 +63,7 @@
                   "type": "string"
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "type",
                 "messageID",
@@ -75,6 +76,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "id",
         "sessionID",
@@ -82,5 +84,6 @@
         "resources"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

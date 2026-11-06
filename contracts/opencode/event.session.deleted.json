@@ -27,9 +27,11 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

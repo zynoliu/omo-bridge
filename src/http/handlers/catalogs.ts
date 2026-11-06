@@ -3,7 +3,7 @@ import { isAbsolute, resolve } from "node:path";
 import { validateResponse } from "../../contract/validate";
 import { storedCredentialMethod } from "../../senpi/credentials";
 import type { SenpiModelInfo, SenpiTransport } from "../../senpi/transport";
-import { locationInfo, type LocationPublicInfo } from "./fs-location";
+import { locationRef, type LocationPublicRef } from "./fs-location";
 import { listSavedPermissions } from "./permission";
 import { HandlerProblem, jsonResponse, noContent, respond } from "./problem";
 import { attachSessionTarget, getSessionManagementTransport, requireKnownSession } from "./session-write";
@@ -157,7 +157,7 @@ function requestedDirectory(url: URL): string {
   return isAbsolute(raw) ? resolve(raw) : resolve(process.cwd(), raw);
 }
 
-function locationFor(url: URL): LocationPublicInfo {
+function locationFor(url: URL): LocationPublicRef {
   const directory = requestedDirectory(url);
   let stats;
   try {
@@ -168,7 +168,7 @@ function locationFor(url: URL): LocationPublicInfo {
   if (!stats.isDirectory()) {
     throw new HandlerProblem(400, "InvalidRequestError", `not a directory: ${directory}`, { directory });
   }
-  return locationInfo(directory);
+  return locationRef(directory);
 }
 
 function publicModel(model: SenpiModelInfo): CatalogModel {

@@ -16,6 +16,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "directory"
       ]
@@ -44,6 +45,7 @@
                 "type": "string"
               }
             },
+            "additionalProperties": false,
             "required": [
               "id",
               "providerID"
@@ -94,6 +96,7 @@
                             "const": "summary"
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "type"
                         ]
@@ -105,6 +108,7 @@
                             "const": "native"
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "type"
                         ]
@@ -138,11 +142,13 @@
                               "duration": {
                                 "type": "string"
                               }
-                            }
+                            },
+                            "additionalProperties": false
                           }
                         ]
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "transport": {
                     "enum": [
@@ -171,6 +177,7 @@
                 "additionalProperties": {}
               }
             },
+            "additionalProperties": false,
             "required": [
               "settings",
               "headers",
@@ -219,6 +226,7 @@
                   ]
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "action",
                 "resource",
@@ -227,6 +235,7 @@
             }
           }
         },
+        "additionalProperties": false,
         "required": [
           "id",
           "name",
@@ -237,5 +246,6 @@
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

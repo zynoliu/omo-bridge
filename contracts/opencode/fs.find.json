@@ -16,6 +16,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "directory"
       ]
@@ -35,11 +36,13 @@
             ]
           }
         },
+        "additionalProperties": false,
         "required": [
           "path",
           "type"
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

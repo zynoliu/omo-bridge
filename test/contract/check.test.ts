@@ -70,6 +70,24 @@ describe("contracts:check", () => {
     }
   });
 
+  test("fails on a sample carrying an unknown field and names the endpoint", async () => {
+    const dir = tempCopy(OPENCODE);
+    try {
+      const file = join(dir, "samples", "model.list.json");
+      const sample = JSON.parse(readFileSync(file, "utf8")) as { data: Record<string, unknown>[] };
+      sample.data[0]!.undeclaredField = "unexpected";
+      writeFileSync(file, `${JSON.stringify(sample, null, 2)}\n`);
+      const result = await runCheck({ OMO_BRIDGE_CONTRACTS_OPENCODE_DIR: dir });
+      expect(result.code).not.toBe(0);
+      expect(result.stderr).toContain("opencode: sample model.list");
+      expect(result.stderr).toContain("must NOT have additional properties");
+      expect(result.stderr).toContain("undeclaredField");
+      expect(result.stdout).not.toContain("contracts: ok");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("fails on a tampered senpi fixture and names senpi", async () => {
     const dir = tempCopy(SENPI);
     try {

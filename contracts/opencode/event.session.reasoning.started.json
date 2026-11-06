@@ -38,11 +38,13 @@
           "additionalProperties": {}
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "assistantMessageID",
         "ordinal"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

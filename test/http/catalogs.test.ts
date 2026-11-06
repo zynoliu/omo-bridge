@@ -82,7 +82,7 @@ function post(path: string, body: unknown): Request {
   });
 }
 
-type Envelope<T> = { location: { directory: string; project: { id: string; directory: string; canonical: string } }; data: T };
+type Envelope<T> = { location: { directory: string }; data: T };
 
 beforeEach(() => {
   setCatalogTransport(undefined);
@@ -103,8 +103,8 @@ describe("handleModelList", () => {
     expect(response.headers.get("content-type")).toContain("application/json");
 
     const body = (await response.json()) as Envelope<unknown[]>;
-    expect(body.location.directory).toBe(WORK_DIR);
-    expect(validateResponse("location.publicInfo", body.location)).toEqual({ ok: true });
+    expect(body.location).toEqual({ directory: WORK_DIR });
+    expect(validateResponse("model.list", body)).toEqual({ ok: true });
     expect(body.data).toEqual([
       {
         id: "claude-sonnet-4",
@@ -326,7 +326,8 @@ describe("handleAgentList", () => {
     const response = await handleAgentList(get("/api/agent"), urlOf("/api/agent", { "location[directory]": WORK_DIR }));
     expect(response.status).toBe(200);
     const body = (await response.json()) as Envelope<Array<Record<string, unknown>>>;
-    expect(validateResponse("location.publicInfo", body.location)).toEqual({ ok: true });
+    expect(body.location).toEqual({ directory: WORK_DIR });
+    expect(validateResponse("agent.list", body)).toEqual({ ok: true });
     expect(body.data).toHaveLength(1);
 
     const agent = body.data[0]!;
@@ -367,7 +368,7 @@ describe("empty catalogs", () => {
       expect(response.status).toBe(200);
       const body = (await response.json()) as Envelope<unknown>;
       expect(body.data).toEqual([]);
-      expect(validateResponse("location.publicInfo", body.location)).toEqual({ ok: true });
+      expect(body.location).toEqual({ directory: WORK_DIR });
     });
   }
 

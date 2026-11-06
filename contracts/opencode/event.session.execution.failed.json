@@ -45,6 +45,7 @@
                   "type": "string"
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "body"
               ]
@@ -54,16 +55,19 @@
               "minimum": 0
             }
           },
+          "additionalProperties": false,
           "required": [
             "type",
             "message"
           ]
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "error"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

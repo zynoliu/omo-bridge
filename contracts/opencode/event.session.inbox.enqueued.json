@@ -63,6 +63,7 @@
                                     "const": "inline"
                                   }
                                 },
+                                "additionalProperties": false,
                                 "required": [
                                   "type"
                                 ]
@@ -77,6 +78,7 @@
                                     "type": "string"
                                   }
                                 },
+                                "additionalProperties": false,
                                 "required": [
                                   "type",
                                   "uri"
@@ -103,6 +105,7 @@
                                 "type": "string"
                               }
                             },
+                            "additionalProperties": false,
                             "required": [
                               "start",
                               "end",
@@ -110,6 +113,7 @@
                             ]
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "data",
                           "mime",
@@ -138,6 +142,7 @@
                                 "type": "string"
                               }
                             },
+                            "additionalProperties": false,
                             "required": [
                               "start",
                               "end",
@@ -145,6 +150,7 @@
                             ]
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "name"
                         ]
@@ -177,6 +183,7 @@
                                 "type": "string"
                               }
                             },
+                            "additionalProperties": false,
                             "required": [
                               "start",
                               "end",
@@ -184,6 +191,7 @@
                             ]
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "id",
                           "name"
@@ -195,6 +203,7 @@
                       "additionalProperties": {}
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "text"
                   ]
@@ -206,6 +215,7 @@
                   ]
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "type",
                 "payload",
@@ -232,6 +242,7 @@
                       "additionalProperties": {}
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "text"
                   ]
@@ -243,6 +254,7 @@
                   ]
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "type",
                 "payload",
@@ -257,7 +269,8 @@
                 },
                 "payload": {
                   "type": "object",
-                  "properties": {}
+                  "properties": {},
+                  "additionalProperties": false
                 },
                 "delivery": {
                   "enum": [
@@ -266,6 +279,7 @@
                   ]
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "type",
                 "payload",
@@ -291,6 +305,7 @@
                           "type": "string"
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "directory"
                       ]
@@ -302,6 +317,7 @@
                       "type": "string"
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "location",
                     "projectID"
@@ -314,6 +330,7 @@
                   ]
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "type",
                 "payload",
@@ -323,11 +340,13 @@
           ]
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "inboxID",
         "item"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

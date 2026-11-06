@@ -16,6 +16,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "directory"
       ]
@@ -50,6 +51,7 @@
             "const": true
           }
         },
+        "additionalProperties": false,
         "required": [
           "file",
           "patch",
@@ -59,5 +61,6 @@
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

@@ -31,10 +31,12 @@
           "additionalProperties": {}
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "metadata"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

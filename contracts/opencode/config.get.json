@@ -42,6 +42,7 @@
                         "type": "string"
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "providerID",
                       "model"
@@ -72,7 +73,8 @@
                   "url": {
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "username": {
                 "type": "string"
@@ -99,6 +101,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "action",
                     "resource",
@@ -133,6 +136,7 @@
                       ]
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "action",
                     "resource",
@@ -163,6 +167,7 @@
                               "type": "string"
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "providerID",
                             "model"
@@ -183,7 +188,8 @@
                           "type": "object",
                           "additionalProperties": {}
                         }
-                      }
+                      },
+                      "additionalProperties": false
                     },
                     "system": {
                       "type": "string"
@@ -230,6 +236,7 @@
                             ]
                           }
                         },
+                        "additionalProperties": false,
                         "required": [
                           "action",
                           "resource",
@@ -237,7 +244,8 @@
                         ]
                       }
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "snapshots": {
@@ -252,7 +260,8 @@
                       "type": "string"
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "formatter": {
                 "anyOf": [
@@ -285,7 +294,8 @@
                             "type": "string"
                           }
                         }
-                      }
+                      },
+                      "additionalProperties": false
                     }
                   }
                 ]
@@ -306,6 +316,7 @@
                               "const": true
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "disabled"
                           ]
@@ -339,6 +350,7 @@
                               "additionalProperties": {}
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "command"
                           ]
@@ -369,9 +381,11 @@
                         "type": "integer",
                         "minimum": 1
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "tool_output": {
                 "type": "object",
@@ -384,7 +398,8 @@
                     "type": "integer",
                     "minimum": 1
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "mcp": {
                 "type": "object",
@@ -404,7 +419,8 @@
                         "type": "integer",
                         "minimum": 1
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "servers": {
                     "type": "object",
@@ -452,7 +468,8 @@
                                   "type": "integer",
                                   "minimum": 1
                                 }
-                              }
+                              },
+                              "additionalProperties": false
                             },
                             "protocol": {
                               "enum": [
@@ -462,6 +479,7 @@
                               ]
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "type",
                             "command"
@@ -505,7 +523,8 @@
                                     "auth_server_metadata_url": {
                                       "type": "string"
                                     }
-                                  }
+                                  },
+                                  "additionalProperties": false
                                 },
                                 {
                                   "const": false
@@ -533,7 +552,8 @@
                                   "type": "integer",
                                   "minimum": 1
                                 }
-                              }
+                              },
+                              "additionalProperties": false
                             },
                             "protocol": {
                               "enum": [
@@ -543,6 +563,7 @@
                               ]
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "type",
                             "url"
@@ -551,7 +572,8 @@
                       ]
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "compaction": {
                 "type": "object",
@@ -566,7 +588,8 @@
                         "type": "integer",
                         "minimum": 0
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "buffer": {
                     "anyOf": [
@@ -579,7 +602,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "skills": {
                 "type": "array",
@@ -619,6 +643,7 @@
                               "type": "string"
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "providerID",
                             "model"
@@ -633,6 +658,7 @@
                       "type": "boolean"
                     }
                   },
+                  "additionalProperties": false,
                   "required": [
                     "template"
                   ]
@@ -667,6 +693,7 @@
                           "type": "boolean"
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "repository"
                       ]
@@ -684,6 +711,7 @@
                           "type": "boolean"
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "path"
                       ]
@@ -710,6 +738,7 @@
                         ]
                       }
                     },
+                    "additionalProperties": false,
                     "required": [
                       "provider"
                     ]
@@ -734,6 +763,7 @@
                           "additionalProperties": {}
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "package"
                       ]
@@ -748,6 +778,7 @@
                     "type": "string"
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "directory"
                 ]
@@ -776,7 +807,8 @@
                       "duration": {
                         "type": "string"
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   }
                 ]
               },
@@ -851,7 +883,8 @@
                             "root"
                           ]
                         }
-                      }
+                      },
+                      "additionalProperties": false
                     },
                     "settings": {
                       "type": "object",
@@ -895,6 +928,7 @@
                                   "const": "summary"
                                 }
                               },
+                              "additionalProperties": false,
                               "required": [
                                 "type"
                               ]
@@ -906,6 +940,7 @@
                                   "const": "native"
                                 }
                               },
+                              "additionalProperties": false,
                               "required": [
                                 "type"
                               ]
@@ -939,11 +974,13 @@
                                     "duration": {
                                       "type": "string"
                                     }
-                                  }
+                                  },
+                                  "additionalProperties": false
                                 }
                               ]
                             }
-                          }
+                          },
+                          "additionalProperties": false
                         },
                         "transport": {
                           "enum": [
@@ -1059,7 +1096,8 @@
                                   "root"
                                 ]
                               }
-                            }
+                            },
+                            "additionalProperties": false
                           },
                           "package": {
                             "type": "string"
@@ -1076,6 +1114,7 @@
                                         "const": "summary"
                                       }
                                     },
+                                    "additionalProperties": false,
                                     "required": [
                                       "type"
                                     ]
@@ -1087,6 +1126,7 @@
                                         "const": "native"
                                       }
                                     },
+                                    "additionalProperties": false,
                                     "required": [
                                       "type"
                                     ]
@@ -1120,11 +1160,13 @@
                                           "duration": {
                                             "type": "string"
                                           }
-                                        }
+                                        },
+                                        "additionalProperties": false
                                       }
                                     ]
                                   }
-                                }
+                                },
+                                "additionalProperties": false
                               },
                               "encoding": {
                                 "enum": [
@@ -1168,6 +1210,7 @@
                                 "type": "boolean"
                               }
                             },
+                            "additionalProperties": false,
                             "required": [
                               "tools",
                               "input",
@@ -1194,6 +1237,7 @@
                                               "const": "summary"
                                             }
                                           },
+                                          "additionalProperties": false,
                                           "required": [
                                             "type"
                                           ]
@@ -1205,6 +1249,7 @@
                                               "const": "native"
                                             }
                                           },
+                                          "additionalProperties": false,
                                           "required": [
                                             "type"
                                           ]
@@ -1218,7 +1263,8 @@
                                         "none"
                                       ]
                                     }
-                                  }
+                                  },
+                                  "additionalProperties": false
                                 },
                                 "headers": {
                                   "type": "object",
@@ -1231,6 +1277,7 @@
                                   "additionalProperties": {}
                                 }
                               },
+                              "additionalProperties": false,
                               "required": [
                                 "id"
                               ]
@@ -1251,6 +1298,7 @@
                                         "type": "integer"
                                       }
                                     },
+                                    "additionalProperties": false,
                                     "required": [
                                       "type",
                                       "size"
@@ -1271,9 +1319,11 @@
                                       "write": {
                                         "type": "number"
                                       }
-                                    }
+                                    },
+                                    "additionalProperties": false
                                   }
                                 },
+                                "additionalProperties": false,
                                 "required": [
                                   "input",
                                   "output"
@@ -1294,6 +1344,7 @@
                                           "type": "integer"
                                         }
                                       },
+                                      "additionalProperties": false,
                                       "required": [
                                         "type",
                                         "size"
@@ -1314,9 +1365,11 @@
                                         "write": {
                                           "type": "number"
                                         }
-                                      }
+                                      },
+                                      "additionalProperties": false
                                     }
                                   },
+                                  "additionalProperties": false,
                                   "required": [
                                     "input",
                                     "output"
@@ -1340,12 +1393,15 @@
                               "output": {
                                 "type": "integer"
                               }
-                            }
+                            },
+                            "additionalProperties": false
                           }
-                        }
+                        },
+                        "additionalProperties": false
                       }
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               },
               "experimental": {
@@ -1389,6 +1445,7 @@
                                     "type": "string"
                                   }
                                 },
+                                "additionalProperties": false,
                                 "required": [
                                   "providerID",
                                   "model"
@@ -1396,7 +1453,8 @@
                               }
                             ]
                           }
-                        }
+                        },
+                        "additionalProperties": false
                       }
                     ]
                   },
@@ -1447,6 +1505,7 @@
                           ]
                         }
                       },
+                      "additionalProperties": false,
                       "required": [
                         "action",
                         "resource",
@@ -1454,11 +1513,14 @@
                       ]
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               }
-            }
+            },
+            "additionalProperties": false
           }
         },
+        "additionalProperties": false,
         "required": [
           "type",
           "info"
@@ -1474,6 +1536,7 @@
             "type": "string"
           }
         },
+        "additionalProperties": false,
         "required": [
           "type",
           "path"

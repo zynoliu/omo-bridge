@@ -17,10 +17,12 @@
             "const": "running"
           }
         },
+        "additionalProperties": false,
         "required": [
           "type"
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

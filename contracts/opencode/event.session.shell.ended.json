@@ -76,11 +76,13 @@
                   "type": "number"
                 }
               },
+              "additionalProperties": false,
               "required": [
                 "started"
               ]
             }
           },
+          "additionalProperties": false,
           "required": [
             "id",
             "status",
@@ -110,6 +112,7 @@
               "type": "boolean"
             }
           },
+          "additionalProperties": false,
           "required": [
             "output",
             "cursor",
@@ -118,11 +121,13 @@
           ]
         }
       },
+      "additionalProperties": false,
       "required": [
         "sessionID",
         "shell",
         "output"
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

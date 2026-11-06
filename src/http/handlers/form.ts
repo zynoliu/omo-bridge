@@ -7,7 +7,7 @@ import {
 } from "../../bridge/ui-requests";
 import type { SenpiExtensionUIResponse } from "../../senpi/transport";
 import { eventBus as sharedEventBus, type EventBus } from "../events";
-import { locationInfo, type LocationPublicInfo } from "./fs-location";
+import { locationRef, type LocationPublicRef } from "./fs-location";
 import { HandlerProblem, jsonResponse, noContent, respond } from "./problem";
 import { requireKnownSession } from "./session-write";
 
@@ -210,11 +210,11 @@ function formIdFromPath(url: URL): string {
   return formID;
 }
 
-function locationFor(url: URL): LocationPublicInfo {
+function locationFor(url: URL): LocationPublicRef {
   const raw = url.searchParams.get("location[directory]")?.trim();
   const directory =
     raw === undefined || raw.length === 0 ? process.cwd() : isAbsolute(raw) ? resolve(raw) : resolve(process.cwd(), raw);
-  return locationInfo(directory);
+  return locationRef(directory);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

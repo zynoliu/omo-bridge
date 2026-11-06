@@ -205,6 +205,15 @@ or executes fork code, never writes to the fork, and never needs the fork's depe
    extra error-specific field, and lists every declared tag in its `$comment` so a rename or removal is drift.
 8. Event endpoints are `Event.durable(...)`/`Event.ephemeral(...)` definitions located by their `type`
    literal; the frame envelope is `{id, type, created, data}` and `data` is the definition's `schema:`.
+9. Every generated struct is closed: a `Schema.Struct`/`Schema.Class` emits `additionalProperties: false`, and so
+   does each response envelope (`{data}`, `{location, data}`, ...) and the event frame. The only objects that stay
+   open are the ones a declaration opens — `Record(...)`, `StructWithRest(...)` and the `error.envelope` in rule 7.
+   Sample validation therefore rejects a body that grows a field no declaration names, and `test/contract`
+   stamps one undeclared key onto every endpoint's sample to prove it.
+   This strictness found two bridge responses that served undeclared fields, and both were corrected on the
+   response side rather than exempted: an enveloped `location` is `Location.PublicRef` (`{directory}` only — the
+   project belongs to the bare `Location.PublicInfo` of `GET /api/location`), and a `fs.list`/`fs.find` entry is
+   `FileSystem.Entry` (`{path, type}` only).
 9. An unresolved reference is a hard error: `deriveSchemas()` walks every derived schema and fails on any
    `$comment` beginning with `unresolved:`. A leaf that silently degrades to `{}` would accept every value
    and turn the assertion into a no-op.
