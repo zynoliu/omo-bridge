@@ -14,6 +14,11 @@ Options:
 - `--evidence-dir <dir>` where the run writes its evidence (default `<repo>/.qa/run-<timestamp>`)
 - `--agent-dir <dir>` run the bridge against this agent directory (see “Reproducing a failure”)
 - `--keep` keep the bridge state directory
+- `--fault <name>` inject a failure the TUI survives (`host-down`, `bridge-down`, `provider-error`, `bogus-session`)
+- `QA_REPLY_WAIT_MS` how long to wait for a painted reply (default 90000); raise it when the provider is slow
+
+Scenarios: `send-message` (L3: submit, reply, order), `models-dialog` (L4: the picker lists the host's
+models), `first-minute` (L4: seven first-screen surfaces, each content / explicit refusal / TUI-owned copy).
 - `--help` usage
 
 Exit code `0` means the scenario's assertions held; anything else means they did not, and the report says why.

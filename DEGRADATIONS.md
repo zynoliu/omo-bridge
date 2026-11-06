@@ -5,6 +5,12 @@ answered by shims so the TUI degrades visibly instead of breaking. Every shim an
 error envelope (or `204 NoContent`), and none of them answers 5xx. The one path with no shim,
 `DELETE /api/worktree`, is refused by the router with `405 MethodNotAllowedError` before any handler runs.
 
+`contracts/bridge/capabilities.json` is the machine-readable ledger of these families, and
+`GET /api/bridge/capabilities` serves it. `test/rule/capability.test.ts` fails when the ledger, the route
+and `src/http/handlers/degraded.ts` disagree, so a new family cannot be added silently. Surfaces whose
+empty state is TUI-authored copy that claims a state the bridge does not support are listed in
+`docs/blockers/tui-copy.md` rather than pretended to be wired.
+
 Graded rule (`src/http/handlers/degraded.ts`):
 
 - read-only family -> contract-valid empty value (`[]` / `null`);

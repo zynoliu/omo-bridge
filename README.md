@@ -132,5 +132,11 @@ bun run selfcheck
 ```
 
 This runs the typecheck, the contract check, and the full test suite, then prints one summary line.
+
+`bun run check:all` is the gate to use instead when you want everything: version pin, typecheck,
+contracts, surface, the full suite with the `src/` coverage floor (90% lines / 92% funcs), and the
+`test/rule` data-source and capability rules. It exits non-zero on the first failing stage and prints
+the number each stage measured. `--allow-version-mismatch` accepts a bun that differs from the pin,
+`--allow-missing-fork` skips the two stages that need the read-only fork checkout.
 Any failure exits non-zero and shows the failing step's output. Upgrading either upstream is covered
 in `docs/upgrade.md`.
