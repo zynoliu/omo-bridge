@@ -15,6 +15,7 @@
     "surface:extract": "bun run scripts/surface-extract.ts",
     "surface:check": "bun run scripts/surface-extract.ts --check",
     "selfcheck": "bun run scripts/selfcheck.ts",
+    "check:all": "bun run scripts/check-all.ts",
     "qa:tui": "bun run script/qa/web-terminal-visual-qa.mjs"
   },
   "dependencies": {

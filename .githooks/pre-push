@@ -1,0 +1,3 @@
+#!/bin/sh
+# Optional: enable with `git config core.hooksPath .githooks`.
+exec bun run check:all
