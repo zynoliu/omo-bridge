@@ -170,13 +170,52 @@ function failureError(failure: Record<string, unknown>): Record<string, unknown>
     typeof httpStatus === "number" && Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599
       ? httpStatus
       : undefined;
-  return { type, message, ...(status === undefined ? {} : { status }) };
+  // The host's failure carries the provider attribution (describeProviderFailure): keeping it on the
+  // event is what tells a provider fault apart from a bridge bug. Absent fields stay absent so the
+  // event shape does not lie about what the host said.
+  const provider = asNonEmptyString(failure.provider);
+  const model = asNonEmptyString(failure.model);
+  const code = asNonEmptyString(failure.code);
+  const resetsAt =
+    typeof failure.resetsAt === "number" && Number.isFinite(failure.resetsAt) ? failure.resetsAt : undefined;
+  const action = asNonEmptyString(failure.action);
+  return {
+    type,
+    message,
+    ...(status === undefined ? {} : { status }),
+    ...(provider === undefined ? {} : { provider }),
+    ...(model === undefined ? {} : { model }),
+    ...(code === undefined ? {} : { code }),
+    ...(resetsAt === undefined ? {} : { resetsAt }),
+    ...(action === undefined ? {} : { action }),
+  };
 }
+
+/**
+ * The one line a failed run writes to the bridge's log. `bridge.log` is the bridge's stderr, so this
+ * is how an operator (or the QA evidence) sees the host's attribution without reading the SSE stream.
+ */
+function failureLogLine(sessionID: string, error: Record<string, unknown>): string {
+  const parts = [`omo-bridge: session.execution.failed sessionID=${sessionID}`];
+  for (const key of ["type", "provider", "model", "code", "status", "resetsAt"] as const) {
+    if (error[key] !== undefined) parts.push(`${key}=${String(error[key])}`);
+  }
+  if (error.action !== undefined) parts.push(`action=${JSON.stringify(error.action)}`);
+  parts.push(`message=${JSON.stringify(error.message)}`);
+  return parts.join(" ");
+}
+
+export type LifecycleProjectorOptions = {
+  /** Sink for the failure attribution line; the bridge process's stderr (its log) by default. */
+  log?: (message: string) => void;
+};
 
 export function createLifecycleProjector(
   ctx: TranslateContext,
   sink: EventSink = () => {},
+  options: LifecycleProjectorOptions = {},
 ): LifecycleProjector {
+  const log = options.log ?? ((message: string): void => console.warn(message));
   const stats: LifecycleProjectorStats = { ignored: 0 };
   let active = false;
   let usageSeen = false;
@@ -245,7 +284,9 @@ export function createLifecycleProjector(
     if (record.aborted === true) {
       emit("session.execution.interrupted", { sessionID: ctx.sessionID, reason: interruptReason(record) });
     } else if (failure !== undefined) {
-      emit("session.execution.failed", { sessionID: ctx.sessionID, error: failureError(failure) });
+      const error = failureError(failure);
+      emit("session.execution.failed", { sessionID: ctx.sessionID, error });
+      log(failureLogLine(ctx.sessionID, error));
     } else {
       emit("session.execution.succeeded", { sessionID: ctx.sessionID });
     }

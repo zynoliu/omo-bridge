@@ -121,11 +121,53 @@ export function classify(before, after) {
   return { outcome: "idle", line: "" };
 }
 
+const PROVIDER_ERROR = "provider-error";
+
+/**
+ * Points the launcher at `test/senpi/fake-host.ts`. The launcher probes `omo host ensure` first; that
+ * probe exits non-zero for the fake, so `ensurePrivateHost` falls back to spawning it with
+ * `--listen unix://<private socket>` and the bridge talks to the fake for the whole run. The fake
+ * accepts a prompt and ends its turn with the host's `agent_end.failure` shape.
+ */
+async function installFakeHostBinary(ctx, evidenceDir) {
+  const wrapper = `${evidenceDir}/fake-host-omo`;
+  await Bun.write(wrapper, `#!/bin/sh\nexec "${ctx.bunExe}" "${ctx.repo}/test/senpi/fake-host.ts" "$@"\n`);
+  await Bun.$`chmod +x ${wrapper}`.quiet();
+  const previous = process.env.OMO_BRIDGE_OMO_BIN;
+  process.env.OMO_BRIDGE_OMO_BIN = wrapper;
+  return () => {
+    if (previous === undefined) delete process.env.OMO_BRIDGE_OMO_BIN;
+    else process.env.OMO_BRIDGE_OMO_BIN = previous;
+  };
+}
+
+/** What the bridge kept of the injected failure: its log line and the event the frames produced. */
+async function providerErrorEvidence(bridge, events) {
+  let log = "";
+  try {
+    log = await Bun.file(bridge.logPath).text();
+  } catch {
+    // The log is written by the launcher; a run that never started leaves none.
+  }
+  const logLine = log.split("\n").find((line) => line.includes("session.execution.failed")) ?? "";
+  const failed = events.find((event) => event.type === "session.execution.failed");
+  return {
+    bridgeLogLine: logLine,
+    retained: {
+      provider: /\bprovider=/.test(logLine),
+      model: /\bmodel=/.test(logLine),
+      code: /\bcode=/.test(logLine),
+    },
+    event: failed?.data ?? null,
+  };
+}
+
 export default {
   name: "send-message",
   async run(ctx) {
     const started = Date.now();
     const evidence = ctx.evidenceDir;
+    const restoreOmoBin = ctx.fault === PROVIDER_ERROR ? await installFakeHostBinary(ctx, evidence) : undefined;
     const bridge = await ctx.startBridge({ evidenceDir: evidence });
     const recorder = recordEvents(bridge);
     const checks = { reply: false, error: false, idle: false, order: false };
@@ -202,7 +244,8 @@ export default {
       }
 
       let frameAfter = await tui.text();
-      const deadline = Date.now() + 90_000;
+      const replyWindowMs = Number(process.env.QA_REPLY_WAIT_MS ?? 90_000);
+      const deadline = Date.now() + replyWindowMs;
       while (Date.now() < deadline) {
         frameAfter = await tui.text();
         const verdict = classify(beforeText, frameAfter);
@@ -299,6 +342,7 @@ export default {
         submitted,
         openRequested: process.env.QA_OPEN_SESSION !== "0",
         fault: ctx.fault ?? null,
+        providerError: ctx.fault === PROVIDER_ERROR ? await providerErrorEvidence(bridge, recorder.events) : null,
         sessionID,
         history,
         durations: { totalMs: Date.now() - started, replyWaitMs: Date.now() - sentAt },
@@ -322,6 +366,7 @@ export default {
       recorder.stop();
       await tui?.stop();
       await bridge.stop();
+      restoreOmoBin?.();
     }
   },
 };

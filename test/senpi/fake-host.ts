@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -32,7 +32,21 @@ export interface FakeHostOptions {
   transcripts?: Record<string, readonly Record<string, unknown>[]>;
   /** The `isStreaming` an `open_session` answer reports; defaults to the recorded value (false). */
   streaming?: boolean;
+  /** Listen here instead of `<dir>/s.sock`; the launcher's fallback names this path with `--listen`. */
+  socketPath?: string;
+  /** The `models` of a `get_available_models` answer; the bridge reads this at startup. */
+  models?: readonly Record<string, unknown>[];
+  /**
+   * When set, an accepted `prompt` answers its turn with this failure instead of a reply:
+   * `agent_start`, the user echo, `agent_end` carrying the failure, then the settle seals.
+   */
+  promptFailure?: Record<string, unknown>;
 }
+
+/** One model so the bridge's startup catalog probe (`get_available_models`) can answer. */
+const DEFAULT_MODELS: readonly Record<string, unknown>[] = [
+  { provider: "anthropic", id: "claude-sonnet-4", contextWindow: 200000, reasoning: true },
+];
 
 // Two queued inputs in the shape of the host's `PendingInputSnapshot.inputs` projections.
 const DEFAULT_PENDING_INPUTS: readonly Record<string, unknown>[] = [
@@ -145,13 +159,15 @@ export class FakeSenpiHost {
   private readonly options: FakeHostOptions;
   private readonly pendingInputs: readonly Record<string, unknown>[];
   private readonly commands: readonly Record<string, unknown>[];
+  private readonly models: readonly Record<string, unknown>[];
 
   private constructor(dir: string, options: FakeHostOptions) {
     this.dir = dir;
-    this.socketPath = join(dir, "s.sock");
+    this.socketPath = options.socketPath ?? join(dir, "s.sock");
     this.options = options;
     this.pendingInputs = options.pendingInputs ?? DEFAULT_PENDING_INPUTS;
     this.commands = options.commands ?? DEFAULT_COMMANDS;
+    this.models = options.models ?? DEFAULT_MODELS;
     this.server = Bun.listen<ConnectionState>({
       unix: this.socketPath,
       socket: {
@@ -326,6 +342,14 @@ export class FakeSenpiHost {
       });
       return;
     }
+    if (type === "get_available_models") {
+      this.write(socket, { type: "response", id, command: type, success: true, data: { models: [...this.models] } });
+      return;
+    }
+    if (type === "prompt" && this.options.promptFailure !== undefined) {
+      this.acceptFailedPrompt(socket, state, id, frame);
+      return;
+    }
     if (type === "get_commands") {
       this.write(socket, {
         type: "response",
@@ -363,6 +387,50 @@ export class FakeSenpiHost {
     this.write(socket, { type: "response", id, command: type, success: true });
   }
 
+  /**
+   * A provider refusal is an accepted prompt whose turn ends in `agent_end.failure`. The frames are
+   * emitted after the answer so the client is waiting for a turn when the run opens and closes.
+   */
+  private acceptFailedPrompt(
+    socket: Bun.Socket<ConnectionState>,
+    state: ConnectionState,
+    id: unknown,
+    frame: Record<string, unknown>,
+  ): void {
+    const failure = this.options.promptFailure;
+    if (failure === undefined) return;
+    const sessionId = state.sessionId ?? "rpc-1";
+    this.write(socket, {
+      type: "response",
+      id,
+      command: "prompt",
+      success: true,
+      data: { disposition: "accepted" },
+    });
+    const clientMessageId = typeof frame.clientMessageId === "string" ? frame.clientMessageId : undefined;
+    const message = typeof frame.message === "string" ? frame.message : "";
+    setTimeout(() => {
+      if (clientMessageId !== undefined) {
+        this.write(socket, {
+          type: "message_start",
+          sessionId,
+          message: { role: "user", clientMessageId, content: [{ type: "text", text: message }] },
+        });
+      }
+      this.write(socket, { type: "agent_start", sessionId, runId: "run_fake_failure" });
+      this.write(socket, {
+        type: "agent_end",
+        sessionId,
+        runId: "run_fake_failure",
+        messages: [],
+        willRetry: false,
+        failure,
+      });
+      this.write(socket, { type: "agent_settled", sessionId });
+      this.write(socket, { type: "agent_idle", sessionId });
+    }, 25);
+  }
+
   private defaultSessionRow(): Record<string, unknown> {
     return {
       sessionId: "rpc-1",
@@ -389,4 +457,75 @@ export class FakeSenpiHost {
     if (typeof payload === "object" && payload !== null) socket.data.sent.push(payload as Record<string, unknown>);
     socket.write(`${JSON.stringify(payload)}\n`);
   }
+}
+
+/**
+ * The failure a provider refusal carries on the wire (`describeProviderFailure` in the host): the
+ * attribution fields are what tells a provider fault apart from a bridge bug.
+ */
+export const PROVIDER_ERROR_FAILURE: Record<string, unknown> = {
+  category: "rate_limit",
+  provider: "anthropic",
+  model: "claude-sonnet-4",
+  httpStatus: 429,
+  code: "rate_limit_error",
+  resetsAt: 1_900_000_000_000,
+  reason: "the provider is rate limiting requests",
+  action: "wait for the limit to reset, or choose another model",
+};
+
+const PID_SUFFIX = ".fakehost.pid";
+
+/** `omo host stop --socket <socket>`: end the fake host recorded beside the socket. */
+function stopRecordedHost(socket: string | undefined): boolean {
+  if (socket === undefined) return false;
+  let pid: number;
+  try {
+    pid = Number.parseInt(readFileSync(`${socket}${PID_SUFFIX}`, "utf8").trim(), 10);
+  } catch {
+    return false;
+  }
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch {
+    // Already gone.
+  }
+  rmSync(`${socket}${PID_SUFFIX}`, { force: true });
+  return true;
+}
+
+function socketArgOf(argv: readonly string[]): string | undefined {
+  const index = argv.indexOf("--listen");
+  const raw = index < 0 ? undefined : argv[index + 1];
+  return raw !== undefined && raw.startsWith("unix://") ? raw.slice("unix://".length) : undefined;
+}
+
+/**
+ * Standalone mode, used by the QA harness through `OMO_BRIDGE_OMO_BIN`. The launcher first runs
+ * `omo host ensure`; answering non-zero makes it spawn this file with `--mode rpc --listen
+ * unix://<private socket>`, which is the mode served here - with a provider failure for every prompt.
+ */
+if (import.meta.main) {
+  const argv = process.argv.slice(2);
+  const socketOption = argv.includes("--socket") ? argv[argv.indexOf("--socket") + 1] : undefined;
+  if (argv[0] === "host" && argv[1] === "stop") {
+    stopRecordedHost(socketOption);
+    process.exit(0);
+  }
+  const socketPath = socketArgOf(argv);
+  if (socketPath === undefined) process.exit(1);
+  // An empty queue: the TUI reads `item.payload.text` from a queued row, and the bridge's inbox
+  // projection serves `text` without `payload`, which crashes the pane before the turn can fail.
+  const host = FakeSenpiHost.start({ socketPath, pendingInputs: [], promptFailure: PROVIDER_ERROR_FAILURE });
+  writeFileSync(`${socketPath}${PID_SUFFIX}`, `${process.pid}\n`);
+  const shutdown = (): void => {
+    host.stop();
+    rmSync(`${socketPath}${PID_SUFFIX}`, { force: true });
+    process.exit(0);
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+  process.stdout.write(`${JSON.stringify({ fakeHost: true, socket: socketPath })}\n`);
+  await new Promise<void>(() => undefined);
 }

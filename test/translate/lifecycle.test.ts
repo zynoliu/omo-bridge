@@ -5,13 +5,14 @@ import type { OpenCodeEvent } from "../../src/translate/types";
 const SESSION_ID = "ses_lifecycle";
 const START = 1_718_000_000_000;
 
-function replay(frames: unknown[]) {
+function replay(frames: unknown[], options: { log?: (message: string) => void } = {}) {
   const emitted: OpenCodeEvent[] = [];
   let sequence = 0;
   let clock = START;
   const projector = createLifecycleProjector(
     { sessionID: SESSION_ID, nextID: () => `evt_${++sequence}`, now: () => clock++ },
     (event) => emitted.push(event),
+    { log: options.log ?? (() => {}) },
   );
   for (const frame of frames) projector.handle(frame);
   return { emitted, projector };
@@ -92,6 +93,62 @@ describe("lifecycle projector", () => {
       sessionID: SESSION_ID,
       error: { type: "rate_limit", message: "the provider is rate limiting requests", status: 429 },
     });
+  });
+
+  test("lifecycle keeps the host's failure attribution fields and logs them", () => {
+    const logs: string[] = [];
+    // The host's agent_end failure (describeProviderFailure): the attribution fields are what tells
+    // a provider fault apart from a bridge bug, so dropping them blinds the operator.
+    const failure = {
+      category: "rate_limit",
+      provider: "anthropic",
+      model: "claude-sonnet-4",
+      httpStatus: 429,
+      code: "rate_limit_error",
+      resetsAt: 1_900_000_000_000,
+      reason: "the provider is rate limiting requests",
+      action: "wait for the limit to reset, or choose another model",
+    };
+    const { emitted } = replay([agentStart, agentEnd({ failure })], { log: (message) => logs.push(message) });
+
+    expect(emitted.map((event) => event.type)).toEqual(["session.execution.started", "session.execution.failed"]);
+    expect(emitted[1]?.data).toEqual({
+      sessionID: SESSION_ID,
+      error: {
+        type: "rate_limit",
+        message: "the provider is rate limiting requests",
+        status: 429,
+        provider: "anthropic",
+        model: "claude-sonnet-4",
+        code: "rate_limit_error",
+        resetsAt: 1_900_000_000_000,
+        action: "wait for the limit to reset, or choose another model",
+      },
+    });
+
+    const line = logs.find((entry) => entry.includes("session.execution.failed"));
+    expect(line).toBeDefined();
+    expect(line).toContain(SESSION_ID);
+    expect(line).toContain("provider=anthropic");
+    expect(line).toContain("model=claude-sonnet-4");
+    expect(line).toContain("code=rate_limit_error");
+    expect(line).toContain("resetsAt=1900000000000");
+    expect(line).toContain('action="wait for the limit to reset, or choose another model"');
+  });
+
+  test("lifecycle omits attribution fields the host did not send", () => {
+    const logs: string[] = [];
+    const { emitted } = replay([agentStart, agentEnd({ failure: { category: "auth", reason: "bad key" } })], {
+      log: (message) => logs.push(message),
+    });
+
+    expect(emitted[1]?.data).toEqual({
+      sessionID: SESSION_ID,
+      error: { type: "auth", message: "bad key" },
+    });
+    const line = logs.find((entry) => entry.includes("session.execution.failed"));
+    expect(line).toBeDefined();
+    expect(line).not.toContain("provider=");
   });
 
   test("lifecycle defaults a failure without category or reason", () => {
