@@ -302,7 +302,10 @@ export default {
         sessionID,
         history,
         durations: { totalMs: Date.now() - started, replyWaitMs: Date.now() - sentAt },
-        exitCode: outcome === "reply" && !checks.error && checks.order ? 0 : 1,
+        // A painted footer is not enough: the message must have reached the pane as a submitted bubble
+        // (`submitted`) and the bridge's own history must carry the assistant row the frame claims
+        // (`history.assistant > 0`), otherwise a stale or local-only frame can pass as a reply.
+        exitCode: outcome === "reply" && !checks.error && checks.order && submitted && history.assistant > 0 ? 0 : 1,
         renderMode: screenshot.written ? "webview" : "text",
         screenshot: screenshot.written ? screenshot.path : `none (${screenshot.reason})`,
         evidence: {
