@@ -6,6 +6,7 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const REPO = join(import.meta.dir, "..");
@@ -115,7 +116,7 @@ if (!forkPresent && flag("allow-missing-fork")) {
 
 // ---- test + coverage floor ----
 {
-  const coverageDir = await import("node:fs").then((fs) => fs.mkdtempSync(join(import.meta.dir, "..", ".coverage-")));
+  const coverageDir = await import("node:fs").then((fs) => fs.mkdtempSync(join(tmpdir(), "omo-bridge-coverage-")));
   const { code, out } = await run([
     process.execPath,
     "test",
