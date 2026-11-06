@@ -60,7 +60,7 @@ describe("stream projector", () => {
         data: {
           sessionID: SESSION_ID,
           assistantMessageID: "msg_stream_1",
-          agent: "build",
+          agent: "OmO",
           model: { id: "claude-sonnet-4", providerID: "anthropic" },
           started: START,
         },
@@ -350,7 +350,7 @@ describe("live step identity", () => {
       "session.text.ended",
       "session.step.ended",
     ]);
-    expect(events[0]?.data).toMatchObject({ sessionID: LIVE_SESSION, assistantMessageID: "msg_cold_1", agent: "build" });
+    expect(events[0]?.data).toMatchObject({ sessionID: LIVE_SESSION, assistantMessageID: "msg_cold_1", agent: "OmO" });
     expect(events[0]?.data.replaces).toBeUndefined();
     expect(events[3]?.data.text).toBe("Full reply");
   });

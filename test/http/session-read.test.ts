@@ -503,7 +503,7 @@ describe("session messages", () => {
 
     const assistant = data[1]!;
     expect(assistant.type).toBe("assistant");
-    expect(assistant.agent).toBe("build");
+    expect(assistant.agent).toBe("OmO");
     expect(assistant.model).toEqual({ id: "claude-sonnet-4", providerID: "anthropic" });
     const content = assistant.content as Array<Record<string, unknown>>;
     expect(content.map((part) => part.type)).toEqual(["text", "reasoning", "tool"]);

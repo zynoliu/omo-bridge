@@ -331,7 +331,7 @@ describe("handleAgentList", () => {
     expect(body.data).toHaveLength(1);
 
     const agent = body.data[0]!;
-    expect(agent).toMatchObject({ id: "build", name: "Build", mode: "primary", hidden: false });
+    expect(agent).toMatchObject({ id: "OmO", name: "OmO", mode: "primary", hidden: false });
     expect(agent.request).toEqual({ settings: {}, headers: {}, body: {} });
     expect(agent.permissions).toEqual([
       { action: "*", resource: "*", effect: "allow" },
@@ -345,7 +345,7 @@ describe("handleAgentList", () => {
     const first = (await (await handleAgentList(get("/api/agent"), urlOf("/api/agent"))).json()) as Envelope<unknown[]>;
     const second = (await (await handleAgentList(get("/api/agent"), urlOf("/api/agent"))).json()) as Envelope<unknown[]>;
     expect(first.data).toEqual(second.data);
-    expect((first.data[0] as { id: string }).id).toBe("build");
+    expect((first.data[0] as { id: string }).id).toBe("OmO");
   });
 });
 

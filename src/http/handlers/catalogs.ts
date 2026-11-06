@@ -103,8 +103,8 @@ export type CatalogAgent = {
 // one primary agent. senpi has no agent registry; this row is the projection the next turn's prompt
 // options use, and it is a constant so repeated reads agree.
 const DEFAULT_AGENT: CatalogAgent = {
-  id: "build",
-  name: "Build",
+  id: "OmO",
+  name: "OmO",
   request: { settings: {}, headers: {}, body: {} },
   description: "Default agent for bridge sessions",
   mode: "primary",

@@ -92,7 +92,7 @@ describe("projectEntries", () => {
     expect(messages).toHaveLength(1);
     const assistant = messages[0] as PublicAssistantMessage;
     expect(assistant.type).toBe("assistant");
-    expect(assistant.agent).toBe("build");
+    expect(assistant.agent).toBe("OmO");
     expect(assistant.model).toEqual({ id: "claude-sonnet-4", providerID: "anthropic" });
     expect(assistant.content).toEqual([
       { type: "text", text: "Running it" },

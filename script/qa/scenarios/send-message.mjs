@@ -1,7 +1,7 @@
 const PANE_COLUMN = 44;
 const CHROME =
   /(ctrl\+p|esc to interrupt|shift\+tab|⊙|▀|█|Plugin failed|Run \/plugins|Switched mod|Search sessions|\+ New|\/\p{Script=Han}+ loader)/u;
-const ASSISTANT_FOOTER = /Build · .+ · \d+(?:\.\d+)?s/u;
+const ASSISTANT_FOOTER = /\S+ · .+ · \d+(?:\.\d+)?s/u;
 const ERROR_PATTERN = /(Session failed|unexpected error|Failed to|session not found|Connect an integration)/iu;
 const USER_ECHO = /^你好$/u;
 
@@ -183,7 +183,7 @@ export default {
         ...(ctx.fault === "bogus-session" ? { sessionID: `ses_qa_missing_${Date.now().toString(36)}` } : {}),
       });
       const ready = await tui.waitFor(
-        (text) => text.includes("Build ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
+        (text) => text.includes("OmO ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
         60_000,
       );
       // The launcher opens a session before starting the app, so the composer is already live: this

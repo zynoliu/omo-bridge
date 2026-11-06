@@ -268,7 +268,7 @@ export default {
       let screenshot = { written: false, reason: "not attempted" };
       tui = await ctx.startTui({ stateDir: bridge.stateDir, cols: 120, rows: 36 });
       const ready = await tui.waitFor(
-        (text) => text.includes("Build ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
+        (text) => text.includes("OmO ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
         60_000,
       );
       const before = await ctx.writeFile("frame-before.txt", await tui.text());

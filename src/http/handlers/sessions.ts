@@ -20,7 +20,7 @@ let sessionWaitTimeoutMs = SESSION_WAIT_TIMEOUT_MS;
 export function setSessionWaitTimeoutMs(value: number): void {
   sessionWaitTimeoutMs = value;
 }
-const DEFAULT_AGENT = "build"; // senpi has no agent selection; this is the projection
+const DEFAULT_AGENT = "OmO"; // senpi has no agent selection; this is the projection
 
 export type SessionReadTransport = Pick<
   SenpiTransport,

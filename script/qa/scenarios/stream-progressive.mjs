@@ -7,7 +7,7 @@
 const MARKER = "流式测试";
 const PROMPT = `请输出 60 行，每行格式为「${MARKER} <序号>」，序号从 1 到 60，不要调用任何工具，不要解释。`;
 const PROMPT_PROBE = "60 行";
-const FOOTER = /Build · .+ · \d+(?:\.\d+)?s/u;
+const FOOTER = /\S+ · .+ · \d+(?:\.\d+)?s/u;
 
 function markerCount(frame) {
   return frame.split(MARKER).length - 1;
@@ -91,7 +91,7 @@ export default {
     try {
       tui = await ctx.startTui({ stateDir: bridge.stateDir, cols: 120, rows: 36 });
       checks.ready = await tui.waitFor(
-        (text) => text.includes("Build ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
+        (text) => text.includes("OmO ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
         60_000,
       );
 

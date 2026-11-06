@@ -58,7 +58,7 @@ export default {
 
       tui = await ctx.startTui({ stateDir: bridge.stateDir, cols: 120, rows: 36 });
       const ready = await tui.waitFor(
-        (text) => text.includes("Build ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
+        (text) => text.includes("OmO ·") || text.includes("ctrl+p commands") || text.includes("Search sessions"),
         60_000,
       );
       // The home screen syncs its location resources asynchronously; opening the dialog before that
