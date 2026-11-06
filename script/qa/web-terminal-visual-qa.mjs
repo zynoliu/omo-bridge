@@ -34,6 +34,20 @@ function parseArgs(argv) {
   return options;
 }
 
+async function writeCrashReport(options, error) {
+  const report = {
+    scenario: options.scenario,
+    error: error?.message ?? String(error),
+    stack: error?.stack ?? String(error),
+    exitCode: 1,
+  };
+  try {
+    await Bun.write(join(options.evidenceDir, "report.json"), JSON.stringify(report, null, 2));
+  } catch (writeError) {
+    process.stderr.write(`qa: could not write report.json (${String(writeError)})\n`);
+  }
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
@@ -45,10 +59,17 @@ async function main() {
   mkdirSync(options.evidenceDir, { recursive: true });
 
   const scenarioPath = join(import.meta.dir, "scenarios", `${options.scenario}.mjs`);
-  const module = await import(scenarioPath);
-  const scenario = module.default;
-  if (scenario === undefined || typeof scenario.run !== "function") {
-    throw new Error(`${scenarioPath} must default-export { name, run(ctx) }`);
+  let scenario;
+  try {
+    const module = await import(scenarioPath);
+    scenario = module.default;
+    if (scenario === undefined || typeof scenario.run !== "function") {
+      throw new Error(`${scenarioPath} must default-export { name, run(ctx) }`);
+    }
+  } catch (error) {
+    await writeCrashReport(options, error);
+    process.stderr.write(`qa: ${error?.stack ?? String(error)}\n`);
+    return 1;
   }
 
   const ctx = {
@@ -57,7 +78,7 @@ async function main() {
     evidenceDir: options.evidenceDir,
     agentDir: options.agentDir,
     fault: options.fault,
-    startBridge: (input = {}) => startBridge({ repo, bunExe, evidenceDir: options.evidenceDir, ...input }),
+    startBridge: (input = {}) => startBridge({ repo, bunExe, evidenceDir: options.evidenceDir, keep: options.keep, ...input }),
     createSession: (input) => createSession(input),
     listMessages: (input) => listMessages(input),
     startTui: (input = {}) =>
@@ -74,10 +95,16 @@ async function main() {
     },
   };
 
-  const result = await scenario.run(ctx);
-  const exitCode = result?.exitCode ?? 0;
-  process.stdout.write(`${JSON.stringify(result?.report ?? { scenario: scenario.name, exitCode })}\n`);
-  return exitCode;
+  try {
+    const result = await scenario.run(ctx);
+    const exitCode = result?.exitCode ?? 0;
+    process.stdout.write(`${JSON.stringify(result?.report ?? { scenario: scenario.name, exitCode })}\n`);
+    return exitCode;
+  } catch (error) {
+    await writeCrashReport(options, error);
+    process.stderr.write(`qa: ${error?.stack ?? String(error)}\n`);
+    return 1;
+  }
 }
 
 main().then(

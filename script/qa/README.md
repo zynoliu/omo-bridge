@@ -39,7 +39,7 @@ Exit code `0` means the scenario's assertions held; anything else means they did
 
 | File | Content |
 | --- | --- |
-| `report.json` | outcome, checks, durations, exit code, render mode, screenshot path, evidence paths, and a `history` cross-check read from the bridge (`total`, `assistant`, `lastText`) |
+| `report.json` | outcome, checks, durations, exit code, render mode, screenshot path, evidence paths, and a `history` cross-check read from the bridge (`total`, `assistant`, `lastText`). When the scenario module fails to load or the scenario throws, this file is still written and carries `error` plus the `stack` |
 | `frame-before.txt` | parsed screen before typing |
 | `frame-after.txt` | parsed screen after the run |
 | `transcript.txt` | raw PTY stream |
@@ -73,7 +73,7 @@ pgrep -fl omo-bridge        # no process carrying this run's state directory
 lsof -nP -i :<port>         # empty for the port printed in report.json
 ```
 
-The bridge state directory lives under the OS temp dir; the runner removes nothing else.
+The bridge state directory lives under the OS temp dir and is removed when the run stops, together with the private host it started. `--keep` leaves it in place for inspection. Nothing outside that directory is removed.
 
 ## Adding a scenario
 

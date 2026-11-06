@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, appendFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, appendFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -49,7 +49,11 @@ export async function startBridge(options = {}) {
   });
   const pipeLog = async (stream) => {
     for await (const chunk of stream) {
-      appendFileSync(logPath, new TextDecoder().decode(chunk));
+      try {
+        appendFileSync(logPath, new TextDecoder().decode(chunk));
+      } catch {
+        // The evidence directory can be the state directory, which stop() removes.
+      }
     }
   };
   void pipeLog(child.stdout);
@@ -66,6 +70,7 @@ export async function startBridge(options = {}) {
   }
 
   let stopped = false;
+  const keepStateDir = options.keep === true;
   const stop = async () => {
     if (stopped) return;
     stopped = true;
@@ -87,6 +92,7 @@ export async function startBridge(options = {}) {
       // Already gone.
     }
     await killHostsFor(stateDir);
+    if (!keepStateDir) rmSync(stateDir, { recursive: true, force: true });
   };
 
   return { url, port, password, stateDir, logPath, info, headers, stop };
