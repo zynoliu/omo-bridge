@@ -158,10 +158,13 @@ export async function ensureTuiSession(options: EnsureTuiSessionOptions): Promis
   const existing = sessionFiledIn(list, options.cwd);
   if (existing !== undefined) return existing;
   const id = `ses_tui_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  // No fixed title: the host skips auto-titling for a session that already has a name, and its
+  // generated summary is what the sidebar should show. Until the first run settles the bridge serves
+  // the directory name, which is also what every other unnamed session shows.
   const created = await call(`${options.url}/api/session`, {
     method: "POST",
     headers: { authorization: auth, "content-type": "application/json" },
-    body: JSON.stringify({ id, title: "tui", location: { directory: options.cwd } }),
+    body: JSON.stringify({ id, location: { directory: options.cwd } }),
   });
   if (!created.ok) {
     throw new TuiLaunchError(`the bridge refused to create a session: ${created.status}`);

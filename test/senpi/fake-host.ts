@@ -41,6 +41,11 @@ export interface FakeHostOptions {
    * `agent_start`, the user echo, `agent_end` carrying the failure, then the settle seals.
    */
   promptFailure?: Record<string, unknown>;
+  /**
+   * The `capabilities` a `get_protocol_info` answer advertises; the recorded live answer otherwise. A
+   * test drives a host that does or does not honor a per-session launch-profile field through this.
+   */
+  protocolCapabilities?: readonly string[];
 }
 
 /** One model so the bridge's startup catalog probe (`get_available_models`) can answer. */
@@ -261,6 +266,9 @@ export class FakeSenpiHost {
           ...RECORDED_HANDSHAKE,
           // The recording stores a placeholder agent dir; the fake answers with the directory it owns.
           agentDir: this.dir,
+          ...(this.options.protocolCapabilities === undefined
+            ? {}
+            : { capabilities: [...this.options.protocolCapabilities] }),
         },
       });
       return;

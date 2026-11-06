@@ -168,6 +168,99 @@ describe("client declaration", () => {
   });
 });
 
+describe("session auto-title", () => {
+  // The probe is the whole gate on the wire field: the host refuses an `auto_title` it does not
+  // advertise, so the bridge has to know before it opens whether the field may travel.
+  test("a host advertising auto_title_per_session opens with auto_title and is probed once", async () => {
+    const host = FakeSenpiHost.start({ protocolCapabilities: ["multi_session", "auto_title_per_session"] });
+    const transport = new SenpiTransport({ socketPath: host.socketPath, keyRoot: host.dir });
+    try {
+      await transport.connect();
+      const probesAfterConnect = rawProbes(host);
+      expect(await transport.supportsPerSessionAutoTitle()).toBe(true);
+
+      await transport.openSession({ cwd: host.dir });
+      await transport.openSession({ cwd: host.dir });
+
+      expect(host.framesOfType("open_session").map((entry) => entry.frame.auto_title)).toEqual([true, true]);
+      // One host answer, however many opens: the capability describes the host, not the session.
+      expect(rawProbes(host)).toBe(probesAfterConnect + 1);
+    } finally {
+      await transport.dispose();
+      host.stop();
+    }
+  });
+
+  test("a host without the capability sends no auto_title field", async () => {
+    const host = FakeSenpiHost.start({ protocolCapabilities: ["multi_session", "retain_on_disconnect"] });
+    const transport = new SenpiTransport({ socketPath: host.socketPath, keyRoot: host.dir });
+    try {
+      await transport.connect();
+      expect(await transport.supportsPerSessionAutoTitle()).toBe(false);
+      await transport.openSession({ cwd: host.dir });
+
+      const openFrame = host.framesOfType("open_session")[0]?.frame;
+      expect(openFrame).not.toHaveProperty("auto_title");
+      // The rest of the wire options still travel; only the unadvertised field is withheld.
+      expect(openFrame?.retain_on_disconnect).toBe(true);
+      expect(openFrame?.cwd).toBe(host.dir);
+    } finally {
+      await transport.dispose();
+      host.stop();
+    }
+  });
+
+  test("a probe that cannot answer degrades to absent instead of failing the open", async () => {
+    const host = FakeSenpiHost.start();
+    const transport = new SenpiTransport({ socketPath: host.socketPath, keyRoot: host.dir });
+    try {
+      await transport.connect();
+      transport.raw.request = async () => {
+        throw new Error("the protocol probe went unanswered");
+      };
+
+      expect(await transport.supportsPerSessionAutoTitle()).toBe(false);
+      const opened = await transport.openSession({ cwd: host.dir });
+      expect(opened.sessionId).toBe("rpc-1");
+      expect(host.framesOfType("open_session")[0]?.frame).not.toHaveProperty("auto_title");
+    } finally {
+      await transport.dispose();
+      host.stop();
+    }
+  });
+
+  test("an unconnected raw channel reads as absent without throwing", async () => {
+    const transport = new SenpiTransport({ socketPath: join(repoRoot, "x.sock"), keyRoot: repoRoot });
+    expect(await transport.supportsPerSessionAutoTitle()).toBe(false);
+  });
+
+  test("a probe that cannot answer is retried instead of cached as absent", async () => {
+    const host = FakeSenpiHost.start();
+    const transport = new SenpiTransport({ socketPath: host.socketPath, keyRoot: host.dir });
+    try {
+      await transport.connect();
+      let calls = 0;
+      transport.raw.request = async () => {
+        calls += 1;
+        throw new Error("the protocol probe went unanswered");
+      };
+
+      expect(await transport.supportsPerSessionAutoTitle()).toBe(false);
+      expect(await transport.supportsPerSessionAutoTitle()).toBe(false);
+      // A miss that came from a failed probe says nothing about the host, so the next open asks again.
+      expect(calls).toBe(2);
+    } finally {
+      await transport.dispose();
+      host.stop();
+    }
+  });
+});
+
+/** `get_protocol_info` frames on the raw connection (index 1): its handshake plus any probe. */
+function rawProbes(host: FakeSenpiHost): number {
+  return (host.connections[1]?.frames ?? []).filter((frame) => frame.type === "get_protocol_info").length;
+}
+
 describe("run boundary", () => {
   test("streaming follows the attached session's agent_start and agent_end", async () => {
     const host = FakeSenpiHost.start();

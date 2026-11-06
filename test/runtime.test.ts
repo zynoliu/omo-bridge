@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BASIC_USERNAME } from "../src/http/server";
@@ -167,7 +167,84 @@ describe("frame session resolution", () => {
   });
 });
 
+describe("session title frames", () => {
+  // The host names a session itself after an auto-titled run and reports the name as one frame
+  // (`name`, host `agent-session`). The TUI's store applies `session.renamed`, so the id the frame is
+  // republished under is the one the client knows, never the host's routing handle.
+  test("a frame with a title publishes session.renamed under the client's id and calls the callback", async () => {
+    const bus = createEventBus();
+    const titles: (readonly [string, string])[] = [];
+    const dispatch = createFrameDispatch({
+      bus,
+      resolveSessionID: (id) => (id === "rpc-host-route" ? "ses_tui_client" : id),
+      onSessionTitle: (sessionID, title) => {
+        titles.push([sessionID, title]);
+      },
+    });
+    const subscription = bus.subscribe({});
+    const reader = subscription.stream.getReader();
+    try {
+      dispatch.handle({ type: "session_info_changed", sessionId: "rpc-host-route", name: "Fix the login flow" });
+
+      const read = await reader.read();
+      expect(read.value?.type).toBe("session.renamed");
+      expect(read.value?.data).toEqual({ sessionID: "ses_tui_client", title: "Fix the login flow" });
+      expect(titles).toEqual([["ses_tui_client", "Fix the login flow"]]);
+    } finally {
+      void reader.cancel();
+      subscription.close();
+    }
+  });
+
+  test("a frame without a title publishes nothing and calls nothing", async () => {
+    const bus = createEventBus();
+    const titles: string[] = [];
+    const dispatch = createFrameDispatch({
+      bus,
+      resolveSessionID: (id) => id,
+      onSessionTitle: (sessionID) => {
+        titles.push(sessionID);
+      },
+    });
+    const subscription = bus.subscribe({});
+    const reader = subscription.stream.getReader();
+    try {
+      dispatch.handle({ type: "session_info_changed", sessionId: "rpc-1" });
+      dispatch.handle({ type: "session_info_changed", sessionId: "rpc-1", name: "   " });
+      // A sentinel published after the frames proves nothing was queued ahead of it, without waiting.
+      bus.publish({ type: "sentinel", data: {} });
+
+      const read = await reader.read();
+      expect(read.value?.type).toBe("sentinel");
+      expect(titles).toEqual([]);
+    } finally {
+      void reader.cancel();
+      subscription.close();
+    }
+  });
+});
+
 describe("runtime composition", () => {
+  // The host's own rename has to reach the bridge's map, the file it persists, and the TUI's stream:
+  // a dispatch that publishes without the map update leaves every later read of the session stale.
+  test("a session_info_changed frame from the host renames the session and persists it", async () => {
+    const stream = await openEventStream();
+    try {
+      await stream.next("server.connected");
+      host.emit({ type: "session_info_changed", sessionId: "rpc-1", name: "Wire the auto title" });
+
+      const renamed = await stream.next("session.renamed");
+      expect(renamed.data).toEqual({ sessionID: SESSION_ID, title: "Wire the auto title" });
+      expect(runtime.sessionMap.get(SESSION_ID)?.name).toBe("Wire the auto title");
+      const persisted = JSON.parse(readFileSync(runtime.sessionMap.file, "utf8")) as {
+        sessions: Array<{ key: string; name?: string }>;
+      };
+      expect(persisted.sessions.find((record) => record.key === SESSION_ID)?.name).toBe("Wire the auto title");
+    } finally {
+      stream.close();
+    }
+  });
+
   test("the inbox family is wired by createRuntime and serves the host's queue", async () => {
     const response = await fetch(`${base}/api/session/${SESSION_ID}/inbox`, { headers: auth() });
     expect(response.status).toBe(200);

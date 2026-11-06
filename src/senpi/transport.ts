@@ -6,7 +6,10 @@ import { RawChannel } from "./raw";
 import { assertPrivateSocketExists } from "./socket-path";
 
 export const DEFAULT_CLIENT_WIDTH = 80;
-export const DEFAULT_CLIENT_CAPABILITIES = ["interactive_user", "question"] as const;
+// `auto_title_sessions` is what makes the host title a session at all for this connection; the
+// per-session `auto_title` on open_session alone is not enough on the host builds we run (measured:
+// capability + field titles, either one alone does not).
+export const DEFAULT_CLIENT_CAPABILITIES = ["interactive_user", "question", "auto_title_sessions"] as const;
 
 export type SenpiClientEvent = Parameters<Parameters<RpcClient["onEvent"]>[0]>[0];
 export type SenpiSessionSummary = Awaited<ReturnType<RpcClient["listSessions"]>>[number];
@@ -63,6 +66,31 @@ export function defaultKeyRoot(env: NodeJS.ProcessEnv = process.env): string {
 
 const SHARED_SOCKET_SUFFIX = join(".omo", "agent", "rpc", "rpc.sock");
 
+/** A host capability: this host honors `open_session.auto_title`, so a session can opt into naming. */
+const AUTO_TITLE_PER_SESSION_CAPABILITY = "auto_title_per_session";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The capabilities a host advertises in `get_protocol_info`, read through the raw channel because the
+ * `RpcClient` facade does not expose the probe. A probe that cannot answer reads as an empty list: the
+ * caller treats a capability as absent rather than failing on a question it did not have to ask.
+ */
+async function readProtocolCapabilities(raw: RawChannel): Promise<readonly string[] | undefined> {
+  try {
+    const answer = await raw.request<unknown>({ type: "get_protocol_info" });
+    const capabilities = isRecord(answer) ? answer.capabilities : undefined;
+    if (!Array.isArray(capabilities)) return [];
+    return capabilities.filter((entry): entry is string => typeof entry === "string");
+  } catch {
+    // Undefined, not empty: a probe that could not answer says nothing about the host, so the caller
+    // must not cache it as "the capability is absent".
+    return undefined;
+  }
+}
+
 function assertPrivateSocket(socketPath: string): void {
   if (socketPath.endsWith(SHARED_SOCKET_SUFFIX)) {
     throw new SenpiTransportError(
@@ -86,6 +114,7 @@ export class SenpiTransport {
   private connectedResult: SenpiConnectResult | undefined;
   private sessionIdValue: string | undefined;
   private streamingValue = false;
+  private protocolCapabilities: Promise<readonly string[] | undefined> | undefined;
   private disposed = false;
 
   constructor(options: SenpiTransportOptions = {}) {
@@ -196,8 +225,12 @@ export class SenpiTransport {
 
   async openSession(options: SenpiOpenSessionOptions = {}): Promise<SenpiOpenSessionResult> {
     const client = this.requireClient();
+    // The field is host-validated: a host that does not advertise the capability would refuse the
+    // open rather than ignore an unknown key, so it travels only once the probe says it is honored.
+    const autoTitle = await this.supportsPerSessionAutoTitle();
     const wireOptions: Parameters<RpcClient["openSession"]>[0] = {
       retain_on_disconnect: options.retainOnDisconnect ?? true,
+      ...(autoTitle ? { auto_title: true } : {}),
       ...(options.sessionPath === undefined ? {} : { sessionPath: options.sessionPath }),
       ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
     };
@@ -209,6 +242,33 @@ export class SenpiTransport {
     } catch (error) {
       throw mapSenpiError(error);
     }
+  }
+
+  /**
+   * Whether this host honors `open_session.auto_title`. The protocol probe is read once per transport
+   * and cached: the answer describes the host this connection is talking to, not the session being
+   * opened. A raw channel that is not connected cannot answer at all (and caching that miss would
+   * outlive a later connect), and a failed probe degrades to absent rather than throwing.
+   */
+  async supportsPerSessionAutoTitle(): Promise<boolean> {
+    if (!this.raw.connected) {
+      // The probe lives on the raw channel, which connects lazily. The first open happens before any
+      // raw command, so waiting for someone else to connect would keep the field off the wire for the
+      // whole process; connect here, and read a refusal to connect as "no capability".
+      try {
+        await this.raw.connect();
+      } catch {
+        return false;
+      }
+    }
+    this.protocolCapabilities ??= readProtocolCapabilities(this.raw);
+    const capabilities = await this.protocolCapabilities;
+    if (capabilities === undefined) {
+      // A failed probe is not an answer: retry it on the next open instead of caching the miss.
+      this.protocolCapabilities = undefined;
+      return false;
+    }
+    return capabilities.includes(AUTO_TITLE_PER_SESSION_CAPABILITY);
   }
 
   listSessions(): Promise<SenpiSessionSummary[]> {

@@ -37,6 +37,8 @@ export type FrameDispatchOptions = {
   warn?: (message: string) => void;
   /** Receives each run's summed usage before the matching event reaches the bus. */
   onUsage?: (sessionID: string, usage: SessionUsage) => void;
+  /** Receives a session's new host-assigned title before `session.renamed` is published. */
+  onSessionTitle?: (sessionID: string, title: string) => void;
 };
 
 export type FrameDispatch = {
@@ -95,6 +97,7 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
   const resolveSessionID = options.resolveSessionID ?? ((routingID: string | undefined) => routingID);
   const defaultSessionID = options.defaultSessionID ?? (() => undefined);
   const onUsage = options.onUsage;
+  const onSessionTitle = options.onSessionTitle;
 
   const projectors = new Map<
     string,
@@ -211,6 +214,23 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
     }
   };
 
+  /**
+   * The host names a session after the run whose auto-title produced it, and reports the name as one
+   * `session_info_changed` frame (`name`, host `agent-session`). A frame without a name is not a
+   * rename - the host also sends this frame for a session it could not name - so it publishes
+   * nothing. The id is the resolved client-facing one, never the host's routing handle.
+   */
+  const publishSessionTitle = (sessionID: string, title: string): void => {
+    if (onSessionTitle !== undefined) {
+      try {
+        onSessionTitle(sessionID, title);
+      } catch (error) {
+        warn(`session title update failed for ${sessionID}: ${messageOf(error)}`);
+      }
+    }
+    bus.publish({ type: "session.renamed", data: { sessionID, title } });
+  };
+
   const handle = (event: unknown): void => {
     const frame = asRecord(event);
     const type = frame === undefined ? undefined : asString(frame.type);
@@ -222,6 +242,11 @@ export function createFrameDispatch(options: FrameDispatchOptions = {}): FrameDi
     const routingID = frameSessionID(frame) ?? defaultSessionID();
     const sessionID = resolveSessionID(routingID) ?? routingID;
     if (sessionID === undefined) return;
+    if (type === "session_info_changed") {
+      const title = asString(frame.name)?.trim();
+      if (title !== undefined && title.length > 0) publishSessionTitle(sessionID, title);
+      return;
+    }
     project(frame, sessionID);
   };
 
@@ -345,6 +370,16 @@ export async function createRuntime(env: NodeJS.ProcessEnv = process.env): Promi
         sessionMap.flush();
       } catch (error) {
         console.warn(`omo-bridge: could not persist usage for ${sessionID}: ${messageOf(error)}`);
+      }
+    },
+    onSessionTitle: (sessionID, title) => {
+      // The host renamed the session itself; the map is the bridge's own copy of that title, so a
+      // later GET /api/session and the persisted state both answer with it.
+      sessionMap.rename(sessionID, title);
+      try {
+        sessionMap.flush();
+      } catch (error) {
+        console.warn(`omo-bridge: could not persist the title for ${sessionID}: ${messageOf(error)}`);
       }
     },
   });
