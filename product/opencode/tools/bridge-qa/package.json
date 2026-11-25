@@ -1,0 +1,8 @@
+{
+  "name": "bridge-qa",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@xterm/xterm": "6.0.0"
+  }
+}

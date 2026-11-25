@@ -1,0 +1,5 @@
+export { Other } from "./view.tsx"
+export { createOtherStore, connectBridgeOther } from "./store.ts"
+export type { OtherStore } from "./store.ts"
+export { decodeCodeMode, initialOtherState, UNAVAILABLE_REASON } from "./state.ts"
+export type { CodeModeActivity, CodeModeItem, OtherState, OtherSurface } from "./state.ts"

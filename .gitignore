@@ -1,6 +1,18 @@
-node_modules/
-.omo/
-state/
+# Runtime artifacts of the bridge itself (this repo is one product, one state dir).
+/state/
 *.sock
+
+# Build output and dependencies are never committed.
+node_modules/
+dist-bridge/
+*.bun-build
+.turbo/
+
+# Plan text travels with the code; evidence and QA runs stay local.
+.omo/*
+!.omo/plans/
+.omo/evidence/
+qa-run-*/
+
 *.log
 .DS_Store

@@ -1,0 +1,13 @@
+{
+  "name": "@bridge/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/contracts.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bun check --no-script"
+  }
+}
